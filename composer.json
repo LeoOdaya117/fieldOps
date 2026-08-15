@@ -42,11 +42,12 @@
     },
     "scripts": {
         "setup": [
-            "composer install",
+            "composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
+            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --force",
-            "npm install",
+            "npm ci --no-audit --no-fund",
             "npm run build"
         ],
         "dev": [
