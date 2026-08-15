@@ -1,0 +1,82 @@
+services:
+    app:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        image: fieldops-app:latest
+        container_name: fieldops-app
+        working_dir: /var/www/html
+        ports:
+            - "${APP_PORT:-8000}:80"
+        volumes:
+            - .:/var/www/html
+            - laravel_storage:/var/www/html/storage
+            - bootstrap_cache:/var/www/html/bootstrap/cache
+        depends_on:
+            mysql:
+                condition: service_healthy
+        networks:
+            - fieldops
+
+    node:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        image: fieldops-app:latest
+        container_name: fieldops-node
+        entrypoint: []
+        working_dir: /var/www/html
+        command: >-
+            sh -c "if [ ! -x node_modules/.bin/vite ]; then npm install; fi
+            && npm run dev -- --host 0.0.0.0"
+        ports:
+            - "${VITE_PORT:-5173}:5173"
+        volumes:
+            - .:/var/www/html
+            - node_modules:/var/www/html/node_modules
+            - laravel_storage:/var/www/html/storage
+            - bootstrap_cache:/var/www/html/bootstrap/cache
+        depends_on:
+            mysql:
+                condition: service_healthy
+        networks:
+            - fieldops
+
+    mysql:
+        image: mysql:8.4
+        container_name: fieldops-mysql
+        ports:
+            - "${FORWARD_DB_PORT:-3306}:3306"
+        environment:
+            MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-root}"
+            MYSQL_DATABASE: "${DB_DATABASE:-fieldops}"
+            MYSQL_USER: "${DB_USERNAME:-fieldops}"
+            MYSQL_PASSWORD: "${DB_PASSWORD:-password}"
+        volumes:
+            - mysql_data:/var/lib/mysql
+        healthcheck:
+            test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+            interval: 5s
+            timeout: 5s
+            retries: 20
+        networks:
+            - fieldops
+
+    mailpit:
+        image: axllent/mailpit:latest
+        container_name: fieldops-mailpit
+        ports:
+            - "${FORWARD_MAILPIT_PORT:-1025}:1025"
+            - "${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025"
+        networks:
+            - fieldops
+
+networks:
+    fieldops:
+        driver: bridge
+
+volumes:
+    mysql_data:
+    node_modules:
+    laravel_storage:
+    bootstrap_cache:
