@@ -61,6 +61,10 @@ jobs:
       - name: Setup Application
         run: composer setup
 
+      - name: Seed browser test user
+        if: matrix.php-version == '8.3'
+        run: php artisan db:seed --force
+
       - name: Audit Composer dependencies
         if: matrix.php-version == '8.3'
         run: composer audit --locked --no-interaction
@@ -72,6 +76,28 @@ jobs:
       - name: Run CI Checks
         run: composer ci:check
 
+      - name: Install Playwright browser
+        if: matrix.php-version == '8.3'
+        run: npx playwright install --with-deps chromium
+
+      - name: Start application for browser tests
+        if: matrix.php-version == '8.3'
+        shell: bash
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8000 > storage/logs/e2e-server.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/up > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat storage/logs/e2e-server.log
+          exit 1
+
+      - name: Run browser tests
+        if: matrix.php-version == '8.3'
+        run: npm run test:e2e
+
       - name: Generate coverage report
         run: php artisan test --coverage --coverage-clover=coverage.xml
 
@@ -81,4 +107,12 @@ jobs:
         with:
           name: coverage-php-${{ matrix.php-version }}
           path: coverage.xml
+          if-no-files-found: ignore
+
+      - name: Upload browser test report
+        if: always() && matrix.php-version == '8.3'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-report
+          path: playwright-report
           if-no-files-found: ignore

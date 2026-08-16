@@ -65,6 +65,8 @@
             "npm run lint:check",
             "npm run format:check",
             "npm run types:check",
+            "npm run test:unit -- --run",
+            "npm run build",
             "@test"
         ],
         "types:check": [
