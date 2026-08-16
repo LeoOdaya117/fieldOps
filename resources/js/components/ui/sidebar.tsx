@@ -44,6 +44,7 @@ const SidebarContext = React.createContext<SidebarContext | null>(null)
 
 function useSidebar() {
   const context = React.useContext(SidebarContext)
+
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.")
   }
@@ -74,6 +75,7 @@ function SidebarProvider({
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value
+
       if (setOpenProp) {
         setOpenProp(openState)
       } else {
@@ -104,6 +106,7 @@ function SidebarProvider({
     }
 
     window.addEventListener("keydown", handleKeyDown)
+
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [toggleSidebar])
 
@@ -165,6 +168,8 @@ function Sidebar({
     return (
       <div
         data-slot="sidebar"
+        role="complementary"
+        aria-label="Primary navigation"
         className={cn(
           "bg-sidebar text-sidebar-foreground flex h-full w-(--sidebar-width) flex-col",
           className
@@ -179,10 +184,6 @@ function Sidebar({
   if (isMobile) {
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
-        <SheetHeader className="sr-only">
-          <SheetTitle>Sidebar</SheetTitle>
-          <SheetDescription>Displays the mobile sidebar.</SheetDescription>
-        </SheetHeader>
         <SheetContent
           data-sidebar="sidebar"
           data-slot="sidebar"
@@ -195,6 +196,10 @@ function Sidebar({
           }
           side={side}
         >
+          <SheetHeader className="sr-only p-0">
+            <SheetTitle>Sidebar</SheetTitle>
+            <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+          </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
       </Sheet>
@@ -204,6 +209,8 @@ function Sidebar({
   return (
     <div
       className="group peer text-sidebar-foreground hidden md:block"
+      role="complementary"
+      aria-label="Primary navigation"
       data-state={state}
       data-collapsible={state === "collapsed" ? collapsible : ""}
       data-variant={variant}
@@ -473,7 +480,7 @@ const sidebarMenuButtonVariants = cva(
       variant: {
         default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         outline:
-          "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
+          "bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)]",
       },
       size: {
         default: "h-8 text-sm",
