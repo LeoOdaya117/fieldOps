@@ -7,11 +7,32 @@ RUN apt-get update \
         git \
         unzip \
         libfreetype6-dev \
+        libasound2 \
+        libatk-bridge2.0-0 \
+        libatk1.0-0 \
+        libatspi2.0-0 \
+        libcairo2 \
+        libcups2 \
+        libdbus-1-3 \
+        libdrm2 \
+        libgbm1 \
+        libglib2.0-0 \
+        libgtk-3-0 \
         libicu-dev \
         libjpeg62-turbo-dev \
         libonig-dev \
         libpng-dev \
+        libnss3 \
+        libpango-1.0-0 \
+        libx11-xcb1 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxkbcommon0 \
+        libxrandr2 \
+        libxshmfence1 \
         libzip-dev \
+        fonts-liberation \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" \
         bcmath \
