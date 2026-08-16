@@ -1,0 +1,6 @@
+---
+description: FieldOps project architecture and quality standards
+alwaysApply: true
+---
+
+The canonical project instructions are in `AGENTS.md`. Read and follow it for all Laravel, Inertia, React, TypeScript, styling, security, testing, and documentation changes. Do not duplicate or override those rules here.

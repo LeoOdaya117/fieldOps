@@ -15,7 +15,17 @@ The project runs entirely through Docker for local development. Laravel Sail is 
 - MySQL 8.4
 - Docker Compose
 - Mailpit for local email testing
-- PHPUnit, Pint, PHPStan, ESLint, and Prettier for testing and code quality
+- PHPUnit, Pint, PHPStan, ESLint, Prettier, Vitest, Testing Library, and Playwright for testing and code quality
+
+## Architecture and conventions
+
+The project architecture, coding conventions, security checklist, test-first feature rule, and design-system requirements are documented in [AGENTS.md](AGENTS.md). Human-facing references are available in:
+
+- [Architecture](docs/architecture.md)
+- [Testing](docs/testing.md)
+- [Design system](docs/design-system.md)
+
+`AGENTS.md` is the canonical instruction source for Codex, Cursor, Claude Code, GitHub Copilot, and human contributors.
 
 ## Requirements
 
@@ -131,6 +141,16 @@ docker compose exec node npm install
 docker compose exec node npm run build
 docker compose exec node npm run lint:check
 docker compose exec node npm run types:check
+docker compose exec node npm run test:unit -- --run
+docker compose exec node npm run test:unit:coverage
+```
+
+Run browser tests against the Docker app service:
+
+```powershell
+docker compose exec app php artisan db:seed
+docker compose exec node npx playwright install chromium
+docker compose exec node sh -lc "rm -f public/hot && npm run build && E2E_BASE_URL=http://fieldops.test npm run test:e2e"
 ```
 
 ## Testing and code quality
@@ -142,7 +162,20 @@ docker compose exec app ./vendor/bin/phpstan analyse
 docker compose exec node npm run lint:check
 docker compose exec node npm run format:check
 docker compose exec node npm run types:check
+docker compose exec node npm run test:unit -- --run
+docker compose exec node npm run test:unit:coverage
+docker compose exec node npm run build
 ```
+
+The complete pull-request gate is:
+
+```powershell
+docker compose exec app composer ci:check
+docker compose exec app composer audit --locked --no-interaction
+docker compose exec node npm audit --audit-level=high
+```
+
+It runs PHP formatting, PHPStan, PHPUnit, ESLint, Prettier, TypeScript checks, Vitest, and the production build. GitHub Actions additionally runs dependency audits and Playwright browser checks.
 
 ## Data and Docker volumes
 
@@ -188,4 +221,3 @@ When dependencies or Docker configuration change, rebuild the affected services:
 ```powershell
 docker compose up -d --build
 ```
-
