@@ -3,7 +3,10 @@ import {
     BookOpen,
     ClipboardCheck,
     ClipboardList,
+    CloudOff,
     CircleHelp,
+    Camera,
+    FileText,
     Construction,
     Droplets,
     HardHat,
@@ -11,15 +14,18 @@ import {
     MapPinned,
     Newspaper,
     PackageOpen,
+    RefreshCw,
+    Send,
+    ShieldCheck,
+    UsersRound,
     TriangleAlert,
 } from 'lucide-react';
 import type {
-    LandingFeature,
-    LandingFaqItem,
+    LandingCapability,
     LandingNavItem,
-    LandingPlan,
-    LandingStat,
-    LandingTestimonial,
+    LandingMapJob,
+    LandingMetric,
+    LandingWorkflowStep,
 } from './types';
 
 export const landingAssets = {
@@ -137,144 +143,143 @@ export const landingNavigation = [
     { label: 'About Us', href: '/about' },
 ] satisfies LandingNavItem[];
 
-export const landingFeatures = [
+export const landingJourneyNavigation = [
+    { label: 'Platform', href: '#platform' },
+    { label: 'Offline', href: '#offline' },
+    { label: 'Mapping', href: '#mapping' },
+    { label: 'Reporting', href: '#reporting' },
+] as const;
+
+export const landingWorkflowSteps = [
+    {
+        id: 'assign',
+        label: '01 / Assign',
+        title: 'Put the next job in motion.',
+        description:
+            'Dispatchers assign work with the right owner, priority, location, and context attached.',
+        icon: Send,
+        tone: 'brand',
+    },
+    {
+        id: 'download',
+        label: '02 / Download',
+        title: 'Carry the work with you.',
+        description:
+            'Crews keep their assignments, forms, maps, and asset history available before they leave signal.',
+        icon: CloudOff,
+        tone: 'info',
+    },
+    {
+        id: 'work',
+        label: '03 / Work offline',
+        title: 'Keep moving without a connection.',
+        description:
+            'Update status, complete checklists, and document the job even when the network drops away.',
+        icon: ClipboardCheck,
+        tone: 'warning',
+    },
+    {
+        id: 'capture',
+        label: '04 / Capture',
+        title: 'Make the result verifiable.',
+        description:
+            'Attach notes, photos, signatures, and location-aware evidence while the work is happening.',
+        icon: Camera,
+        tone: 'success',
+    },
+    {
+        id: 'sync',
+        label: '05 / Sync',
+        title: 'Reconnect without rework.',
+        description:
+            'Queued updates synchronize automatically when service returns, keeping the record complete.',
+        icon: RefreshCw,
+        tone: 'info',
+    },
+    {
+        id: 'resolve',
+        label: '06 / Resolve',
+        title: 'Give the office a clear next move.',
+        description:
+            'Supervisors see what changed, what needs attention, and what is ready to close.',
+        icon: ShieldCheck,
+        tone: 'brand',
+    },
+] satisfies LandingWorkflowStep[];
+
+export const landingCapabilities = [
     {
         icon: ClipboardList,
-        title: 'Work Order Management',
-        description:
-            'Create, assign, and track work orders from start to finish.',
-    },
-    {
-        icon: MapPinned,
-        title: 'Interactive Map View',
-        description:
-            'Visualize assets, work orders, and team locations in real-time.',
-    },
-    {
-        icon: PackageOpen,
-        title: 'Asset Management',
-        description:
-            'Track asset details, location, maintenance, and service history.',
-    },
-    {
-        icon: ClipboardCheck,
-        title: 'Inspection Management',
-        description: 'Conduct inspections with checklists and attachments.',
+        title: 'Jobs with context',
+        description: 'Create, prioritize, assign, and track every work order.',
+        detail: 'Owners, locations, assets, due dates, and history stay connected from dispatch to closeout.',
     },
     {
         icon: TriangleAlert,
-        title: 'Issue Tracking',
+        title: 'Issues that move',
+        description: 'Turn a field observation into an owned next step.',
+        detail: 'Document the issue, route it to the right person, and keep resolution visible to everyone involved.',
+    },
+    {
+        icon: FileText,
+        title: 'Reports people trust',
         description:
-            'Report issues, monitor statuses, and ensure timely resolution.',
+            'Capture structured updates without slowing the crew down.',
+        detail: 'Forms, checklists, notes, and signatures create a consistent record for review and follow-up.',
+    },
+    {
+        icon: MapPinned,
+        title: 'Location as context',
+        description: 'See work, assets, and teams where they actually are.',
+        detail: 'Map views help supervisors prioritize nearby work and give crews the context around each site.',
+    },
+    {
+        icon: UsersRound,
+        title: 'Teams in rhythm',
+        description: 'Keep office and field handoffs unambiguous.',
+        detail: 'Everyone works from the same activity trail, with clear ownership and fewer status-chasing calls.',
     },
     {
         icon: BarChart3,
-        title: 'Reports & Analytics',
+        title: 'A clearer operating picture',
         description:
-            'Generate insights and export reports to make data-driven decisions.',
+            'Turn daily activity into decisions that improve the next day.',
+        detail: 'Track completion, response, issue trends, and evidence quality across the operation.',
     },
-] satisfies LandingFeature[];
+] satisfies LandingCapability[];
 
-export const landingStats = [
-    { value: '500+', label: 'Organizations Trust Us' },
-    { value: '50K+', label: 'Work Orders Completed' },
-    { value: '10K+', label: 'Assets Managed' },
-    { value: '98%', label: 'Customer Satisfaction' },
-] satisfies LandingStat[];
+export const landingMapJobs = [
+    {
+        id: 'WO-0056-0128',
+        title: 'Valve inspection',
+        location: 'Main St. Pump Station',
+        status: 'In progress',
+        priority: 'High',
+        top: '27%',
+        left: '64%',
+    },
+    {
+        id: 'WO-0056-0127',
+        title: 'Catch basin clean',
+        location: 'Coach Basin 15',
+        status: 'Assigned',
+        priority: 'Medium',
+        top: '55%',
+        left: '33%',
+    },
+    {
+        id: 'WO-0056-0126',
+        title: 'Meter assembly',
+        location: 'Lift Station 4',
+        status: 'Needs review',
+        priority: 'Low',
+        top: '70%',
+        left: '72%',
+    },
+] satisfies LandingMapJob[];
 
-export const landingTestimonials = [
-    {
-        quote: 'FieldOps has transformed how we manage our field operations. Our team is more productive and issues are resolved faster.',
-        name: 'John D.',
-        role: 'Operations Manager',
-        organization: 'AquaTex',
-    },
-    {
-        quote: 'The real-time visibility and easy-to-use mobile app make a huge difference for our technicians in the field.',
-        name: 'Sarah M.',
-        role: 'Facilities Director',
-        organization: 'BuildCore',
-    },
-    {
-        quote: 'We finally have one reliable source of truth for every crew, asset, and work order.',
-        name: 'Maria R.',
-        role: 'Public Works Lead',
-        organization: 'GreenCity',
-    },
-] satisfies LandingTestimonial[];
-
-export const landingPlans = [
-    {
-        name: 'Starter',
-        price: '$29',
-        description: 'For small teams building a reliable field rhythm.',
-        features: [
-            'Work order management',
-            'Team activity timeline',
-            'Mobile field access',
-            'Email support',
-        ],
-        actionLabel: 'Get Started',
-    },
-    {
-        name: 'Professional',
-        price: '$59',
-        description: 'For growing operations that need more control.',
-        features: [
-            'Everything in Starter',
-            'Map and asset context',
-            'Inspection workflows',
-            'Reports and analytics',
-        ],
-        actionLabel: 'Get Started',
-        featured: true,
-    },
-    {
-        name: 'Enterprise',
-        price: 'Custom',
-        description: 'For complex operations with shared accountability.',
-        features: [
-            'Everything in Professional',
-            'Advanced permissions',
-            'Implementation guidance',
-            'Dedicated support',
-        ],
-        actionLabel: 'Contact Sales',
-    },
-] satisfies LandingPlan[];
-
-export const trustedOrganizations = [
-    'AquaTex',
-    'BuildCore',
-    'GreenCity',
-    'InfraWorks',
-    'Metro Facilities',
-];
-
-export const landingFaqs = [
-    {
-        id: 'what-is-fieldops',
-        question: 'What is FieldOps?',
-        answer: 'FieldOps is an all-in-one platform for planning work, coordinating field teams, managing assets, and turning completed work into reliable operational insight.',
-    },
-    {
-        id: 'who-is-fieldops-for',
-        question: 'Who is FieldOps built for?',
-        answer: 'FieldOps is built for operations leaders and field teams in utilities, facilities, construction, water, wastewater, public works, and other asset-heavy organizations.',
-    },
-    {
-        id: 'mobile-access',
-        question: 'Can teams use FieldOps from the field?',
-        answer: 'Yes. Field teams can review assignments, update work orders, complete inspections, and capture notes from a mobile-ready experience designed for real-world connectivity.',
-    },
-    {
-        id: 'implementation',
-        question: 'How quickly can we get started?',
-        answer: 'Most teams begin with a focused workflow, import their core assets and users, and expand from there. Our onboarding path keeps the first useful result close at hand.',
-    },
-    {
-        id: 'pricing-change',
-        question: 'Can we change plans as our team grows?',
-        answer: 'Yes. Start with the plan that fits today and move up as your operation needs more automation, reporting, permissions, or support.',
-    },
-] satisfies LandingFaqItem[];
+export const landingMetrics = [
+    { value: '128', label: 'active work orders', trend: '+12% from last week' },
+    { value: '73', label: 'completed today', trend: '+8% from last week' },
+    { value: '18', label: 'need attention', trend: '-3% from last week' },
+] satisfies LandingMetric[];

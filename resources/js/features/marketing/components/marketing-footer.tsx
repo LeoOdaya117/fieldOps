@@ -141,7 +141,7 @@ export function MarketingFooter() {
                 </div>
             </div>
             <div className="border-t border-primary-foreground/15">
-                <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-5 py-4 text-[10px] text-primary-foreground/65 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+                <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-5 py-4 text-[10px] text-primary-foreground/75 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
                     <p>
                         © {new Date().getFullYear()} FieldOps. All rights
                         reserved.

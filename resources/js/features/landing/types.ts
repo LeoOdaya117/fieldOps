@@ -14,35 +14,34 @@ export type LandingNavChild = {
     icon: LucideIcon;
 };
 
-export type LandingFeature = {
+export type LandingWorkflowStep = {
+    id: string;
+    label: string;
+    title: string;
+    description: string;
+    icon: LucideIcon;
+    tone: 'brand' | 'info' | 'warning' | 'success';
+};
+
+export type LandingCapability = {
     icon: LucideIcon;
     title: string;
     description: string;
+    detail: string;
 };
 
-export type LandingStat = {
+export type LandingMapJob = {
+    id: string;
+    title: string;
+    location: string;
+    status: 'Assigned' | 'In progress' | 'Needs review';
+    priority: 'High' | 'Medium' | 'Low';
+    top: string;
+    left: string;
+};
+
+export type LandingMetric = {
     value: string;
     label: string;
-};
-
-export type LandingTestimonial = {
-    quote: string;
-    name: string;
-    role: string;
-    organization: string;
-};
-
-export type LandingPlan = {
-    name: string;
-    price: string;
-    description: string;
-    features: string[];
-    actionLabel?: string;
-    featured?: boolean;
-};
-
-export type LandingFaqItem = {
-    id: string;
-    question: string;
-    answer: string;
+    trend: string;
 };

@@ -32,7 +32,7 @@ function HeroActions({
         >
             <Link
                 href={primaryHref}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-brand px-5 text-sm font-extrabold text-brand-foreground shadow-sm transition-[transform,background-color,box-shadow] hover:-translate-y-0.5 hover:bg-brand/90 hover:shadow-md motion-reduce:transition-none"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-extrabold text-primary-foreground shadow-sm transition-[transform,background-color,box-shadow] hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md motion-reduce:transition-none dark:bg-brand dark:text-brand-foreground dark:hover:bg-brand/90"
             >
                 {primaryLabel}
                 <ArrowRight className="size-4" aria-hidden="true" />

@@ -63,22 +63,22 @@ afterEach(() => {
 });
 
 describe('LandingPage', () => {
-    it('renders the long-form guest landing page and its local imagery', () => {
+    it('renders the continuous guest operating journey and its local imagery', () => {
         render(<LandingPage isAuthenticated={false} />);
 
         expect(
             screen.getByRole('heading', {
-                name: /Manage Work\.\s*Empower Teams\.\s*Deliver Results\./i,
+                name: /One connected\s*system for every\s*job in the field\./i,
             }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('link', { name: 'Watch Demo' }),
-        ).toHaveAttribute('href', '#solutions');
-        const getStartedLinks = screen.getAllByRole('link', {
-            name: 'Get Started Free',
+            screen.getByRole('link', { name: 'See the workflow' }),
+        ).toHaveAttribute('href', '#workflow');
+        const startFreeLinks = screen.getAllByRole('link', {
+            name: 'Start Free',
         });
-        expect(getStartedLinks.length).toBeGreaterThan(0);
-        getStartedLinks.forEach((link) => {
+        expect(startFreeLinks.length).toBeGreaterThan(0);
+        startFreeLinks.forEach((link) => {
             expect(link).toHaveAttribute('href', '/register');
         });
         expect(
@@ -98,8 +98,21 @@ describe('LandingPage', () => {
         ).toBeInTheDocument();
         expect(
             screen.getByRole('heading', {
-                name: /Simple, transparent pricing/i,
+                name: /The signal can drop\. The work doesn’t have to\./i,
             }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', {
+                name: /Put the work on the map, then make the next move obvious\./i,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', {
+                name: /See what moved\. Know what needs you next\./i,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('06 checkpoints connected'),
         ).toBeInTheDocument();
     });
 
@@ -115,7 +128,7 @@ describe('LandingPage', () => {
             expect(link).toHaveAttribute('href', '/dashboard');
         });
         expect(
-            screen.queryByRole('link', { name: 'Get Started Free' }),
+            screen.queryByRole('link', { name: 'Start Free' }),
         ).not.toBeInTheDocument();
     });
 
@@ -157,6 +170,27 @@ describe('LandingPage', () => {
         expect(
             screen.getByRole('button', { name: 'Open menu' }),
         ).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('exposes journey anchors and login alongside the guest CTA', () => {
+        render(<LandingHeader isAuthenticated={false} variant="journey" />);
+
+        const mainNavigation = screen.getByRole('navigation', {
+            name: 'Main navigation',
+        });
+
+        ['Platform', 'Offline', 'Mapping', 'Reporting'].forEach((label) => {
+            expect(
+                within(mainNavigation).getByRole('link', { name: label }),
+            ).toHaveAttribute('href', `#${label.toLowerCase()}`);
+        });
+        expect(screen.getByRole('link', { name: 'Login' })).toHaveAttribute(
+            'href',
+            '/login',
+        );
+        expect(
+            screen.getByRole('link', { name: 'Start Free' }),
+        ).toHaveAttribute('href', '/register');
     });
 
     it('shows dashboard actions for authenticated users', () => {
@@ -222,25 +256,24 @@ describe('LandingPage', () => {
         expect(featuresMenuButton).toHaveAttribute('aria-expanded', 'false');
     });
 
-    it('renders and toggles the FAQ accordion', async () => {
-        const user = userEvent.setup();
-
+    it('renders the operational states in order', () => {
         render(<LandingPage isAuthenticated={false} />);
 
+        const workflow = screen
+            .getByText('FIELDOPS / WORKFLOW')
+            .closest('section');
+
+        expect(workflow).not.toBeNull();
         expect(
-            screen.getByRole('heading', {
-                name: /Everything you need to know before your first rollout/i,
-            }),
+            within(workflow as HTMLElement).getByText('01 / Assign'),
         ).toBeInTheDocument();
-
-        const faqButton = screen.getByRole('button', {
-            name: 'What is FieldOps?',
-        });
-        expect(faqButton).toHaveAttribute('aria-expanded', 'true');
-
-        await user.click(faqButton);
-
-        expect(faqButton).toHaveAttribute('aria-expanded', 'false');
+        expect(
+            within(workflow as HTMLElement).getByText('06 / Resolve'),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Connection unavailable')).toBeInTheDocument();
+        expect(
+            screen.getByText('Ready to sync when you’re back online.'),
+        ).toBeInTheDocument();
     });
 });
 
@@ -347,5 +380,19 @@ describe('MarketingHero', () => {
         expect(
             screen.getByText('Request → dispatch → service history'),
         ).toBeInTheDocument();
+    });
+
+    it('keeps dedicated pages inside the shared marketing shell', () => {
+        const { container } = render(
+            <MarketingPage
+                config={marketingPages.features}
+                isAuthenticated={false}
+            />,
+        );
+
+        expect(container.firstElementChild).toHaveClass('marketing-page-shell');
+        expect(
+            screen.getByRole('link', { name: 'Get Started' }),
+        ).toHaveAttribute('href', '/register');
     });
 });

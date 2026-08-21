@@ -28,7 +28,7 @@ test('the welcome page is readable and responsive', async ({ page }) => {
 
     await expect(
         page.getByRole('heading', {
-            name: /Manage Work\.\s*Empower Teams\.\s*Deliver Results\./,
+            name: /One connected\s*system for every\s*job in the field\./,
         }),
     ).toBeVisible();
     await expect(
@@ -50,41 +50,23 @@ test('the welcome page is readable and responsive', async ({ page }) => {
             name: 'Mobile navigation',
         });
         await expect(
-            mobileNavigation.getByRole('link', { name: 'Get Started' }),
+            mobileNavigation.getByRole('link', { name: 'Start Free' }),
         ).toBeVisible();
         await expect(
-            mobileNavigation.getByRole('link', { name: 'Pricing' }),
-        ).toHaveAttribute('href', '/pricing');
-        await mobileNavigation
-            .getByRole('button', { name: 'Open Features menu' })
-            .click();
-        await expect(
-            mobileNavigation.getByRole('link', {
-                name: 'Work Order Management',
-            }),
-        ).toHaveAttribute('href', '/features#work-orders');
+            mobileNavigation.getByRole('link', { name: 'Offline' }),
+        ).toHaveAttribute('href', '#offline');
     } else {
         await expect(
-            page.locator('header').getByRole('link', { name: 'Get Started' }),
+            page.locator('header').getByRole('link', { name: 'Start Free' }),
         ).toBeVisible();
         await expect(
-            page.locator('header').getByRole('link', { name: 'Features' }),
-        ).toHaveAttribute('href', '/features');
-        await page
-            .locator('header')
-            .getByRole('button', { name: 'Open Features menu' })
-            .click();
-        await expect(
-            page
-                .locator('header')
-                .getByRole('menu')
-                .getByRole('menuitem', { name: /Work Order Management/ }),
-        ).toHaveAttribute('href', '/features#work-orders');
+            page.locator('header').getByRole('link', { name: 'Mapping' }),
+        ).toHaveAttribute('href', '#mapping');
     }
 
     await expect(
         page.getByRole('heading', {
-            name: /Everything you need to know before your first rollout/i,
+            name: /See what moved\. Know what needs you next\./i,
         }),
     ).toBeVisible();
 
@@ -99,12 +81,43 @@ test('the application respects a dark system preference', async ({ page }) => {
     await expect(page.locator('html')).toHaveClass(/dark/);
     await expect(
         page.getByRole('heading', {
-            name: /Manage Work\.\s*Empower Teams\.\s*Deliver Results\./,
+            name: /One connected\s*system for every\s*job in the field\./,
         }),
     ).toBeVisible();
     await expect(
-        page.getByRole('heading', { name: /Simple, transparent pricing/i }),
+        page.getByRole('heading', {
+            name: /The signal can drop\. The work doesn’t have to\./i,
+        }),
     ).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toEqual([]);
+});
+
+test('the homepage stays contained and keyboard-friendly with reduced motion', async ({
+    page,
+}) => {
+    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+    await page.goto('/');
+
+    expect(
+        await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+    ).toBe(true);
+
+    const offlineLink = page.getByRole('link', { name: 'Offline' }).first();
+    await offlineLink.focus();
+    await expect(offlineLink).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/#offline$/);
+
+    expect(
+        await page
+            .locator('.landing-route-line')
+            .first()
+            .evaluate((element) => getComputedStyle(element).animationName),
+    ).toBe('none');
 });
 
 test('marketing navigation opens dedicated detail pages', async ({ page }) => {

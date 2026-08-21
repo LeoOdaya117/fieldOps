@@ -748,8 +748,11 @@ export function MarketingPage({ config, isAuthenticated }: MarketingPageProps) {
     return (
         <>
             <Head title={config.title} />
-            <div className="min-h-svh overflow-x-clip bg-background text-foreground">
-                <LandingHeader isAuthenticated={isAuthenticated} />
+            <div className="marketing-page-shell min-h-svh overflow-x-clip bg-background text-foreground">
+                <LandingHeader
+                    isAuthenticated={isAuthenticated}
+                    variant="marketing"
+                />
                 <main>
                     <MarketingHero
                         config={config}
