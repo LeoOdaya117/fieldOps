@@ -22,7 +22,7 @@ jobs:
       APP_ENV: testing
       APP_URL: http://127.0.0.1:8000
       DB_CONNECTION: sqlite
-      DB_DATABASE: database/database.sqlite
+      DB_DATABASE: ${{ github.workspace }}/database/database.sqlite
       CACHE_STORE: array
       SESSION_DRIVER: file
       E2E_BASE_URL: http://127.0.0.1:8000
