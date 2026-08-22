@@ -94,7 +94,7 @@ jobs:
         if: matrix.php-version == '8.3'
         shell: bash
         run: |
-          php artisan serve --no-reload --host=127.0.0.1 --port=8000 > storage/logs/e2e-server.log 2>&1 &
+          (cd public && php -S 127.0.0.1:8000 -t . ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php > ../storage/logs/e2e-server.log 2>&1) &
           for attempt in {1..30}; do
             if curl --fail --silent http://127.0.0.1:8000/up > /dev/null; then
               exit 0
