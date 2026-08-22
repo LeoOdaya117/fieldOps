@@ -18,6 +18,9 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DB_CONNECTION: sqlite
+      DB_DATABASE: database/database.sqlite
     strategy:
       fail-fast: false
       matrix:
