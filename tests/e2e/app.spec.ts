@@ -10,7 +10,9 @@ const e2eUser = {
 async function login(page: Page) {
     await page.goto('/login');
     await page.getByLabel('Email address').fill(e2eUser.email);
-    await page.getByRole('textbox', { name: 'Password' }).fill(e2eUser.password);
+    await page
+        .getByRole('textbox', { name: 'Password' })
+        .fill(e2eUser.password);
     await page.getByRole('button', { name: 'Log in' }).click();
     await expect(page).toHaveURL(/\/dashboard$/, { timeout: 60_000 });
     await expect(
@@ -18,26 +20,146 @@ async function login(page: Page) {
     ).toBeVisible();
 }
 
-test('the welcome page is readable and responsive', async ({ page }) => {
+test('the one-page product funnel is readable, responsive, and accessible', async ({
+    page,
+}) => {
+    await page.emulateMedia({ colorScheme: 'light' });
     await page.goto('/');
+
+    await expect(page).toHaveTitle(/FieldOps/);
+    await expect(
+        page.getByRole('heading', {
+            name: 'Keep every field job moving. From one clear view.',
+        }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('link', { name: 'Explore the platform' }),
+    ).toHaveAttribute('href', '#tour');
+    await expect(
+        page.getByAltText(
+            'FieldOps operations dashboard on a laptop beside a work-order phone',
+        ),
+    ).toBeVisible();
+
+    const menuButton = page.getByRole('button', { name: 'Open menu' });
+
+    if (await menuButton.isVisible()) {
+        await menuButton.click();
+        const mobileNavigation = page.getByRole('navigation', {
+            name: 'Mobile navigation',
+        });
+        await expect(
+            mobileNavigation.getByRole('link', { name: 'Start Free' }),
+        ).toBeVisible();
+        await expect(
+            mobileNavigation.getByRole('link', { name: 'Product tour' }),
+        ).toHaveAttribute('href', '#tour');
+    } else {
+        await expect(
+            page.locator('header').getByRole('link', { name: 'Start Free' }),
+        ).toBeVisible();
+        await expect(
+            page.locator('header').getByRole('link', { name: 'Workflow' }),
+        ).toHaveAttribute('href', '#workflow');
+    }
 
     await expect(
         page.getByRole('heading', {
-            name: 'Make every field day feel under control.',
+            name: 'Straight answers for an operation in motion.',
         }),
-    ).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Get started' })).toBeVisible();
+    ).toBeAttached();
+    expect(
+        await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+    ).toBe(true);
 
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
 });
 
-test('the application respects a dark system preference', async ({ page }) => {
-    await page.emulateMedia({ colorScheme: 'dark' });
+test('the guided tour supports pointer and keyboard navigation', async ({
+    page,
+}) => {
+    await page.goto('/#tour');
+
+    const tabs = page.getByRole('tablist', { name: 'FieldOps product tour' });
+    const fieldTab = tabs.getByRole('tab', { name: 'Field execution' });
+    await fieldTab.click();
+    await expect(fieldTab).toHaveAttribute('aria-selected', 'true');
+    await expect(
+        page.getByRole('heading', {
+            name: 'Give crews one dependable place to work.',
+        }),
+    ).toBeVisible();
+
+    await page.keyboard.press('ArrowRight');
+    const mapTab = tabs.getByRole('tab', { name: 'Map coordination' });
+    await expect(mapTab).toBeFocused();
+    await expect(mapTab).toHaveAttribute('aria-selected', 'true');
+    await expect(
+        page.getByRole('heading', {
+            name: 'See where work is moving and where it is stuck.',
+        }),
+    ).toBeVisible();
+});
+
+test('the funnel respects dark mode and reduced motion', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
     await page.goto('/');
 
     await expect(page.locator('html')).toHaveClass(/dark/);
-    await expect(page.getByText('Today in the field')).toBeVisible();
+    await expect(
+        page.getByRole('heading', {
+            name: 'The signal can drop. The work does not have to.',
+        }),
+    ).toBeAttached();
+
+    const tourLink = page.getByRole('link', { name: 'Product tour' }).first();
+    await tourLink.focus();
+    await expect(tourLink).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/#tour$/);
+
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toEqual([]);
+});
+
+test('removed marketing URLs return not found', async ({ request }) => {
+    for (const path of [
+        '/features',
+        '/solutions',
+        '/industries',
+        '/pricing',
+        '/resources',
+        '/about',
+    ]) {
+        const response = await request.get(path);
+        expect(response.status()).toBe(404);
+    }
+});
+
+test('login and registration keep the landing visual language', async ({
+    page,
+}) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.goto('/login');
+    await expect(
+        page.getByRole('heading', { name: 'Log in to your account' }),
+    ).toBeVisible();
+    await expect(
+        page.getByAltText(
+            'Field worker checking a service van beside a city water tower',
+        ),
+    ).toBeAttached();
+
+    await page.goto('/register');
+    await expect(
+        page.getByRole('heading', { name: 'Create an account' }),
+    ).toBeVisible();
+    await expect(
+        page.getByAltText('Field worker reviewing a work order on a tablet'),
+    ).toBeAttached();
 });
 
 test('an authenticated user can use the dashboard and theme settings', async ({
@@ -45,20 +167,14 @@ test('an authenticated user can use the dashboard and theme settings', async ({
 }) => {
     await login(page);
 
-    await expect(
-        page.getByRole('heading', { name: 'Good morning, team.' }),
-    ).toBeVisible();
-
     const dashboardAccessibility = await new AxeBuilder({ page }).analyze();
     expect(dashboardAccessibility.violations).toEqual([]);
 
     await page.goto('/settings/appearance');
     await page.getByRole('button', { name: 'Dark' }).click();
-
     await expect(page.locator('html')).toHaveClass(/dark/);
     await expect(page.getByRole('button', { name: 'Dark' })).toHaveAttribute(
         'aria-pressed',
         'true',
     );
-
 });

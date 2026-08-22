@@ -18,4 +18,8 @@ export type AuthLayoutProps = {
     name?: string;
     title?: string;
     description?: string;
+    artwork?: {
+        src: string;
+        alt: string;
+    };
 };

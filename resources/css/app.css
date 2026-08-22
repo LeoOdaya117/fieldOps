@@ -26,3 +26,155 @@
         @apply ring-2 ring-ring ring-offset-2 ring-offset-background outline-none;
     }
 }
+
+@keyframes landing-orbit {
+    0%,
+    100% {
+        transform: rotate(0deg) scale(1);
+    }
+
+    50% {
+        transform: rotate(2deg) scale(1.015);
+    }
+}
+
+@keyframes landing-route-pulse {
+    0%,
+    100% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 0.85;
+    }
+}
+
+.landing-grid {
+    background-image:
+        linear-gradient(
+            to right,
+            color-mix(in oklab, var(--border) 46%, transparent) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            to bottom,
+            color-mix(in oklab, var(--border) 46%, transparent) 1px,
+            transparent 1px
+        ),
+        radial-gradient(
+            circle at 74% 38%,
+            color-mix(in oklab, var(--brand) 15%, transparent),
+            transparent 32%
+        );
+    background-size:
+        52px 52px,
+        52px 52px,
+        auto;
+    mask-image: linear-gradient(to bottom, black 0%, transparent 90%);
+    opacity: 0.45;
+}
+
+.marketing-page-shell {
+    background-image:
+        radial-gradient(
+            circle at 82% 0%,
+            color-mix(in oklab, var(--brand) 8%, transparent),
+            transparent 28rem
+        ),
+        linear-gradient(
+            to right,
+            color-mix(in oklab, var(--border) 18%, transparent) 1px,
+            transparent 1px
+        );
+    background-size:
+        auto,
+        72px 72px;
+    background-position:
+        center top,
+        center top;
+}
+
+.landing-hero-orbit {
+    animation: landing-orbit 12s ease-in-out infinite;
+}
+
+.landing-route-line {
+    background: linear-gradient(
+        to bottom,
+        transparent,
+        color-mix(in oklab, var(--brand) 60%, transparent),
+        transparent
+    );
+    animation: landing-route-pulse 4s ease-in-out infinite;
+}
+
+.landing-contours {
+    background-image:
+        radial-gradient(
+            ellipse at 12% 48%,
+            transparent 0 18%,
+            color-mix(in oklab, var(--primary-foreground) 14%, transparent)
+                18.2% 18.4%,
+            transparent 18.6% 28%,
+            color-mix(in oklab, var(--primary-foreground) 10%, transparent)
+                28.2% 28.4%,
+            transparent 28.6% 38%,
+            color-mix(in oklab, var(--primary-foreground) 8%, transparent) 38.2%
+                38.4%,
+            transparent 38.6%
+        ),
+        radial-gradient(
+            ellipse at 92% 70%,
+            transparent 0 15%,
+            color-mix(in oklab, var(--primary-foreground) 12%, transparent)
+                15.2% 15.4%,
+            transparent 15.6% 25%,
+            color-mix(in oklab, var(--primary-foreground) 9%, transparent) 25.2%
+                25.4%,
+            transparent 25.6% 35%,
+            color-mix(in oklab, var(--primary-foreground) 7%, transparent) 35.2%
+                35.4%,
+            transparent 35.6%
+        );
+}
+
+.landing-map {
+    background-image:
+        linear-gradient(
+            115deg,
+            transparent 0 19%,
+            color-mix(in oklab, var(--brand) 10%, transparent) 19.2% 19.5%,
+            transparent 19.7% 43%,
+            color-mix(in oklab, var(--info) 10%, transparent) 43.2% 43.5%,
+            transparent 43.7% 100%
+        ),
+        linear-gradient(
+            25deg,
+            transparent 0 35%,
+            color-mix(in oklab, var(--success) 11%, transparent) 35.2% 35.5%,
+            transparent 35.7% 64%,
+            color-mix(in oklab, var(--brand) 8%, transparent) 64.2% 64.5%,
+            transparent 64.7% 100%
+        ),
+        linear-gradient(
+            90deg,
+            color-mix(in oklab, var(--muted) 30%, transparent) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            color-mix(in oklab, var(--muted) 30%, transparent) 1px,
+            transparent 1px
+        );
+    background-size:
+        auto,
+        auto,
+        42px 42px,
+        42px 42px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .landing-hero-orbit,
+    .landing-route-line {
+        animation: none;
+    }
+}
