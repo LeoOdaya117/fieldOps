@@ -24,6 +24,7 @@ RUN apt-get update \
         libpng-dev \
         libnss3 \
         libpango-1.0-0 \
+        libsqlite3-dev \
         libx11-xcb1 \
         libxcomposite1 \
         libxdamage1 \
@@ -41,6 +42,7 @@ RUN apt-get update \
         mbstring \
         opcache \
         pdo_mysql \
+        pdo_sqlite \
         zip \
     && a2enmod rewrite headers \
     && rm -rf /var/lib/apt/lists/*

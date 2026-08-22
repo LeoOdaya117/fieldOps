@@ -4,7 +4,7 @@ This file is the canonical project guide for Codex, Cursor, Claude Code, GitHub 
 
 ## Project shape
 
-FieldOps is a Laravel 13 application using PHP 8.3+, Inertia.js, React 19, TypeScript, Vite, and Tailwind CSS. Docker Compose is the supported local runtime. Laravel owns routing, authentication, authorization, validation, persistence, and server-side page data. React owns presentation and local interaction state.
+FieldOps is a Laravel 13 application using PHP 8.3+, Inertia.js, React 19, TypeScript, Vite, and Tailwind CSS. Native Laragon development is the primary Windows workflow; Docker Compose is an optional containerized runtime. Laravel owns routing, authentication, authorization, validation, persistence, and server-side page data. React owns presentation and local interaction state.
 
 Use this feature-oriented structure for new work:
 
@@ -97,7 +97,22 @@ Before opening a pull request, verify:
 
 ## Required commands
 
-Run these through Docker when possible:
+Run these natively from a Laragon terminal when PHP, Composer, and Node.js are installed:
+
+```powershell
+composer ci:check
+composer audit --locked --no-interaction
+npm audit --audit-level=high
+php artisan test --filter=FeatureName
+vendor\bin\pint --test
+vendor\bin\phpstan analyse
+npm run lint:check
+npm run format:check
+npm run types:check
+npm run test:unit -- --run
+```
+
+Docker equivalents remain available when a containerized environment is preferred:
 
 ```powershell
 docker compose up -d

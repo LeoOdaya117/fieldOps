@@ -13,6 +13,16 @@ services:
             - node_modules:/var/www/html/node_modules
             - laravel_storage:/var/www/html/storage
             - bootstrap_cache:/var/www/html/bootstrap/cache
+        environment:
+            DB_CONNECTION: mysql
+            DB_HOST: mysql
+            DB_PORT: 3306
+            DB_DATABASE: "${DB_DOCKER_DATABASE:-fieldops}"
+            DB_USERNAME: "${DB_DOCKER_USERNAME:-fieldops}"
+            DB_PASSWORD: "${DB_DOCKER_PASSWORD:-password}"
+            MAIL_MAILER: smtp
+            MAIL_HOST: mailpit
+            MAIL_PORT: 1025
         depends_on:
             mysql:
                 condition: service_healthy
@@ -51,10 +61,10 @@ services:
         ports:
             - "${FORWARD_DB_PORT:-3306}:3306"
         environment:
-            MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:-root}"
-            MYSQL_DATABASE: "${DB_DATABASE:-fieldops}"
-            MYSQL_USER: "${DB_USERNAME:-fieldops}"
-            MYSQL_PASSWORD: "${DB_PASSWORD:-password}"
+            MYSQL_ROOT_PASSWORD: "${DB_DOCKER_ROOT_PASSWORD:-root}"
+            MYSQL_DATABASE: "${DB_DOCKER_DATABASE:-fieldops}"
+            MYSQL_USER: "${DB_DOCKER_USERNAME:-fieldops}"
+            MYSQL_PASSWORD: "${DB_DOCKER_PASSWORD:-password}"
         volumes:
             - mysql_data:/var/lib/mysql
         healthcheck:
