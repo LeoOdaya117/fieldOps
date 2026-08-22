@@ -28,7 +28,7 @@ jobs:
       DB_USERNAME: fieldops
       DB_PASSWORD: password
       CACHE_STORE: array
-      SESSION_DRIVER: file
+      SESSION_DRIVER: database
       E2E_BASE_URL: http://127.0.0.1:8000
       E2E_USER_EMAIL: test@example.com
       E2E_USER_PASSWORD: password
