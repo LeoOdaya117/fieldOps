@@ -112,9 +112,6 @@ jobs:
       - name: Setup Application
         run: composer setup
 
-      - name: Seed browser test user
-        run: php artisan db:seed --force
-
       - name: Audit Composer dependencies
         run: composer audit --locked --no-interaction
 
@@ -123,6 +120,9 @@ jobs:
 
       - name: Run CI Checks
         run: composer ci:check
+
+      - name: Seed browser test user
+        run: php artisan db:seed --force
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
