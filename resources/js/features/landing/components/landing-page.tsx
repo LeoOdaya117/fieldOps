@@ -1,15 +1,15 @@
 import { Head } from '@inertiajs/react';
 import { dashboard, register } from '@/routes';
-import { MarketingFooter } from '@/features/marketing/components/marketing-footer';
+import { LandingFooter } from './landing-footer';
 import { LandingHeader } from './landing-header';
 import {
-    LandingCapabilities,
     LandingChallenge,
     LandingCta,
+    LandingFaq,
     LandingHero,
-    LandingMapping,
     LandingOffline,
-    LandingReporting,
+    LandingOutcomes,
+    LandingTour,
     LandingWorkflow,
 } from './landing-sections';
 
@@ -25,27 +25,24 @@ export function LandingPage({ isAuthenticated }: LandingPageProps) {
         <>
             <Head title="One connected system for every job in the field." />
             <div className="marketing-page-shell min-h-svh overflow-x-clip bg-background text-foreground">
-                <LandingHeader
-                    isAuthenticated={isAuthenticated}
-                    variant="journey"
-                />
+                <LandingHeader isAuthenticated={isAuthenticated} />
                 <main>
                     <LandingHero
                         primaryHref={primaryHref}
                         primaryLabel={primaryLabel}
                     />
                     <LandingChallenge />
+                    <LandingTour />
                     <LandingWorkflow />
-                    <LandingCapabilities />
                     <LandingOffline />
-                    <LandingMapping />
-                    <LandingReporting />
+                    <LandingOutcomes />
+                    <LandingFaq />
                     <LandingCta
                         primaryHref={primaryHref}
                         primaryLabel={primaryLabel}
                     />
                 </main>
-                <MarketingFooter />
+                <LandingFooter isAuthenticated={isAuthenticated} />
             </div>
         </>
     );

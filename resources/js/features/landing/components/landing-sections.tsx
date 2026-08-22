@@ -1,19 +1,15 @@
 import { Link } from '@inertiajs/react';
 import {
-    ArrowDownRight,
     ArrowRight,
+    BarChart3,
     Camera,
     Check,
     CheckCircle2,
     ChevronRight,
-    CircleDot,
+    ClipboardCheck,
     CloudOff,
-    Download,
-    FileCheck2,
+    MapPin,
     MapPinned,
-    MoreHorizontal,
-    Navigation,
-    Paperclip,
     RefreshCw,
     Send,
     Signal,
@@ -21,220 +17,173 @@ import {
     Timer,
     WifiOff,
 } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { ScrollReveal } from '@/components/scroll-reveal';
 import { cn } from '@/lib/utils';
 import type { RouteDefinition } from '@/wayfinder';
 import {
-    landingCapabilities,
-    landingMapJobs,
-    landingMetrics,
-    landingWorkflowSteps,
     landingAssets,
+    landingFaqs,
+    landingOutcomes,
+    landingTourSteps,
+    landingWorkflowSteps,
 } from '../data';
-import type {
-    LandingCapability,
-    LandingMapJob,
-    LandingWorkflowStep,
-} from '../types';
 
-const toneClasses = {
-    brand: 'bg-brand/10 text-brand border-brand/20',
-    info: 'bg-info/10 text-info border-info/20',
-    warning: 'bg-warning/15 text-warning border-warning/25',
-    success: 'bg-success/10 text-success border-success/20',
-} as const;
-
-const statusClasses = {
-    Assigned: 'bg-warning/15 text-warning',
-    'In progress': 'bg-info/10 text-info',
-    'Needs review': 'bg-destructive/10 text-destructive',
-} as const;
-
-const priorityClasses = {
-    High: 'text-destructive',
-    Medium: 'text-warning',
-    Low: 'text-success',
-} as const;
-
-function SectionKicker({
-    children,
-    className,
-}: {
-    children: string;
-    className?: string;
-}) {
-    return (
-        <p
-            className={cn(
-                'text-[10px] font-extrabold tracking-[0.17em] text-brand uppercase',
-                className,
-            )}
-        >
-            {children}
-        </p>
-    );
-}
+type LandingActionProps = {
+    primaryHref: string | RouteDefinition<'get'>;
+    primaryLabel: string;
+};
 
 function SectionHeading({
     eyebrow,
     title,
     description,
-    light = false,
     id,
+    inverse = false,
 }: {
     eyebrow: string;
     title: string;
-    description?: string;
-    light?: boolean;
-    id?: string;
+    description: string;
+    id: string;
+    inverse?: boolean;
 }) {
     return (
         <div className="max-w-2xl">
-            <SectionKicker
-                className={light ? 'text-primary-foreground/75' : undefined}
+            <p
+                className={cn(
+                    'text-[11px] font-extrabold tracking-[0.16em] uppercase',
+                    inverse ? 'text-primary-foreground/70' : 'text-brand',
+                )}
             >
                 {eyebrow}
-            </SectionKicker>
+            </p>
             <h2
                 id={id}
                 className={cn(
-                    'mt-4 text-3xl leading-[1.05] font-extrabold tracking-[-0.045em] sm:text-4xl lg:text-[3.25rem]',
-                    light ? 'text-primary-foreground' : 'text-foreground',
+                    'mt-4 text-3xl leading-[1.05] font-extrabold tracking-[-0.045em] sm:text-4xl lg:text-5xl',
+                    inverse ? 'text-primary-foreground' : 'text-foreground',
                 )}
             >
                 {title}
             </h2>
-            {description && (
-                <p
-                    className={cn(
-                        'mt-5 max-w-xl text-sm leading-7 sm:text-base',
-                        light
-                            ? 'text-primary-foreground/70'
-                            : 'text-muted-foreground',
-                    )}
-                >
-                    {description}
-                </p>
-            )}
+            <p
+                className={cn(
+                    'mt-5 max-w-xl text-sm leading-7 sm:text-base',
+                    inverse
+                        ? 'text-primary-foreground/75'
+                        : 'text-muted-foreground',
+                )}
+            >
+                {description}
+            </p>
         </div>
     );
 }
 
-export function LandingHero({
-    primaryHref,
-    primaryLabel,
-}: {
-    primaryHref: string | RouteDefinition<'get'>;
-    primaryLabel: string;
-}) {
+export function LandingHero({ primaryHref, primaryLabel }: LandingActionProps) {
     return (
         <section
+            id="top"
             aria-labelledby="landing-hero-heading"
-            className="landing-hero relative overflow-hidden border-b border-border bg-background"
+            className="landing-hero relative scroll-mt-20 overflow-hidden border-b border-border bg-background"
         >
             <div aria-hidden="true" className="landing-grid absolute inset-0" />
             <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 bg-cover bg-left opacity-25 mix-blend-multiply lg:block dark:opacity-15 dark:mix-blend-screen"
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-[48%] bg-cover bg-center opacity-20 mix-blend-multiply sm:h-[52%] dark:opacity-10 dark:mix-blend-screen"
                 style={{
                     backgroundImage: `url(${landingAssets.heroBackground})`,
                 }}
             />
-            <div className="relative mx-auto grid w-full max-w-7xl items-center gap-12 px-5 py-14 sm:px-6 sm:py-20 lg:grid-cols-[0.85fr_1.15fr] lg:gap-8 lg:px-8 lg:py-24">
-                <ScrollReveal className="relative z-10 max-w-xl">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand/10 px-3 py-1.5 text-[10px] font-extrabold tracking-[0.16em] text-brand uppercase">
+            <div className="relative mx-auto flex w-full max-w-7xl flex-col items-center px-5 pt-14 pb-10 text-center sm:px-6 sm:pt-20 sm:pb-14 lg:px-8 lg:pt-24 lg:pb-16">
+                <ScrollReveal className="relative z-10 flex max-w-4xl flex-col items-center">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand/10 px-3 py-1.5 text-[10px] font-extrabold tracking-[0.15em] text-brand uppercase">
                         <span className="size-1.5 animate-pulse rounded-full bg-success motion-reduce:animate-none" />
-                        Field operations, connected
+                        Built for operations in motion
                     </div>
                     <h1
                         id="landing-hero-heading"
-                        className="mt-6 text-5xl leading-[0.98] font-extrabold tracking-[-0.065em] sm:text-6xl lg:text-[5.3rem]"
+                        className="mt-7 max-w-4xl text-5xl leading-[0.98] font-extrabold tracking-[-0.065em] sm:text-6xl lg:text-[6.25rem]"
                     >
-                        One connected
-                        <br />
-                        system for every
-                        <br />
-                        job in the <span className="text-brand">field.</span>
+                        Keep every field job moving.
+                        <span className="block text-brand">
+                            From one clear view.
+                        </span>
                     </h1>
-                    <p className="mt-6 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">
-                        FieldOps connects the office and the field so teams can
-                        assign work, keep moving offline, capture what happened,
-                        and bring every update back into one clear operating
-                        picture.
+                    <p className="mt-7 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+                        FieldOps gives operations leaders one place to dispatch
+                        work, support crews offline, verify completion, and see
+                        what needs attention next.
                     </p>
 
-                    <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                        <Link
-                            href={primaryHref}
+                    <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+                        <a
+                            href="#tour"
                             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-extrabold text-primary-foreground shadow-lg shadow-primary/20 transition-[transform,background-color,box-shadow] hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl motion-reduce:transition-none dark:bg-brand dark:text-brand-foreground dark:hover:bg-brand/90"
                         >
-                            {primaryLabel}
+                            Explore the platform
                             <ArrowRight className="size-4" aria-hidden="true" />
-                        </Link>
-                        <a
-                            href="#workflow"
-                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-border bg-background/80 px-6 text-sm font-extrabold text-foreground transition-[transform,border-color,background-color] hover:-translate-y-0.5 hover:border-brand hover:bg-brand/5 motion-reduce:transition-none"
-                        >
-                            See the workflow
-                            <ArrowDownRight
-                                className="size-4 text-brand"
-                                aria-hidden="true"
-                            />
                         </a>
+                        <Link
+                            href={primaryHref}
+                            className="inline-flex min-h-12 items-center justify-center rounded-full border border-border bg-background/80 px-6 text-sm font-extrabold text-foreground transition-[transform,border-color,background-color] hover:-translate-y-0.5 hover:border-brand hover:bg-brand/5 motion-reduce:transition-none"
+                        >
+                            {primaryLabel}
+                        </Link>
                     </div>
 
-                    <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 border-t border-border/80 pt-5 text-[10px] font-bold tracking-[0.1em] text-muted-foreground uppercase">
+                    <div className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 border-t border-border/80 pt-5 text-[10px] font-bold tracking-[0.1em] text-muted-foreground uppercase">
                         <span className="inline-flex items-center gap-2">
                             <CheckCircle2
                                 className="size-3.5 text-success"
                                 aria-hidden="true"
                             />
-                            Works online
+                            Office and field connected
                         </span>
                         <span className="inline-flex items-center gap-2">
                             <CloudOff
                                 className="size-3.5 text-info"
                                 aria-hidden="true"
                             />
-                            Keeps working offline
+                            Offline-capable workflow
                         </span>
                     </div>
                 </ScrollReveal>
 
                 <ScrollReveal
-                    direction="right"
                     delay={100}
-                    className="relative min-w-0"
+                    className="relative z-10 mt-14 w-full max-w-6xl sm:mt-16 lg:mt-20"
                 >
-                    <div className="landing-hero-orbit absolute -inset-5 rounded-[2rem] border border-brand/10 bg-brand/[0.03] sm:-inset-8" />
-                    <div className="relative z-10">
-                        <div className="absolute top-1 left-1 z-20 flex items-center gap-2 rounded-full border border-border bg-card/95 px-3 py-2 text-[10px] font-extrabold text-foreground shadow-lg backdrop-blur">
-                            <span className="size-2 rounded-full bg-success" />
-                            Live operations view
+                    <div className="landing-hero-orbit pointer-events-none absolute -inset-3 rounded-[2rem] border border-brand/10 bg-brand/[0.03] sm:-inset-6" />
+                    <div className="relative overflow-hidden rounded-[1.5rem] border border-border/80 bg-card/90 p-2 text-left shadow-2xl shadow-primary/15 backdrop-blur sm:rounded-[2rem] sm:p-3">
+                        <div className="flex items-center gap-2 border-b border-border px-3 py-2.5 sm:px-4">
+                            <span className="size-2 rounded-full bg-destructive/70" />
+                            <span className="size-2 rounded-full bg-warning/70" />
+                            <span className="size-2 rounded-full bg-success/70" />
+                            <span className="ml-2 truncate font-mono text-[9px] font-bold text-muted-foreground sm:text-[10px]">
+                                fieldops.app / dashboard
+                            </span>
+                            <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-[9px] font-bold text-success sm:text-[10px]">
+                                <span className="size-1.5 rounded-full bg-success" />
+                                Live view
+                            </span>
                         </div>
-                        <img
-                            src={landingAssets.heroDashboard}
-                            alt="FieldOps operations dashboard on a laptop beside a work-order phone"
-                            className="w-full object-contain drop-shadow-2xl"
-                            width="1536"
-                            height="1024"
+                        <div className="relative overflow-hidden rounded-[1rem] bg-background sm:rounded-[1.5rem]">
+                            <img
+                                src={landingAssets.heroDashboard}
+                                alt="FieldOps operations dashboard on a laptop beside a work-order phone"
+                                className="w-full object-contain drop-shadow-2xl"
+                                width="1536"
+                                height="1024"
+                            />
+                        </div>
+                    </div>
+                    <div className="relative mx-auto -mt-3 flex w-fit items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-[10px] font-extrabold text-foreground shadow-lg sm:-mt-4 sm:px-4 sm:py-2.5">
+                        <RefreshCw
+                            className="size-3.5 text-brand"
+                            aria-hidden="true"
                         />
-                        <div className="absolute right-0 bottom-1 flex items-center gap-3 rounded-xl border border-border bg-card/95 px-3 py-2.5 shadow-xl backdrop-blur sm:right-3 sm:bottom-4">
-                            <span className="flex size-8 items-center justify-center rounded-full bg-info/10 text-info">
-                                <RefreshCw
-                                    className="size-4"
-                                    aria-hidden="true"
-                                />
-                            </span>
-                            <span>
-                                <span className="block text-[10px] font-extrabold">
-                                    Sync queue clear
-                                </span>
-                                <span className="mt-0.5 block font-mono text-[9px] text-muted-foreground">
-                                    last update 09:41:12
-                                </span>
-                            </span>
-                        </div>
+                        One shared operating record
                     </div>
                 </ScrollReveal>
             </div>
@@ -243,70 +192,64 @@ export function LandingHero({
 }
 
 export function LandingChallenge() {
-    const challenges = [
+    const problems = [
         {
-            label: 'Scattered assignments',
-            detail: 'Work lives in inboxes, calls, and spreadsheets.',
             icon: Send,
+            title: 'Assignments scatter',
+            text: 'Work starts in calls, inboxes, and spreadsheets.',
         },
         {
-            label: 'Dead zones',
-            detail: 'The signal disappears before the job is done.',
             icon: WifiOff,
+            title: 'Coverage disappears',
+            text: 'The signal drops before the job is finished.',
         },
         {
-            label: 'Missing evidence',
-            detail: 'Notes and photos arrive late or out of context.',
-            icon: Paperclip,
+            icon: Camera,
+            title: 'Evidence arrives late',
+            text: 'Notes and photos lose their job context.',
         },
         {
-            label: 'Status chasing',
-            detail: 'Leaders spend the day asking what is moving.',
             icon: Timer,
+            title: 'Leaders chase status',
+            text: 'Progress has to be reconstructed by hand.',
         },
     ];
 
     return (
         <section
-            id="platform"
             aria-labelledby="challenge-heading"
-            className="scroll-mt-20 border-b border-border bg-card"
+            className="border-b border-border bg-card"
         >
             <div className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-6 lg:px-8 lg:py-24">
-                <ScrollReveal className="grid gap-10 lg:grid-cols-[0.75fr_1.25fr] lg:items-end lg:gap-20">
+                <ScrollReveal className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-end lg:gap-16">
                     <SectionHeading
                         id="challenge-heading"
-                        eyebrow="The reality on the ground"
-                        title="Field work is complex. Your operating picture shouldn’t be."
-                        description="When the handoff between the office and the field gets fuzzy, small gaps become missed context, delayed decisions, and work that has to be explained twice."
+                        eyebrow="The operational gap"
+                        title="The work is already hard. The handoffs should not be."
+                        description="FieldOps creates one continuous record from the first assignment to the final review, so the office and the field can move from the same facts."
                     />
-                    <div className="relative grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2">
-                        {challenges.map(
-                            ({ label, detail, icon: Icon }, index) => (
-                                <article
-                                    key={label}
-                                    className="group bg-background p-5 transition-colors hover:bg-brand/[0.03] sm:p-6"
-                                >
-                                    <div className="flex items-center justify-between gap-4">
-                                        <span className="flex size-9 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors group-hover:bg-brand/10 group-hover:text-brand">
-                                            <Icon
-                                                className="size-4"
-                                                aria-hidden="true"
-                                            />
-                                        </span>
-                                        <span className="font-mono text-[10px] text-muted-foreground">
-                                            0{index + 1}
-                                        </span>
-                                    </div>
-                                    <h3 className="mt-8 text-sm font-extrabold tracking-tight">
-                                        {label}
-                                    </h3>
-                                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                                        {detail}
-                                    </p>
-                                </article>
-                            ),
-                        )}
+                    <div className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2">
+                        {problems.map(({ icon: Icon, title, text }, index) => (
+                            <article key={title} className="bg-background p-6">
+                                <div className="flex items-center justify-between">
+                                    <span className="flex size-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                                        <Icon
+                                            className="size-5"
+                                            aria-hidden="true"
+                                        />
+                                    </span>
+                                    <span className="font-mono text-[10px] text-muted-foreground">
+                                        0{index + 1}
+                                    </span>
+                                </div>
+                                <h3 className="mt-7 text-base font-extrabold">
+                                    {title}
+                                </h3>
+                                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                    {text}
+                                </p>
+                            </article>
+                        ))}
                     </div>
                 </ScrollReveal>
             </div>
@@ -314,43 +257,405 @@ export function LandingChallenge() {
     );
 }
 
-function WorkflowCard({
-    step,
-    index,
-}: {
-    step: LandingWorkflowStep;
-    index: number;
-}) {
-    const Icon = step.icon;
-
+function DispatchPreview() {
     return (
-        <article className="relative min-w-0 bg-background p-5 sm:p-6">
-            <div className="flex items-center justify-between gap-3">
-                <span
-                    className={cn(
-                        'flex size-10 items-center justify-center rounded-xl border',
-                        toneClasses[step.tone],
-                    )}
-                >
-                    <Icon className="size-5" aria-hidden="true" />
-                </span>
-                <span className="font-mono text-[10px] text-muted-foreground">
-                    {step.label}
+        <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                {[
+                    ['24', 'Active assignments'],
+                    ['06', 'Ready to dispatch'],
+                    ['03', 'Need attention'],
+                ].map(([value, label], index) => (
+                    <div
+                        key={label}
+                        className="rounded-xl border border-border bg-card p-4"
+                    >
+                        <div className="flex items-center justify-between">
+                            <p className="text-2xl font-extrabold">{value}</p>
+                            <span
+                                className={cn(
+                                    'size-2 rounded-full',
+                                    index === 2 ? 'bg-warning' : 'bg-success',
+                                )}
+                            />
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            {label}
+                        </p>
+                    </div>
+                ))}
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between">
+                    <p className="text-sm font-extrabold">Dispatch queue</p>
+                    <span className="text-[10px] font-bold text-brand">
+                        Priority first
+                    </span>
+                </div>
+                <div className="mt-4 grid gap-2">
+                    {[
+                        ['North district sweep', 'Maya Santos', 'In progress'],
+                        ['Pump station inspection', 'Unassigned', 'Ready'],
+                        ['Warehouse audit', 'Jon Bell', 'Needs review'],
+                    ].map(([job, owner, status]) => (
+                        <div
+                            key={job}
+                            className="flex items-center gap-3 rounded-xl border border-border p-3"
+                        >
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                                <ClipboardCheck
+                                    className="size-4"
+                                    aria-hidden="true"
+                                />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-extrabold">
+                                    {job}
+                                </p>
+                                <p className="mt-1 truncate text-[10px] text-muted-foreground">
+                                    {owner}
+                                </p>
+                            </div>
+                            <span className="rounded-full bg-muted px-2 py-1 text-[9px] font-bold text-muted-foreground">
+                                {status}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function FieldPreview() {
+    return (
+        <div className="mx-auto max-w-sm rounded-[2rem] border-[6px] border-primary bg-card p-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+                <div>
+                    <p className="text-[10px] font-bold text-brand">
+                        WO-0056-0128
+                    </p>
+                    <p className="text-sm font-extrabold">Valve inspection</p>
+                </div>
+                <span className="rounded-full bg-info/10 px-2 py-1 text-[9px] font-bold text-info">
+                    In progress
                 </span>
             </div>
-            <h3 className="mt-6 text-base leading-tight font-extrabold tracking-tight">
-                {step.title}
-            </h3>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                {step.description}
-            </p>
-            {index < landingWorkflowSteps.length - 1 && (
-                <ChevronRight
-                    className="absolute top-9 -right-3 z-10 hidden size-5 rounded-full bg-card text-brand md:block"
-                    aria-hidden="true"
-                />
-            )}
-        </article>
+            <div className="mt-4 rounded-xl bg-muted p-3">
+                <p className="text-[10px] text-muted-foreground">LOCATION</p>
+                <p className="mt-1 text-xs font-bold">Main St. Pump Station</p>
+            </div>
+            <div className="mt-4 grid gap-2">
+                {[
+                    'Confirm isolation',
+                    'Inspect valve body',
+                    'Capture completion photo',
+                ].map((item, index) => (
+                    <div
+                        key={item}
+                        className="flex items-center gap-3 rounded-xl border border-border p-3"
+                    >
+                        <span
+                            className={cn(
+                                'flex size-6 items-center justify-center rounded-full border',
+                                index < 2
+                                    ? 'border-success bg-success text-success-foreground'
+                                    : 'border-border text-muted-foreground',
+                            )}
+                        >
+                            {index < 2 ? (
+                                <Check className="size-3" aria-hidden="true" />
+                            ) : (
+                                index + 1
+                            )}
+                        </span>
+                        <p className="text-xs font-bold">{item}</p>
+                    </div>
+                ))}
+            </div>
+            <button
+                type="button"
+                className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-primary text-xs font-extrabold text-primary-foreground"
+            >
+                <Camera className="size-4" aria-hidden="true" /> Add evidence
+            </button>
+        </div>
+    );
+}
+
+function MapPreview() {
+    const pins = [
+        ['top-[24%] left-[65%]', 'bg-destructive'],
+        ['top-[48%] left-[30%]', 'bg-warning'],
+        ['top-[67%] left-[72%]', 'bg-success'],
+    ];
+
+    return (
+        <div className="relative min-h-96 overflow-hidden rounded-xl border border-border bg-muted">
+            <div
+                aria-hidden="true"
+                className="absolute inset-0 [background-image:linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] [background-size:46px_46px] opacity-60"
+            />
+            <div className="absolute inset-x-4 top-4 flex items-center justify-between rounded-xl border border-border bg-card/95 p-3 shadow-sm backdrop-blur">
+                <span className="inline-flex items-center gap-2 text-xs font-extrabold">
+                    <MapPinned
+                        className="size-4 text-brand"
+                        aria-hidden="true"
+                    />{' '}
+                    Active work map
+                </span>
+                <span className="inline-flex items-center gap-2 text-[10px] font-bold text-success">
+                    <Signal className="size-3" aria-hidden="true" /> 12 crews
+                    online
+                </span>
+            </div>
+            {pins.map(([position, tone], index) => (
+                <span
+                    key={position}
+                    className={cn(
+                        'absolute flex size-10 items-center justify-center rounded-full border-4 border-card text-primary-foreground shadow-lg',
+                        position,
+                        tone,
+                    )}
+                >
+                    <MapPin
+                        className="size-4"
+                        aria-label={`Priority work location ${index + 1}`}
+                    />
+                </span>
+            ))}
+            <div className="absolute bottom-5 left-5 rounded-xl border border-brand/20 bg-card/95 p-3 shadow-lg">
+                <p className="text-[10px] font-bold text-brand">
+                    CREW 04 · EN ROUTE
+                </p>
+                <p className="mt-1 text-xs font-extrabold">
+                    3 nearby assignments
+                </p>
+            </div>
+        </div>
+    );
+}
+
+function ReportingPreview() {
+    return (
+        <div className="grid gap-4 sm:grid-cols-3">
+            {[
+                ['86%', 'Team capacity', 'On track'],
+                ['73', 'Completed today', 'Reviewed'],
+                ['18', 'Need attention', 'Prioritized'],
+            ].map(([value, label, status], index) => (
+                <article
+                    key={label}
+                    className="rounded-xl border border-border bg-card p-5"
+                >
+                    <div className="flex items-center justify-between">
+                        <BarChart3
+                            className="size-4 text-brand"
+                            aria-hidden="true"
+                        />
+                        <span className="text-[9px] font-bold text-success">
+                            {status}
+                        </span>
+                    </div>
+                    <p className="mt-8 text-3xl font-extrabold tracking-tight">
+                        {value}
+                    </p>
+                    <p className="mt-1 text-xs font-bold">{label}</p>
+                    <div
+                        className="mt-5 flex h-16 items-end gap-1"
+                        aria-hidden="true"
+                    >
+                        {[35, 48, 42, 65, 56, 78, 70, 88].map(
+                            (height, barIndex) => (
+                                <span
+                                    key={barIndex}
+                                    className={cn(
+                                        'flex-1 rounded-t-sm',
+                                        index === 2 && barIndex > 5
+                                            ? 'bg-warning'
+                                            : 'bg-brand/60',
+                                    )}
+                                    style={{ height: `${height}%` }}
+                                />
+                            ),
+                        )}
+                    </div>
+                </article>
+            ))}
+        </div>
+    );
+}
+
+function ProductPreview({ activeId }: { activeId: string }) {
+    return (
+        <div className="rounded-2xl border border-border bg-background p-3 shadow-2xl shadow-primary/10 sm:p-5">
+            <div className="mb-4 flex items-center gap-2 border-b border-border pb-3">
+                <span className="size-2 rounded-full bg-destructive/70" />
+                <span className="size-2 rounded-full bg-warning/70" />
+                <span className="size-2 rounded-full bg-success/70" />
+                <span className="ml-auto text-[9px] font-bold tracking-wider text-muted-foreground uppercase">
+                    FieldOps workspace
+                </span>
+            </div>
+            {activeId === 'dispatch' && <DispatchPreview />}
+            {activeId === 'field' && <FieldPreview />}
+            {activeId === 'map' && <MapPreview />}
+            {activeId === 'reporting' && <ReportingPreview />}
+        </div>
+    );
+}
+
+export function LandingTour() {
+    const [activeId, setActiveId] = useState(landingTourSteps[0].id);
+    const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+    const activeStep =
+        landingTourSteps.find((step) => step.id === activeId) ??
+        landingTourSteps[0];
+    const ActiveIcon = activeStep.icon;
+
+    const selectTab = (index: number) => {
+        const nextIndex =
+            (index + landingTourSteps.length) % landingTourSteps.length;
+        setActiveId(landingTourSteps[nextIndex].id);
+        tabRefs.current[nextIndex]?.focus();
+    };
+
+    return (
+        <section
+            id="tour"
+            aria-labelledby="tour-heading"
+            className="scroll-mt-20 border-b border-border bg-background"
+        >
+            <div className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-6 lg:px-8 lg:py-24">
+                <ScrollReveal className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+                    <SectionHeading
+                        id="tour-heading"
+                        eyebrow="Guided product tour"
+                        title="Follow the work from request to result."
+                        description="Explore the connected views that help an operations leader plan the day, support the crew, and respond to what changes."
+                    />
+                    <div className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-[10px] font-bold text-muted-foreground">
+                        <span className="size-2 rounded-full bg-success" />{' '}
+                        Illustrative product preview
+                    </div>
+                </ScrollReveal>
+
+                <ScrollReveal className="mt-10" delay={100}>
+                    <div
+                        role="tablist"
+                        aria-label="FieldOps product tour"
+                        className="grid gap-2 rounded-2xl border border-border bg-card p-2 sm:grid-cols-4"
+                    >
+                        {landingTourSteps.map((step, index) => {
+                            const Icon = step.icon;
+                            const selected = step.id === activeId;
+
+                            return (
+                                <button
+                                    key={step.id}
+                                    ref={(element) => {
+                                        tabRefs.current[index] = element;
+                                    }}
+                                    id={`tour-tab-${step.id}`}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={selected}
+                                    aria-controls="tour-panel"
+                                    tabIndex={selected ? 0 : -1}
+                                    className={cn(
+                                        'flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 text-xs font-extrabold transition-colors motion-reduce:transition-none',
+                                        selected
+                                            ? 'bg-primary text-primary-foreground dark:bg-brand dark:text-brand-foreground'
+                                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                                    )}
+                                    onClick={() => setActiveId(step.id)}
+                                    onKeyDown={(event) => {
+                                        if (
+                                            event.key === 'ArrowRight' ||
+                                            event.key === 'ArrowDown'
+                                        ) {
+                                            event.preventDefault();
+                                            selectTab(index + 1);
+                                        }
+
+                                        if (
+                                            event.key === 'ArrowLeft' ||
+                                            event.key === 'ArrowUp'
+                                        ) {
+                                            event.preventDefault();
+                                            selectTab(index - 1);
+                                        }
+
+                                        if (event.key === 'Home') {
+                                            event.preventDefault();
+                                            selectTab(0);
+                                        }
+
+                                        if (event.key === 'End') {
+                                            event.preventDefault();
+                                            selectTab(
+                                                landingTourSteps.length - 1,
+                                            );
+                                        }
+                                    }}
+                                >
+                                    <Icon
+                                        className="size-4"
+                                        aria-hidden="true"
+                                    />{' '}
+                                    {step.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div
+                        id="tour-panel"
+                        role="tabpanel"
+                        aria-labelledby={`tour-tab-${activeStep.id}`}
+                        className="mt-5 grid gap-8 rounded-3xl border border-border bg-card p-5 sm:p-7 lg:grid-cols-[0.7fr_1.3fr] lg:items-center lg:p-8"
+                    >
+                        <div>
+                            <span className="flex size-11 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                                <ActiveIcon
+                                    className="size-5"
+                                    aria-hidden="true"
+                                />
+                            </span>
+                            <p className="mt-7 text-[10px] font-extrabold tracking-[0.16em] text-brand uppercase">
+                                {activeStep.eyebrow}
+                            </p>
+                            <h3 className="mt-3 text-2xl leading-tight font-extrabold tracking-tight sm:text-3xl">
+                                {activeStep.title}
+                            </h3>
+                            <p className="mt-4 text-sm leading-7 text-muted-foreground">
+                                {activeStep.description}
+                            </p>
+                            <div className="mt-7 grid grid-cols-2 gap-3 border-t border-border pt-5">
+                                <div>
+                                    <p className="text-xl font-extrabold">
+                                        {activeStep.metric}
+                                    </p>
+                                    <p className="mt-1 text-[10px] text-muted-foreground">
+                                        {activeStep.metricLabel}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="inline-flex items-center gap-2 text-xs font-bold text-success">
+                                        <span className="size-2 rounded-full bg-success" />{' '}
+                                        Live state
+                                    </p>
+                                    <p className="mt-2 text-[10px] text-muted-foreground">
+                                        {activeStep.status}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <ProductPreview activeId={activeStep.id} />
+                    </div>
+                </ScrollReveal>
+            </div>
+        </section>
     );
 }
 
@@ -359,106 +664,55 @@ export function LandingWorkflow() {
         <section
             id="workflow"
             aria-labelledby="workflow-heading"
-            className="scroll-mt-20 border-b border-border bg-background"
+            className="scroll-mt-20 border-b border-border bg-card"
         >
             <div className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-6 lg:px-8 lg:py-24">
-                <ScrollReveal className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                <ScrollReveal>
                     <SectionHeading
                         id="workflow-heading"
-                        eyebrow="One connected operating rhythm"
-                        title="Every update has somewhere to go."
-                        description="FieldOps keeps the next step visible across the full journey, so work can move forward even when the network cannot."
+                        eyebrow="One continuous workflow"
+                        title="Six steps. One shared operating record."
+                        description="Keep every handoff connected so a job can move from the office to the field and back without losing its owner, context, or evidence."
                     />
-                    <div className="flex items-center gap-2 pb-1 font-mono text-[10px] font-bold tracking-[0.12em] text-muted-foreground uppercase">
-                        <span className="size-2 rounded-full bg-success" />
-                        <span>route active</span>
-                    </div>
                 </ScrollReveal>
                 <ScrollReveal
-                    className="relative mt-10 overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
-                    delay={80}
+                    className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3"
+                    delay={100}
                 >
-                    <div
-                        aria-hidden="true"
-                        className="landing-route-line absolute top-0 bottom-0 left-1/2 hidden w-px -translate-x-1/2 md:block"
-                    />
-                    <div className="relative grid gap-px bg-border md:grid-cols-3">
-                        {landingWorkflowSteps.map((step, index) => (
-                            <WorkflowCard
+                    {landingWorkflowSteps.map((step, index) => {
+                        const Icon = step.icon;
+
+                        return (
+                            <article
                                 key={step.id}
-                                step={step}
-                                index={index}
-                            />
-                        ))}
-                    </div>
-                    <div className="flex items-center justify-between border-t border-border bg-muted/25 px-5 py-3 font-mono text-[10px] text-muted-foreground sm:px-6">
-                        <span>FIELDOPS / WORKFLOW</span>
-                        <span className="inline-flex items-center gap-2 text-success">
-                            <CircleDot className="size-3" aria-hidden="true" />{' '}
-                            06 checkpoints connected
-                        </span>
-                    </div>
-                </ScrollReveal>
-            </div>
-        </section>
-    );
-}
-
-function CapabilityCard({
-    capability,
-    index,
-}: {
-    capability: LandingCapability;
-    index: number;
-}) {
-    const Icon = capability.icon;
-
-    return (
-        <article className="group flex min-h-64 flex-col border-t border-border pt-5 transition-colors hover:border-brand">
-            <div className="flex items-center justify-between gap-4">
-                <span className="flex size-10 items-center justify-center rounded-xl bg-brand/10 text-brand transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none">
-                    <Icon className="size-5" aria-hidden="true" />
-                </span>
-                <span className="font-mono text-[10px] text-muted-foreground">
-                    CAP / 0{index + 1}
-                </span>
-            </div>
-            <h3 className="mt-7 text-base font-extrabold tracking-tight">
-                {capability.title}
-            </h3>
-            <p className="mt-2 text-sm leading-6 text-foreground/85">
-                {capability.description}
-            </p>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                {capability.detail}
-            </p>
-        </article>
-    );
-}
-
-export function LandingCapabilities() {
-    return (
-        <section
-            aria-labelledby="capabilities-heading"
-            className="border-b border-border bg-card"
-        >
-            <div className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-6 lg:px-8 lg:py-24">
-                <ScrollReveal className="grid gap-10 lg:grid-cols-[0.75fr_1.25fr] lg:gap-20">
-                    <SectionHeading
-                        id="capabilities-heading"
-                        eyebrow="The shared foundation"
-                        title="Built for the details that make field work real."
-                        description="From the first assignment to the final report, FieldOps keeps the people, place, evidence, and decision connected."
-                    />
-                    <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2">
-                        {landingCapabilities.map((capability, index) => (
-                            <CapabilityCard
-                                key={capability.title}
-                                capability={capability}
-                                index={index}
-                            />
-                        ))}
-                    </div>
+                                className="relative bg-background p-6"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <span className="flex size-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                                        <Icon
+                                            className="size-5"
+                                            aria-hidden="true"
+                                        />
+                                    </span>
+                                    <span className="font-mono text-[10px] text-muted-foreground">
+                                        {step.label}
+                                    </span>
+                                </div>
+                                <h3 className="mt-6 text-base font-extrabold">
+                                    {step.title}
+                                </h3>
+                                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                    {step.description}
+                                </p>
+                                {index < landingWorkflowSteps.length - 1 && (
+                                    <ChevronRight
+                                        className="absolute top-8 -right-3 z-10 hidden size-5 rounded-full bg-card text-brand lg:block"
+                                        aria-hidden="true"
+                                    />
+                                )}
+                            </article>
+                        );
+                    })}
                 </ScrollReveal>
             </div>
         </section>
@@ -470,281 +724,109 @@ export function LandingOffline() {
         <section
             id="offline"
             aria-labelledby="offline-heading"
-            className="scroll-mt-20 overflow-hidden border-b border-border bg-primary text-primary-foreground"
+            className="scroll-mt-20 overflow-hidden bg-primary text-primary-foreground"
         >
-            <div className="relative mx-auto grid w-full max-w-7xl items-center gap-12 px-5 py-16 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20 lg:px-8 lg:py-24">
-                <div
-                    aria-hidden="true"
-                    className="landing-contours pointer-events-none absolute inset-0 opacity-40"
-                />
-                <ScrollReveal className="relative z-10">
+            <div className="relative mx-auto grid w-full max-w-7xl items-center gap-12 px-5 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:px-8 lg:py-24">
+                <ScrollReveal>
                     <SectionHeading
                         id="offline-heading"
-                        eyebrow="Offline by design"
-                        title="The signal can drop. The work doesn’t have to."
-                        description="FieldOps treats connectivity as a condition to work through, not a reason to stop. Keep the full job close, queue every change, and let the record catch up when you reconnect."
-                        light
+                        eyebrow="Offline-first field work"
+                        title="The signal can drop. The work does not have to."
+                        description="Give crews the job details they need before they lose coverage, keep updates queued on the device, and reconnect the record when service returns."
+                        inverse
                     />
-                    <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-8 grid gap-3 sm:grid-cols-3">
                         {[
-                            {
-                                icon: Download,
-                                label: 'Assignments cached before departure',
-                            },
-                            {
-                                icon: FileCheck2,
-                                label: 'Forms and checklists ready on site',
-                            },
-                            {
-                                icon: Camera,
-                                label: 'Photos and notes held in the queue',
-                            },
-                            {
-                                icon: RefreshCw,
-                                label: 'Updates sync when service returns',
-                            },
-                        ].map(({ icon: Icon, label }) => (
+                            [CloudOff, 'Work remains available'],
+                            [Smartphone, 'Updates stay on device'],
+                            [RefreshCw, 'Sync resumes on reconnect'],
+                        ].map(([Icon, label]) => (
                             <div
-                                key={label}
-                                className="flex items-start gap-3 rounded-xl border border-primary-foreground/15 bg-primary-foreground/[0.07] p-3 text-sm text-primary-foreground/80"
+                                key={label as string}
+                                className="rounded-xl border border-primary-foreground/15 bg-primary-foreground/[0.06] p-4"
                             >
-                                <Icon
-                                    className="mt-0.5 size-4 shrink-0 text-primary-foreground"
-                                    aria-hidden="true"
-                                />
-                                {label}
+                                <Icon className="size-5" aria-hidden="true" />
+                                <p className="mt-3 text-xs font-bold">
+                                    {label as string}
+                                </p>
                             </div>
                         ))}
                     </div>
                 </ScrollReveal>
-
                 <ScrollReveal
                     direction="right"
                     delay={100}
-                    className="relative z-10"
+                    className="relative"
                 >
-                    <div className="rounded-2xl border border-primary-foreground/20 bg-primary-foreground/[0.07] p-3 shadow-2xl shadow-primary/30 backdrop-blur sm:p-5">
-                        <div className="flex items-center justify-between gap-4 border-b border-primary-foreground/15 pb-4">
-                            <div className="flex items-center gap-3">
-                                <span className="flex size-10 items-center justify-center rounded-xl bg-warning/20 text-warning">
-                                    <WifiOff
-                                        className="size-5"
-                                        aria-hidden="true"
-                                    />
-                                </span>
-                                <div>
-                                    <p className="text-sm font-extrabold">
-                                        Connection unavailable
-                                    </p>
-                                    <p className="mt-1 font-mono text-[10px] text-primary-foreground/60">
-                                        FIELD MODE / 09:41:12
-                                    </p>
-                                </div>
-                            </div>
-                            <span className="rounded-full bg-warning/20 px-2.5 py-1 text-[10px] font-bold text-warning">
-                                3 queued
+                    <img
+                        src={landingAssets.fieldWorkerTablet}
+                        alt="Field worker reviewing a FieldOps work order on a tablet"
+                        className="aspect-[5/4] w-full rounded-3xl object-cover shadow-2xl"
+                        width="1440"
+                        height="1152"
+                        loading="lazy"
+                    />
+                    <div className="absolute right-4 bottom-4 left-4 rounded-2xl border border-border bg-card/95 p-4 text-card-foreground shadow-xl backdrop-blur sm:right-8 sm:bottom-8 sm:left-auto sm:w-72">
+                        <div className="flex items-center justify-between">
+                            <span className="inline-flex items-center gap-2 text-xs font-extrabold">
+                                <CloudOff
+                                    className="size-4 text-info"
+                                    aria-hidden="true"
+                                />{' '}
+                                Connection unavailable
                             </span>
+                            <span className="size-2 rounded-full bg-warning" />
                         </div>
-                        <div className="mt-4 grid gap-2">
-                            {[
-                                {
-                                    label: 'Valve inspection',
-                                    detail: 'WO-0056-0128',
-                                    icon: Check,
-                                },
-                                {
-                                    label: 'Site photo attached',
-                                    detail: 'evidence_0042.jpg',
-                                    icon: Camera,
-                                },
-                                {
-                                    label: 'Checklist updated',
-                                    detail: 'pump_station_a',
-                                    icon: FileCheck2,
-                                },
-                            ].map(({ label, detail, icon: Icon }, index) => (
-                                <div
-                                    key={label}
-                                    className="flex items-center gap-3 rounded-xl border border-primary-foreground/10 bg-background/10 px-3 py-3"
+                        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-muted">
+                            <div className="h-full w-3/4 rounded-full bg-brand" />
+                        </div>
+                        <p className="mt-3 text-[10px] text-muted-foreground">
+                            Ready to sync when you’re back online.
+                        </p>
+                    </div>
+                </ScrollReveal>
+            </div>
+        </section>
+    );
+}
+
+export function LandingOutcomes() {
+    return (
+        <section
+            id="outcomes"
+            aria-labelledby="outcomes-heading"
+            className="scroll-mt-20 border-b border-border bg-background"
+        >
+            <div className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-6 lg:px-8 lg:py-24">
+                <ScrollReveal className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16">
+                    <SectionHeading
+                        id="outcomes-heading"
+                        eyebrow="A clearer operating picture"
+                        title="Know what moved—and what needs you next."
+                        description="FieldOps turns daily activity into a shared view of ownership, progress, evidence, and exceptions without adding another layer of status chasing."
+                    />
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        {landingOutcomes.map(
+                            ({ icon: Icon, title, description }) => (
+                                <article
+                                    key={title}
+                                    className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-[transform,border-color] hover:-translate-y-0.5 hover:border-brand/40 motion-reduce:transition-none"
                                 >
-                                    <span className="flex size-8 items-center justify-center rounded-lg bg-success/15 text-success">
+                                    <span className="flex size-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
                                         <Icon
-                                            className="size-4"
+                                            className="size-5"
                                             aria-hidden="true"
                                         />
                                     </span>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-xs font-extrabold">
-                                            {label}
-                                        </p>
-                                        <p className="mt-1 truncate font-mono text-[10px] text-primary-foreground/55">
-                                            {detail}
-                                        </p>
-                                    </div>
-                                    <span className="font-mono text-[10px] text-primary-foreground/45">
-                                        +{index + 1}m
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="mt-4 flex items-center gap-3 rounded-xl bg-success/15 px-3 py-3 text-xs text-primary-foreground/85">
-                            <Signal
-                                className="size-4 text-success"
-                                aria-hidden="true"
-                            />
-                            <span className="flex-1">
-                                Ready to sync when you’re back online.
-                            </span>
-                            <span className="font-mono text-[10px] text-success">
-                                100%
-                            </span>
-                        </div>
-                    </div>
-                </ScrollReveal>
-            </div>
-        </section>
-    );
-}
-
-function MapPin({ job }: { job: LandingMapJob }) {
-    return (
-        <div
-            className="absolute -translate-x-1/2 -translate-y-1/2"
-            style={{ top: job.top, left: job.left }}
-        >
-            <span
-                className={cn(
-                    'flex size-7 items-center justify-center rounded-full border-2 border-background shadow-lg',
-                    job.priority === 'High'
-                        ? 'bg-destructive text-destructive-foreground'
-                        : job.priority === 'Medium'
-                          ? 'bg-warning text-warning-foreground'
-                          : 'bg-success text-success-foreground',
-                )}
-            >
-                <MapPinned className="size-3.5" aria-hidden="true" />
-            </span>
-            <span className="absolute top-8 left-1/2 hidden -translate-x-1/2 rounded-md border border-border bg-card px-2 py-1 text-[9px] font-bold whitespace-nowrap text-foreground shadow-lg md:block">
-                {job.id}
-            </span>
-        </div>
-    );
-}
-
-export function LandingMapping() {
-    return (
-        <section
-            id="mapping"
-            aria-labelledby="mapping-heading"
-            className="scroll-mt-20 border-b border-border bg-background"
-        >
-            <div className="mx-auto grid w-full max-w-7xl items-center gap-12 px-5 py-16 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-20 lg:px-8 lg:py-24">
-                <ScrollReveal direction="left" className="relative min-w-0">
-                    <div className="landing-map relative aspect-[1.15/0.82] overflow-hidden rounded-2xl border border-border bg-muted/30 shadow-xl">
-                        <div
-                            className="absolute inset-0 opacity-50"
-                            aria-hidden="true"
-                        >
-                            <div className="absolute top-[18%] left-[-5%] h-px w-[110%] rotate-[12deg] bg-brand/20" />
-                            <div className="absolute top-[48%] left-[-5%] h-px w-[110%] -rotate-[17deg] bg-info/20" />
-                            <div className="absolute top-[74%] left-[-5%] h-px w-[110%] rotate-[8deg] bg-success/20" />
-                            <div className="absolute top-[-5%] left-[34%] h-[110%] w-px rotate-[19deg] bg-brand/15" />
-                            <div className="absolute top-[-5%] left-[68%] h-[110%] w-px -rotate-[24deg] bg-info/15" />
-                        </div>
-                        <div className="absolute top-[23%] left-[14%] h-24 w-44 rounded-[50%] border border-success/20 bg-success/5" />
-                        <div className="absolute right-[6%] bottom-[13%] h-32 w-44 rounded-[50%] border border-info/20 bg-info/5" />
-                        <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-4 rounded-xl border border-border bg-card/90 px-3 py-2 shadow-sm backdrop-blur sm:inset-x-5 sm:top-5">
-                            <div className="flex items-center gap-2">
-                                <MapPinned
-                                    className="size-4 text-brand"
-                                    aria-hidden="true"
-                                />
-                                <span className="text-xs font-extrabold">
-                                    Active work map
-                                </span>
-                            </div>
-                            <span className="flex items-center gap-1.5 font-mono text-[10px] text-success">
-                                <span className="size-1.5 rounded-full bg-success" />{' '}
-                                12 crews online
-                            </span>
-                        </div>
-                        <div className="absolute right-5 bottom-5 flex flex-col gap-2 rounded-xl border border-border bg-card/90 p-1.5 shadow-lg backdrop-blur">
-                            <button
-                                type="button"
-                                aria-label="Zoom in"
-                                className="flex size-7 items-center justify-center rounded-lg text-sm font-bold hover:bg-muted"
-                            >
-                                +
-                            </button>
-                            <button
-                                type="button"
-                                aria-label="Zoom out"
-                                className="flex size-7 items-center justify-center rounded-lg text-sm font-bold hover:bg-muted"
-                            >
-                                −
-                            </button>
-                        </div>
-                        {landingMapJobs.map((job) => (
-                            <MapPin key={job.id} job={job} />
-                        ))}
-                        <div className="absolute bottom-[16%] left-[18%] flex items-center gap-2 rounded-full border border-brand/20 bg-brand/10 px-2.5 py-1.5 text-[9px] font-bold text-brand shadow-sm">
-                            <Navigation className="size-3" aria-hidden="true" />{' '}
-                            Crew 04 / en route
-                        </div>
-                    </div>
-                </ScrollReveal>
-
-                <ScrollReveal direction="right" delay={100}>
-                    <SectionHeading
-                        id="mapping-heading"
-                        eyebrow="Location-aware coordination"
-                        title="Put the work on the map, then make the next move obvious."
-                        description="A geographic view gives supervisors the context to group nearby work, spot priority issues, and send the right crew with the right information."
-                    />
-                    <div className="mt-8 divide-y divide-border border-y border-border">
-                        {landingMapJobs.map((job) => (
-                            <article
-                                key={job.id}
-                                className="flex items-center gap-3 py-4"
-                            >
-                                <span
-                                    className={cn(
-                                        'size-2 shrink-0 rounded-full',
-                                        job.priority === 'High'
-                                            ? 'bg-destructive'
-                                            : job.priority === 'Medium'
-                                              ? 'bg-warning'
-                                              : 'bg-success',
-                                    )}
-                                />
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                        <p className="truncate text-sm font-extrabold">
-                                            {job.title}
-                                        </p>
-                                        <span
-                                            className={cn(
-                                                'rounded-full px-2 py-0.5 text-[9px] font-bold',
-                                                statusClasses[job.status],
-                                            )}
-                                        >
-                                            {job.status}
-                                        </span>
-                                    </div>
-                                    <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">
-                                        {job.id} · {job.location}
+                                    <h3 className="mt-6 text-base font-extrabold">
+                                        {title}
+                                    </h3>
+                                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                                        {description}
                                     </p>
-                                </div>
-                                <span
-                                    className={cn(
-                                        'hidden text-[10px] font-extrabold sm:block',
-                                        priorityClasses[job.priority],
-                                    )}
-                                >
-                                    {job.priority}
-                                </span>
-                            </article>
-                        ))}
+                                </article>
+                            ),
+                        )}
                     </div>
                 </ScrollReveal>
             </div>
@@ -752,209 +834,64 @@ export function LandingMapping() {
     );
 }
 
-export function LandingReporting() {
+export function LandingFaq() {
     return (
         <section
-            id="reporting"
-            aria-labelledby="reporting-heading"
+            id="faq"
+            aria-labelledby="faq-heading"
             className="scroll-mt-20 border-b border-border bg-card"
         >
-            <div className="mx-auto w-full max-w-7xl px-5 py-16 sm:px-6 lg:px-8 lg:py-24">
-                <ScrollReveal className="grid gap-10 lg:grid-cols-[0.75fr_1.25fr] lg:gap-20">
-                    <div>
-                        <SectionHeading
-                            id="reporting-heading"
-                            eyebrow="From field notes to confidence"
-                            title="See what moved. Know what needs you next."
-                            description="Structured updates make the daily operating picture easier to read—and the next decision easier to make."
-                        />
-                        <div className="mt-8 flex items-center gap-3 rounded-xl border border-border bg-background p-3">
-                            <span className="flex size-9 items-center justify-center rounded-lg bg-success/10 text-success">
-                                <CheckCircle2
-                                    className="size-5"
-                                    aria-hidden="true"
-                                />
-                            </span>
-                            <p className="text-sm font-extrabold">
-                                Every completion has a record behind it.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-3">
-                        {landingMetrics.map((metric, index) => (
-                            <article
-                                key={metric.label}
-                                className="rounded-2xl border border-border bg-background p-5 shadow-sm transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-md motion-reduce:transition-none"
-                            >
-                                <div className="flex items-center justify-between gap-3">
-                                    <span className="font-mono text-[10px] text-muted-foreground">
-                                        METRIC / 0{index + 1}
-                                    </span>
-                                    <MoreHorizontal
-                                        className="size-4 text-muted-foreground"
-                                        aria-hidden="true"
-                                    />
-                                </div>
-                                <p className="mt-8 text-4xl font-extrabold tracking-[-0.06em]">
-                                    {metric.value}
-                                </p>
-                                <p className="mt-1 text-sm font-bold">
-                                    {metric.label}
-                                </p>
-                                <p className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold text-success">
-                                    <ArrowRight
-                                        className="size-3 -rotate-45"
-                                        aria-hidden="true"
-                                    />{' '}
-                                    {metric.trend}
-                                </p>
-                            </article>
-                        ))}
-                    </div>
+            <div className="mx-auto grid w-full max-w-7xl gap-10 px-5 py-16 sm:px-6 lg:grid-cols-[0.72fr_1.28fr] lg:gap-16 lg:px-8 lg:py-24">
+                <ScrollReveal>
+                    <SectionHeading
+                        id="faq-heading"
+                        eyebrow="Before you get started"
+                        title="Straight answers for an operation in motion."
+                        description="A few practical details about how FieldOps supports the office, the field, and the connection between them."
+                    />
                 </ScrollReveal>
-
                 <ScrollReveal
-                    className="mt-12 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]"
+                    className="divide-y divide-border border-y border-border"
                     delay={100}
                 >
-                    <div className="relative overflow-hidden rounded-2xl border border-border bg-background p-5 sm:p-7">
-                        <div className="flex items-center justify-between gap-4">
-                            <div>
-                                <p className="font-mono text-[10px] font-bold tracking-[0.12em] text-brand uppercase">
-                                    Completion evidence
-                                </p>
-                                <h3 className="mt-2 text-lg font-extrabold">
-                                    Main St. Pump Station
-                                </h3>
-                            </div>
-                            <span className="rounded-full bg-success/10 px-2.5 py-1 text-[10px] font-bold text-success">
-                                Complete
-                            </span>
-                        </div>
-                        <div className="mt-6 grid gap-3 sm:grid-cols-[1fr_1.2fr]">
-                            <img
-                                src={landingAssets.fieldWorkerTablet}
-                                alt="Field worker reviewing a work order on a tablet beside a city waterway"
-                                className="h-full min-h-44 w-full rounded-xl object-cover"
-                                width="1440"
-                                height="1152"
-                                loading="lazy"
-                            />
-                            <div className="grid gap-2">
-                                {[
-                                    {
-                                        icon: Check,
-                                        label: 'Inspection checklist',
-                                        detail: '12 / 12 complete',
-                                    },
-                                    {
-                                        icon: Camera,
-                                        label: 'Photo evidence',
-                                        detail: '4 attachments',
-                                    },
-                                    {
-                                        icon: MapPinned,
-                                        label: 'Location verified',
-                                        detail: '34.0522° N, 118.2437° W',
-                                    },
-                                ].map(({ icon: Icon, label, detail }) => (
-                                    <div
-                                        key={label}
-                                        className="flex items-center gap-3 rounded-xl border border-border px-3 py-3"
-                                    >
-                                        <span className="flex size-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
-                                            <Icon
-                                                className="size-4"
-                                                aria-hidden="true"
-                                            />
-                                        </span>
-                                        <div className="min-w-0">
-                                            <p className="text-xs font-extrabold">
-                                                {label}
-                                            </p>
-                                            <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground">
-                                                {detail}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="rounded-2xl border border-border bg-primary p-5 text-primary-foreground sm:p-7">
-                        <div className="flex items-center justify-between gap-4">
-                            <p className="font-mono text-[10px] font-bold tracking-[0.12em] text-primary-foreground/75 uppercase">
-                                Team pulse
+                    {landingFaqs.map((faq, index) => (
+                        <details
+                            key={faq.question}
+                            className="group py-1"
+                            open={index === 0}
+                        >
+                            <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 rounded-lg px-2 text-sm font-extrabold focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+                                {faq.question}
+                                <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border text-brand transition-transform group-open:rotate-90 motion-reduce:transition-none">
+                                    <ChevronRight
+                                        className="size-4"
+                                        aria-hidden="true"
+                                    />
+                                </span>
+                            </summary>
+                            <p className="max-w-2xl px-2 pr-12 pb-5 text-sm leading-7 text-muted-foreground">
+                                {faq.answer}
                             </p>
-                            <span className="flex items-center gap-1.5 rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[10px] font-bold">
-                                <span className="size-1.5 rounded-full bg-success" />{' '}
-                                Live
-                            </span>
-                        </div>
-                        <div className="mt-10 flex items-end gap-2">
-                            {[
-                                32, 46, 38, 60, 54, 72, 66, 84, 78, 92, 86, 100,
-                            ].map((height, index) => (
-                                <span
-                                    key={index}
-                                    className={cn(
-                                        'flex-1 rounded-t-sm',
-                                        index > 8
-                                            ? 'bg-primary-foreground'
-                                            : 'bg-primary-foreground/25',
-                                    )}
-                                    style={{ height: `${height}px` }}
-                                />
-                            ))}
-                        </div>
-                        <div className="mt-4 flex items-center justify-between border-t border-primary-foreground/15 pt-4 text-[10px] text-primary-foreground/75">
-                            <span>Mon</span>
-                            <span>Today</span>
-                        </div>
-                        <div className="mt-8 flex items-start gap-3 rounded-xl bg-primary-foreground/[0.08] p-3">
-                            <UsersRoundIcon />
-                            <p className="text-xs leading-5 text-primary-foreground/80">
-                                The office sees the same progress the crew is
-                                creating in the field.
-                            </p>
-                        </div>
-                    </div>
+                        </details>
+                    ))}
                 </ScrollReveal>
             </div>
         </section>
     );
 }
 
-function UsersRoundIcon() {
-    return (
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-foreground/10 text-primary-foreground">
-            <Smartphone className="size-4" aria-hidden="true" />
-        </span>
-    );
-}
-
-export function LandingCta({
-    primaryHref,
-    primaryLabel,
-}: {
-    primaryHref: string | RouteDefinition<'get'>;
-    primaryLabel: string;
-}) {
+export function LandingCta({ primaryHref, primaryLabel }: LandingActionProps) {
     return (
         <section
             id="start"
             aria-labelledby="cta-heading"
             className="scroll-mt-20 overflow-hidden bg-primary text-primary-foreground"
         >
-            <div className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-5 py-14 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8 lg:py-20">
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute -top-32 -right-20 size-96 rounded-full border border-brand-foreground/10"
-                />
+            <div className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-5 py-14 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8 lg:py-20">
                 <ScrollReveal direction="left" className="relative z-10">
                     <img
                         src={landingAssets.ctaMobileCard}
-                        alt="FieldOps mobile work order screen and completed work card"
+                        alt="FieldOps mobile work-order list with a completed job"
                         className="mx-auto w-full max-w-sm object-contain drop-shadow-2xl lg:mx-0"
                         width="1536"
                         height="1024"
@@ -966,34 +903,27 @@ export function LandingCta({
                     delay={100}
                     className="relative z-10"
                 >
-                    <SectionKicker className="text-primary-foreground/75">
+                    <p className="text-[11px] font-extrabold tracking-[0.16em] text-primary-foreground/70 uppercase">
                         Make the next move clearer
-                    </SectionKicker>
+                    </p>
                     <h2
                         id="cta-heading"
                         className="mt-4 max-w-xl text-4xl leading-[1.02] font-extrabold tracking-[-0.055em] sm:text-5xl"
                     >
-                        Keep your people moving and your operation in sync.
+                        Bring the office and the field into one operating
+                        rhythm.
                     </h2>
-                    <p className="mt-5 max-w-lg text-base leading-7 text-primary-foreground/80">
-                        Start with the workflow that matters most, then connect
-                        the context that helps your team do it better.
+                    <p className="mt-5 max-w-lg text-base leading-7 text-primary-foreground/75">
+                        Start with the workflow that matters most, then build
+                        the shared context your team needs to keep moving.
                     </p>
-                    <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                        <Link
-                            href={primaryHref}
-                            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary-foreground px-6 text-sm font-extrabold text-primary transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-primary-foreground/90 motion-reduce:transition-none"
-                        >
-                            {primaryLabel}
-                            <ArrowRight className="size-4" aria-hidden="true" />
-                        </Link>
-                        <a
-                            href="#workflow"
-                            className="inline-flex min-h-12 items-center justify-center rounded-full border border-primary-foreground/45 px-6 text-sm font-extrabold text-primary-foreground transition-colors hover:bg-primary-foreground/10 motion-reduce:transition-none"
-                        >
-                            Back to the workflow
-                        </a>
-                    </div>
+                    <Link
+                        href={primaryHref}
+                        className="mt-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary-foreground px-6 text-sm font-extrabold text-primary transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-primary-foreground/90 motion-reduce:transition-none"
+                    >
+                        {primaryLabel}
+                        <ArrowRight className="size-4" aria-hidden="true" />
+                    </Link>
                 </ScrollReveal>
             </div>
         </section>

@@ -1,154 +1,89 @@
 import {
     BarChart3,
-    BookOpen,
     ClipboardCheck,
     ClipboardList,
     CloudOff,
-    CircleHelp,
     Camera,
-    FileText,
-    Construction,
-    Droplets,
-    HardHat,
-    Landmark,
+    FileCheck2,
     MapPinned,
-    Newspaper,
-    PackageOpen,
     RefreshCw,
     Send,
     ShieldCheck,
     UsersRound,
-    TriangleAlert,
 } from 'lucide-react';
 import type {
-    LandingCapability,
-    LandingNavItem,
-    LandingMapJob,
-    LandingMetric,
+    LandingFaq,
+    LandingOutcome,
+    LandingTourStep,
     LandingWorkflowStep,
 } from './types';
 
 export const landingAssets = {
     heroBackground: '/images/landing/hero-background.png',
-    midSectionBackground: '/images/landing/mid-section-background.png',
-    footerBackground: '/images/landing/footer-background.png',
     heroDashboard: '/images/landing/laptop-dashboard-transparent.png',
     fieldWorkerTablet: '/images/landing/field-worker-tablet-hd.png',
     fieldWorkerServiceVan: '/images/landing/field-worker-service-van-hd.png',
     ctaMobileCard: '/images/landing/cta-mobile-card-hd.png',
 } as const;
 
-export const landingNavigation = [
-    {
-        label: 'Features',
-        href: '/features',
-        hasDropdown: true,
-        children: [
-            {
-                label: 'Work Order Management',
-                href: '/features#work-orders',
-                description: 'Plan, assign, and close every job.',
-                icon: ClipboardList,
-            },
-            {
-                label: 'Asset Management',
-                href: '/features#assets',
-                description: 'Keep asset history and context connected.',
-                icon: PackageOpen,
-            },
-            {
-                label: 'Reports & Analytics',
-                href: '/features#analytics',
-                description: 'Turn field activity into better decisions.',
-                icon: BarChart3,
-            },
-        ],
-    },
-    {
-        label: 'Solutions',
-        href: '/solutions',
-        hasDropdown: true,
-        children: [
-            {
-                label: 'Field Operations',
-                href: '/solutions#field-operations',
-                description: 'Give every crew a clear next step.',
-                icon: ClipboardCheck,
-            },
-            {
-                label: 'Facilities Management',
-                href: '/solutions#facilities',
-                description: 'Coordinate sites, requests, and vendors.',
-                icon: Construction,
-            },
-            {
-                label: 'Public Works',
-                href: '/solutions#public-works',
-                description: 'Keep essential services moving.',
-                icon: Landmark,
-            },
-        ],
-    },
-    {
-        label: 'Industries',
-        href: '/industries',
-        hasDropdown: true,
-        children: [
-            {
-                label: 'Utilities',
-                href: '/industries#utilities',
-                description: 'Make every service call accountable.',
-                icon: MapPinned,
-            },
-            {
-                label: 'Construction',
-                href: '/industries#construction',
-                description: 'Connect field progress to project plans.',
-                icon: HardHat,
-            },
-            {
-                label: 'Water & Wastewater',
-                href: '/industries#water',
-                description: 'Protect critical infrastructure.',
-                icon: Droplets,
-            },
-        ],
-    },
-    { label: 'Pricing', href: '/pricing' },
-    {
-        label: 'Resources',
-        href: '/resources',
-        hasDropdown: true,
-        children: [
-            {
-                label: 'Documentation',
-                href: '/resources#documentation',
-                description: 'Get your team moving quickly.',
-                icon: BookOpen,
-            },
-            {
-                label: 'Customer Stories',
-                href: '/resources#stories',
-                description: 'See how teams use FieldOps every day.',
-                icon: Newspaper,
-            },
-            {
-                label: 'FAQs',
-                href: '/resources#faqs',
-                description: 'Find answers before you get started.',
-                icon: CircleHelp,
-            },
-        ],
-    },
-    { label: 'About Us', href: '/about' },
-] satisfies LandingNavItem[];
-
 export const landingJourneyNavigation = [
-    { label: 'Platform', href: '#platform' },
+    { label: 'Product tour', href: '#tour' },
+    { label: 'Workflow', href: '#workflow' },
     { label: 'Offline', href: '#offline' },
-    { label: 'Mapping', href: '#mapping' },
-    { label: 'Reporting', href: '#reporting' },
+    { label: 'Outcomes', href: '#outcomes' },
+    { label: 'FAQ', href: '#faq' },
 ] as const;
+
+export const landingTourSteps = [
+    {
+        id: 'dispatch',
+        label: 'Dispatch',
+        eyebrow: 'Office control',
+        title: 'Turn incoming work into a clear plan.',
+        description:
+            'Prioritize requests, connect the right location and asset, then assign each job with the context the crew needs.',
+        icon: Send,
+        status: '24 active assignments',
+        metric: '06',
+        metricLabel: 'ready to dispatch',
+    },
+    {
+        id: 'field',
+        label: 'Field execution',
+        eyebrow: 'Crew workspace',
+        title: 'Give crews one dependable place to work.',
+        description:
+            'Technicians can review instructions, complete checklists, add evidence, and update status from the job site.',
+        icon: ClipboardCheck,
+        status: 'Work order in progress',
+        metric: '12/12',
+        metricLabel: 'checks completed',
+    },
+    {
+        id: 'map',
+        label: 'Map coordination',
+        eyebrow: 'Location context',
+        title: 'See where work is moving and where it is stuck.',
+        description:
+            'Use location, priority, and crew status together to coordinate nearby work and respond to urgent issues.',
+        icon: MapPinned,
+        status: '12 crews online',
+        metric: '03',
+        metricLabel: 'priority jobs nearby',
+    },
+    {
+        id: 'reporting',
+        label: 'Reporting',
+        eyebrow: 'Operational clarity',
+        title: 'Make every completion useful to the next decision.',
+        description:
+            'Structured field updates roll into a readable view of progress, exceptions, evidence, and team capacity.',
+        icon: BarChart3,
+        status: 'Operations updated just now',
+        metric: '86%',
+        metricLabel: 'team capacity on track',
+    },
+] satisfies LandingTourStep[];
 
 export const landingWorkflowSteps = [
     {
@@ -207,79 +142,52 @@ export const landingWorkflowSteps = [
     },
 ] satisfies LandingWorkflowStep[];
 
-export const landingCapabilities = [
+export const landingOutcomes = [
     {
         icon: ClipboardList,
-        title: 'Jobs with context',
-        description: 'Create, prioritize, assign, and track every work order.',
-        detail: 'Owners, locations, assets, due dates, and history stay connected from dispatch to closeout.',
-    },
-    {
-        icon: TriangleAlert,
-        title: 'Issues that move',
-        description: 'Turn a field observation into an owned next step.',
-        detail: 'Document the issue, route it to the right person, and keep resolution visible to everyone involved.',
-    },
-    {
-        icon: FileText,
-        title: 'Reports people trust',
+        title: 'Clear ownership',
         description:
-            'Capture structured updates without slowing the crew down.',
-        detail: 'Forms, checklists, notes, and signatures create a consistent record for review and follow-up.',
+            'Every job has an owner, priority, location, and next action that the whole team can see.',
     },
     {
-        icon: MapPinned,
-        title: 'Location as context',
-        description: 'See work, assets, and teams where they actually are.',
-        detail: 'Map views help supervisors prioritize nearby work and give crews the context around each site.',
+        icon: CloudOff,
+        title: 'Resilient field work',
+        description:
+            'Crews keep essential job context available when coverage is unreliable and sync when service returns.',
+    },
+    {
+        icon: FileCheck2,
+        title: 'Verifiable completion',
+        description:
+            'Checklists, notes, photos, and location context create a record supervisors can confidently review.',
     },
     {
         icon: UsersRound,
-        title: 'Teams in rhythm',
-        description: 'Keep office and field handoffs unambiguous.',
-        detail: 'Everyone works from the same activity trail, with clear ownership and fewer status-chasing calls.',
-    },
-    {
-        icon: BarChart3,
-        title: 'A clearer operating picture',
+        title: 'Fewer status chases',
         description:
-            'Turn daily activity into decisions that improve the next day.',
-        detail: 'Track completion, response, issue trends, and evidence quality across the operation.',
+            'Office and field teams work from the same activity trail instead of reconstructing updates across calls and messages.',
     },
-] satisfies LandingCapability[];
+] satisfies LandingOutcome[];
 
-export const landingMapJobs = [
+export const landingFaqs = [
     {
-        id: 'WO-0056-0128',
-        title: 'Valve inspection',
-        location: 'Main St. Pump Station',
-        status: 'In progress',
-        priority: 'High',
-        top: '27%',
-        left: '64%',
+        question: 'Can crews keep working without a reliable connection?',
+        answer: 'FieldOps is designed around an offline-capable workflow. Crews can retain assigned work and capture updates in the field, then synchronize queued changes when connectivity returns.',
     },
     {
-        id: 'WO-0056-0127',
-        title: 'Catch basin clean',
-        location: 'Coach Basin 15',
-        status: 'Assigned',
-        priority: 'Medium',
-        top: '55%',
-        left: '33%',
+        question: 'What happens when a device reconnects?',
+        answer: 'Queued field updates are synchronized back into the shared operating record so supervisors can review the latest status, evidence, and follow-up needs.',
     },
     {
-        id: 'WO-0056-0126',
-        title: 'Meter assembly',
-        location: 'Lift Station 4',
-        status: 'Needs review',
-        priority: 'Low',
-        top: '70%',
-        left: '72%',
+        question: 'Who is FieldOps designed for?',
+        answer: 'FieldOps connects the people coordinating work in the office with the technicians completing it in the field, while giving leaders a clear view of progress and exceptions.',
     },
-] satisfies LandingMapJob[];
-
-export const landingMetrics = [
-    { value: '128', label: 'active work orders', trend: '+12% from last week' },
-    { value: '73', label: 'completed today', trend: '+8% from last week' },
-    { value: '18', label: 'need attention', trend: '-3% from last week' },
-] satisfies LandingMetric[];
+    {
+        question: 'Can technicians use it on mobile devices?',
+        answer: 'Yes. The field experience is designed for mobile work, with focused job details, status updates, checklists, and evidence capture that remain usable at the job site.',
+    },
+    {
+        question: 'How do we get started?',
+        answer: 'Create an account, begin with the workflow that matters most to your team, and expand the operating context as your process takes shape.',
+    },
+] satisfies LandingFaq[];

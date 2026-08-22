@@ -70,7 +70,7 @@
         52px 52px,
         52px 52px,
         auto;
-    mask-image: linear-gradient(to right, black 0%, transparent 82%);
+    mask-image: linear-gradient(to bottom, black 0%, transparent 90%);
     opacity: 0.45;
 }
 
@@ -86,8 +86,12 @@
             color-mix(in oklab, var(--border) 18%, transparent) 1px,
             transparent 1px
         );
-    background-size: auto, 72px 72px;
-    background-position: center top, center top;
+    background-size:
+        auto,
+        72px 72px;
+    background-position:
+        center top,
+        center top;
 }
 
 .landing-hero-orbit {

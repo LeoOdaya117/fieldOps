@@ -15,18 +15,6 @@ const initialTransforms = {
     right: 'translate-x-6',
 } as const;
 
-function shouldRevealImmediately() {
-    if (typeof window === 'undefined') {
-        return true;
-    }
-
-    return (
-        (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ??
-            false) ||
-        typeof IntersectionObserver === 'undefined'
-    );
-}
-
 export function ScrollReveal({
     children,
     className,
@@ -34,7 +22,7 @@ export function ScrollReveal({
     direction = 'up',
 }: ScrollRevealProps) {
     const elementRef = useRef<HTMLDivElement>(null);
-    const [isVisible, setIsVisible] = useState(shouldRevealImmediately);
+    const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
         const element = elementRef.current;
@@ -51,7 +39,9 @@ export function ScrollReveal({
             prefersReducedMotion ||
             typeof IntersectionObserver === 'undefined'
         ) {
-            return;
+            const timeoutId = window.setTimeout(() => setIsVisible(true), 0);
+
+            return () => window.clearTimeout(timeoutId);
         }
 
         const observer = new IntersectionObserver(
