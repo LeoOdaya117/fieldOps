@@ -9,11 +9,22 @@ export type User = {
     /* @end-chisel-2fa */
     created_at: string;
     updated_at: string;
+    status: 'active' | 'suspended';
     [key: string]: unknown;
 };
 
 export type Auth = {
     user: User;
+    authorization: {
+        role: {
+            id: number;
+            name: string;
+            displayName: string;
+            isSystem: boolean;
+        } | null;
+        permissions: string[];
+        isOwner: boolean;
+    };
 };
 
 /* @chisel-passkeys */

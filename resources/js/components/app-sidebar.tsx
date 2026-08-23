@@ -1,5 +1,13 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-react';
+import {
+    BookOpen,
+    FolderGit2,
+    LayoutGrid,
+    ScrollText,
+    ShieldCheck,
+    Users,
+} from 'lucide-react';
+import { usePage } from '@inertiajs/react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -38,6 +46,37 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+    const { auth } = usePage().props;
+    const permissions = auth.authorization?.permissions ?? [];
+    const can = (permission: string) =>
+        auth.authorization?.isOwner || permissions.includes(permission);
+
+    const accessItems: NavItem[] = [];
+
+    if (can('users.view')) {
+        accessItems.push({
+            title: 'Users',
+            href: '/access/users',
+            icon: Users,
+        });
+    }
+
+    if (can('roles.view')) {
+        accessItems.push({
+            title: 'Roles',
+            href: '/access/roles',
+            icon: ShieldCheck,
+        });
+    }
+
+    if (can('audit.view')) {
+        accessItems.push({
+            title: 'Access audit',
+            href: '/access/audit',
+            icon: ScrollText,
+        });
+    }
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -54,6 +93,7 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain items={mainNavItems} />
+                {accessItems.length > 0 && <NavMain items={accessItems} />}
             </SidebarContent>
 
             <SidebarFooter>
