@@ -1,11 +1,44 @@
 <?php
 
+use App\Http\Controllers\Access\AuditController;
+use App\Http\Controllers\Access\RoleController;
+use App\Http\Controllers\Access\UserController;
+use App\Http\Controllers\Auth\InvitationController;
+use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+Route::get('invitations/{token}', [InvitationController::class, 'show'])->name('invitation.accept');
+Route::post('invitations/{token}', [InvitationController::class, 'accept'])
+    ->middleware('throttle:6,1')
+    ->name('invitation.store');
+
+Route::middleware(['auth', 'verified', 'active'])->group(function () {
+    Route::inertia('dashboard', 'dashboard')->middleware('can:dashboard.view')->name('dashboard');
+
+    Route::prefix('access')->name('access.')->group(function () {
+        Route::get('users', [UserController::class, 'index'])->middleware('can:users.view')->name('users.index');
+        Route::get('users/create', [UserController::class, 'create'])->middleware('can:users.invite')->name('users.create');
+        Route::post('users/invitations', [UserController::class, 'invite'])->middleware([RequirePassword::class, 'can:users.invite'])->name('users.invite');
+        Route::post('users/invitations/{invitation}/resend', [UserController::class, 'resendInvitation'])->middleware([RequirePassword::class, 'can:users.invite'])->name('users.invitations.resend');
+        Route::delete('users/invitations/{invitation}', [UserController::class, 'revokeInvitation'])->middleware([RequirePassword::class, 'can:users.invite'])->name('users.invitations.revoke');
+        Route::patch('users/bulk/suspend', [UserController::class, 'bulkSuspend'])->middleware([RequirePassword::class, 'can:users.suspend'])->name('users.bulk.suspend');
+        Route::patch('users/bulk/reactivate', [UserController::class, 'bulkReactivate'])->middleware([RequirePassword::class, 'can:users.update'])->name('users.bulk.reactivate');
+        Route::patch('users/{user}/role', [UserController::class, 'assignRole'])->middleware([RequirePassword::class, 'can:roles.assign'])->name('users.role');
+        Route::patch('users/{user}/suspend', [UserController::class, 'suspend'])->middleware([RequirePassword::class, 'can:users.suspend'])->name('users.suspend');
+        Route::patch('users/{user}/reactivate', [UserController::class, 'reactivate'])->middleware([RequirePassword::class, 'can:users.update'])->name('users.reactivate');
+
+        Route::get('roles', [RoleController::class, 'index'])->middleware('can:roles.view')->name('roles.index');
+        Route::get('roles/create', [RoleController::class, 'create'])->middleware('can:roles.create')->name('roles.create');
+        Route::post('roles', [RoleController::class, 'store'])->middleware([RequirePassword::class, 'can:roles.create'])->name('roles.store');
+        Route::delete('roles/bulk', [RoleController::class, 'bulkDestroy'])->middleware([RequirePassword::class, 'can:roles.delete'])->name('roles.bulk.destroy');
+        Route::get('roles/{role}/edit', [RoleController::class, 'edit'])->middleware('can:roles.update')->name('roles.edit');
+        Route::patch('roles/{role}', [RoleController::class, 'update'])->middleware([RequirePassword::class, 'can:roles.update'])->name('roles.update');
+        Route::delete('roles/{role}', [RoleController::class, 'destroy'])->middleware([RequirePassword::class, 'can:roles.delete'])->name('roles.destroy');
+
+        Route::get('audit', [AuditController::class, 'index'])->middleware('can:audit.view')->name('audit.index');
+    });
 });
 
 require __DIR__.'/settings.php';

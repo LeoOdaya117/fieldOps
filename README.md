@@ -23,6 +23,7 @@ The project supports native Windows development with Laragon. Docker Compose is 
 - [Laragon / native Windows setup](docs/laragon.md) — recommended when developing locally on Windows
 - [Testing and quality checks](docs/testing.md)
 - [Architecture](docs/architecture.md)
+- [RBAC](docs/rbac.md) — invitation-only access, role templates, safeguards, and deployment bootstrap
 - [Design system](docs/design-system.md)
 - [AGENTS.md](AGENTS.md) — canonical engineering conventions
 
