@@ -1,9 +1,10 @@
-import type { FormHTMLAttributes, ReactNode } from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import type { FormEventHandler, FormHTMLAttributes, ReactNode } from 'react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 type FormProps = FormHTMLAttributes<HTMLFormElement> & {
+    onSuccess?: () => void;
     children?:
         | ReactNode
         | ((state: {
@@ -13,13 +14,25 @@ type FormProps = FormHTMLAttributes<HTMLFormElement> & {
 };
 
 vi.mock('@inertiajs/react', () => ({
-    Form: ({ children, ...props }: FormProps) => (
-        <form {...props}>
-            {typeof children === 'function'
-                ? children({ processing: false, errors: {} })
-                : children}
-        </form>
-    ),
+    Form: ({ children, onSuccess, onSubmit, ...props }: FormProps) => {
+        const handleSubmit: FormEventHandler<HTMLFormElement> = (event) => {
+            onSubmit?.(event);
+
+            if (!event.defaultPrevented) {
+                onSuccess?.();
+            }
+
+            event.preventDefault();
+        };
+
+        return (
+            <form {...props} onSubmit={handleSubmit}>
+                {typeof children === 'function'
+                    ? children({ processing: false, errors: {} })
+                    : children}
+            </form>
+        );
+    },
     Head: () => null,
     Link: ({
         href,
@@ -39,8 +52,13 @@ import AuditPage from '@/pages/access/audit';
 import RoleCreatePage from '@/pages/access/role-create';
 import RoleEditPage from '@/pages/access/role-edit';
 import RolesPage from '@/pages/access/roles';
+import RegistrationReviewPage from '@/pages/access/registration-review';
+import RegistrationsPage from '@/pages/access/registrations';
 import UserCreatePage from '@/pages/access/user-create';
+import UserEditPage from '@/pages/access/user-edit';
+import UserInvitePage from '@/pages/access/user-invite';
 import UsersPage from '@/pages/access/users';
+import RegisterPage from '@/pages/auth/register';
 
 afterEach(() => cleanup());
 
@@ -66,6 +84,12 @@ describe('access administration pages', () => {
         ).toEqual(['Dashboard', 'Roles', 'Edit role']);
         expect(
             UserCreatePage.layout.breadcrumbs.map((item) => item.title),
+        ).toEqual(['Dashboard', 'Users', 'Add user']);
+        expect(
+            UserEditPage.layout.breadcrumbs.map((item) => item.title),
+        ).toEqual(['Dashboard', 'Users', 'Edit user']);
+        expect(
+            UserInvitePage.layout.breadcrumbs.map((item) => item.title),
         ).toEqual(['Dashboard', 'Users', 'Invite user']);
     });
 
@@ -79,6 +103,9 @@ describe('access administration pages', () => {
                             id: 1,
                             name: 'Alex',
                             email: 'alex@example.com',
+                            position: null,
+                            department: null,
+                            avatar: null,
                             status: 'active',
                             role: {
                                 id: 1,
@@ -107,6 +134,17 @@ describe('access administration pages', () => {
                         expiresAt: '2030-01-01T00:00:00Z',
                     },
                 ]}
+                registrations={[
+                    {
+                        id: 3,
+                        name: 'Pending applicant',
+                        email: 'pending@example.com',
+                        status: 'pending',
+                        createdAt: '2030-01-01T00:00:00Z',
+                    },
+                ]}
+                canReviewRegistrations
+                activeUsersCount={1}
                 roles={[
                     {
                         id: 1,
@@ -125,18 +163,63 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('button', { name: /Search & filter/ }),
         ).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Add user' })).toHaveAttribute(
+            'href',
+            '/access/users/create',
+        );
         expect(
             screen.getByRole('link', { name: 'Invite user' }),
-        ).toHaveAttribute('href', '/access/users/create');
+        ).toHaveAttribute('href', '/access/users/invite');
+        expect(
+            screen.getByRole('status', {
+                name: '1 pending registrations',
+            }),
+        ).toHaveTextContent('1');
+        expect(
+            screen.getByRole('status', {
+                name: '1 pending invitations',
+            }),
+        ).toHaveTextContent('1');
+        expect(
+            screen.getByRole('status', { name: '1 active users' }),
+        ).toHaveTextContent('1');
+        expect(
+            screen.queryByText('pending@example.com'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('link', { name: 'Review all' }),
+        ).toHaveAttribute('href', '/access/users/registrations');
         expect(screen.getAllByRole('table')).toHaveLength(2);
         await user.click(screen.getByRole('checkbox', { name: 'Select Alex' }));
         expect(screen.getByText('1 selected')).toBeInTheDocument();
+        expect(
+            document.querySelector('[data-slot="bulk-actions-row"]'),
+        ).toBeInTheDocument();
         await user.click(
             screen.getByRole('button', { name: 'Clear selected rows' }),
         );
+        expect(screen.queryByText('1 selected')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('checkbox', { name: 'Select Alex' }));
+        await user.click(screen.getByRole('button', { name: 'Bulk actions' }));
+        await user.click(
+            screen.getByRole('menuitem', { name: 'Reactivate selected' }),
+        );
+        expect(screen.getByRole('dialog')).toHaveTextContent(
+            'Reactivate 1 selected user(s)?',
+        );
+        await user.click(screen.getByRole('button', { name: 'Cancel' }));
+        fireEvent.submit(
+            document.querySelector(
+                'form[action="/access/users/bulk/reactivate"]',
+            ) as HTMLFormElement,
+        );
+        expect(screen.queryByText('1 selected')).not.toBeInTheDocument();
         expect(
-            screen.getByRole('navigation', { name: 'Table pagination' }),
-        ).toBeInTheDocument();
+            screen.getByRole('checkbox', { name: 'Select Alex' }),
+        ).not.toBeChecked();
+        expect(
+            screen.getAllByRole('navigation', { name: 'Table pagination' }),
+        ).toHaveLength(2);
         expect(screen.getByText('new@example.com')).toBeInTheDocument();
         await user.click(
             screen.getByRole('button', { name: 'Actions for Alex' }),
@@ -147,6 +230,10 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('menuitem', { name: 'Suspend' }),
         ).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: 'Edit' })).toHaveAttribute(
+            'href',
+            '/access/users/1/edit',
+        );
     });
 
     it('renders a role catalog table with actions for custom roles', async () => {
@@ -323,9 +410,33 @@ describe('access administration pages', () => {
         ).not.toBeChecked();
     });
 
-    it('keeps user invitations on a dedicated page', () => {
+    it('keeps user creation and invitations on dedicated pages', () => {
         render(
             <UserCreatePage
+                roles={[
+                    {
+                        id: 1,
+                        name: 'technician',
+                        display_name: 'Technician',
+                        is_system: true,
+                    },
+                ]}
+            />,
+        );
+
+        expect(
+            screen.getByRole('heading', { name: 'Add a user' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Create user' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('link', { name: 'Back to users' }),
+        ).toHaveAttribute('href', '/access/users');
+
+        cleanup();
+        render(
+            <UserInvitePage
                 roles={[
                     {
                         id: 1,
@@ -343,9 +454,126 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('button', { name: 'Send invitation' }),
         ).toBeInTheDocument();
+    });
+
+    it('renders an editable user form with account controls', () => {
+        render(
+            <UserEditPage
+                roles={[
+                    {
+                        id: 1,
+                        name: 'technician',
+                        display_name: 'Technician',
+                        is_system: true,
+                    },
+                ]}
+                user={{
+                    id: 8,
+                    name: 'Alex',
+                    email: 'alex@example.com',
+                    position: 'Supervisor',
+                    department: 'Operations',
+                    avatar: null,
+                    blocked: false,
+                    roleId: 1,
+                }}
+            />,
+        );
+
         expect(
-            screen.getByRole('link', { name: 'Back to users' }),
-        ).toHaveAttribute('href', '/access/users');
+            screen.queryByRole('link', { name: 'Back to users' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: 'Edit Alex' }),
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText('Position')).toHaveValue('Supervisor');
+        expect(screen.getByLabelText('Department')).toHaveValue('Operations');
+        expect(screen.getByLabelText('Role')).toHaveValue('1');
+        expect(
+            screen.getByRole('heading', { name: 'Basic information' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: 'Access and role' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: 'Profile photo' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: 'Password reset' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByLabelText('Block sign-in access'),
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText('Password')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Save changes' }),
+        ).toBeInTheDocument();
+    });
+
+    it('renders registration submission and review states', async () => {
+        const user = userEvent.setup();
+        render(<RegisterPage passwordRules="Use a strong password." />);
+
+        expect(
+            screen.getByRole('button', { name: 'Submit registration' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Use a strong password.')).toBeInTheDocument();
+
+        cleanup();
+        render(
+            <RegistrationsPage
+                registrations={[
+                    {
+                        id: 4,
+                        name: 'Pending applicant',
+                        email: 'pending@example.com',
+                        status: 'pending',
+                        createdAt: '2030-01-01T00:00:00Z',
+                    },
+                ]}
+            />,
+        );
+
+        expect(
+            screen.getByRole('heading', { name: 'Pending registrations' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('pending@example.com')).toBeInTheDocument();
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Actions for Pending applicant',
+            }),
+        );
+        expect(
+            screen.getByRole('menuitem', { name: 'Review' }),
+        ).toHaveAttribute('href', '/access/users/registrations/4');
+
+        cleanup();
+        render(
+            <RegistrationReviewPage
+                registration={{
+                    id: 4,
+                    name: 'Pending applicant',
+                    email: 'pending@example.com',
+                    status: 'pending',
+                    createdAt: '2030-01-01T00:00:00Z',
+                }}
+                roles={[
+                    {
+                        id: 1,
+                        name: 'technician',
+                        display_name: 'Technician',
+                        is_system: true,
+                    },
+                ]}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: 'Approve registration' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Reject registration' }),
+        ).toBeInTheDocument();
     });
 
     it('shows system role actions to owner-level administrators', async () => {
@@ -367,6 +595,14 @@ describe('access administration pages', () => {
             />,
         );
 
+        expect(screen.queryByText('Role catalog')).not.toBeInTheDocument();
+        expect(screen.queryByText('1 visible')).not.toBeInTheDocument();
+        expect(
+            document.querySelector('[data-slot="index-page-toolbar"]'),
+        ).not.toBeInTheDocument();
+        expect(
+            document.querySelector('[data-slot="data-table-scroll-container"]'),
+        ).toHaveClass('px-4');
         expect(screen.getByText('System')).toBeInTheDocument();
         await user.click(
             screen.getByRole('button', { name: 'Actions for Super Admin' }),
@@ -425,8 +661,8 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
         expect(screen.getByRole('table')).toBeInTheDocument();
         expect(
-            screen.getByRole('navigation', { name: 'Table pagination' }),
-        ).toBeInTheDocument();
+            screen.getAllByRole('navigation', { name: 'Table pagination' }),
+        ).toHaveLength(2);
         expect(screen.getAllByText('user.role_changed').length).toBeGreaterThan(
             0,
         );

@@ -1,5 +1,7 @@
 import { Form } from '@inertiajs/react';
 import { ListChecks, X } from 'lucide-react';
+import { useRef, useState } from 'react';
+import type { FormComponentRef } from '@inertiajs/core';
 import type { ComponentProps, FormEventHandler, ReactNode } from 'react';
 import {
     DropdownMenu,
@@ -11,6 +13,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import type { ConfirmationOptions } from '@/components/ui/confirm-dialog';
 import { cn } from '@/lib/utils';
 
 type BulkActionsProps = ComponentProps<'div'> & {
@@ -24,6 +28,8 @@ type BulkActionFormProps = {
     ids: Array<number | string>;
     method?: 'post' | 'put' | 'patch' | 'delete';
     onSubmit?: FormEventHandler<HTMLFormElement>;
+    onSuccess?: () => void;
+    confirmation?: ConfirmationOptions;
     destructive?: boolean;
     children: ReactNode;
 };
@@ -83,26 +89,61 @@ function BulkActionForm({
     ids,
     method = 'post',
     onSubmit,
+    onSuccess,
+    confirmation,
     destructive = false,
     children,
 }: BulkActionFormProps) {
+    const formRef = useRef<FormComponentRef>(null);
+    const [confirmationOpen, setConfirmationOpen] = useState(false);
+
+    const handleSelect = (event: Event) => {
+        if (!confirmation) {
+            return;
+        }
+
+        event.preventDefault();
+        setConfirmationOpen(true);
+    };
+
     return (
-        <Form action={action} method={method} onSubmit={onSubmit}>
-            {ids.map((id) => (
-                <input key={id} type="hidden" name="ids[]" value={id} />
-            ))}
-            <DropdownMenuItem
-                asChild
-                className={cn(
-                    destructive &&
-                        'text-destructive focus:bg-destructive/10 focus:text-destructive',
-                )}
+        <>
+            <Form
+                ref={formRef}
+                action={action}
+                method={method}
+                onSubmit={onSubmit}
+                onSuccess={onSuccess}
             >
-                <button type="submit" className="w-full text-left">
-                    {children}
-                </button>
-            </DropdownMenuItem>
-        </Form>
+                {ids.map((id) => (
+                    <input key={id} type="hidden" name="ids[]" value={id} />
+                ))}
+                <DropdownMenuItem
+                    asChild
+                    onSelect={handleSelect}
+                    className={cn(
+                        destructive &&
+                            'text-destructive focus:bg-destructive/10 focus:text-destructive',
+                    )}
+                >
+                    <button
+                        type={confirmation ? 'button' : 'submit'}
+                        className="w-full text-left"
+                    >
+                        {children}
+                    </button>
+                </DropdownMenuItem>
+            </Form>
+            {confirmation && (
+                <ConfirmDialog
+                    open={confirmationOpen}
+                    onOpenChange={setConfirmationOpen}
+                    options={confirmation}
+                    destructive={destructive}
+                    onConfirm={() => formRef.current?.submit()}
+                />
+            )}
+        </>
     );
 }
 

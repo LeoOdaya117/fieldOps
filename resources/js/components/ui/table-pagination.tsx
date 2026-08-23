@@ -1,12 +1,21 @@
+import { router } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import type { ChangeEvent } from 'react';
 import { ActionLink } from '@/components/action-link';
+import {
+    DEFAULT_PAGE_SIZE,
+    PageSizeSelect,
+} from '@/components/ui/page-size-select';
+import { cn } from '@/lib/utils';
 
-type TablePaginationProps = {
+export type TablePaginationProps = {
     currentPage: number;
     lastPage: number;
     total: number;
     from: number | null;
     to: number | null;
+    pageSize?: number;
+    position?: 'top' | 'bottom';
     itemLabel?: string;
     previousUrl?: string | null;
     nextUrl?: string | null;
@@ -18,6 +27,8 @@ export function TablePagination({
     total,
     from,
     to,
+    pageSize = DEFAULT_PAGE_SIZE,
+    position = 'bottom',
     itemLabel = 'items',
     previousUrl,
     nextUrl,
@@ -26,18 +37,46 @@ export function TablePagination({
         return null;
     }
 
+    const pageSizeSelectId = `table-page-size-${position}`;
+
+    const handlePageSizeChange = (
+        event: ChangeEvent<HTMLSelectElement>,
+    ) => {
+        const url = new URL(window.location.href);
+
+        url.searchParams.set('per_page', event.target.value);
+        url.searchParams.delete('page');
+
+        router.get(`${url.pathname}${url.search}`, {}, { preserveScroll: true });
+    };
+
     return (
         <nav
             aria-label="Table pagination"
-            className="flex flex-col gap-3 border-t border-border bg-muted/10 px-6 py-4 text-sm sm:flex-row sm:items-center sm:justify-between"
+            className={cn(
+                'flex flex-col gap-3 bg-muted/10 px-4 py-4 text-sm lg:flex-row lg:items-center lg:justify-between',
+            )}
         >
-            <p className="text-muted-foreground">
-                <span className="font-medium text-foreground">
-                    Showing {from ?? 0}–{to ?? 0} of {total} {itemLabel}
-                </span>{' '}
-                <span aria-hidden="true">·</span>{' '}
-                Page {currentPage} of {lastPage}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-2 text-muted-foreground">
+                <p>
+                    <span className="font-medium text-foreground">
+                        Showing {from ?? 0}–{to ?? 0} of {total} {itemLabel}
+                    </span>
+                </p>
+                <label htmlFor={pageSizeSelectId} className="sr-only">
+                    Rows per page
+                </label>
+                <PageSizeSelect
+                    id={pageSizeSelectId}
+                    aria-label="Rows per page"
+                    pageSize={pageSize}
+                    onChange={handlePageSizeChange}
+                />
+                <span aria-hidden="true">·</span>
+                <span>
+                    Page {currentPage} of {lastPage}
+                </span>
+            </div>
             <div className="flex items-center gap-2">
                 {previousUrl ? (
                     <ActionLink

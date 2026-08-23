@@ -2,20 +2,30 @@
 
 namespace App\Http\Controllers\Access;
 
+use App\Actions\Rbac\ApproveRegistration;
 use App\Actions\Rbac\AssignRoleToUser;
 use App\Actions\Rbac\BulkChangeUserStatus;
 use App\Actions\Rbac\ChangeUserStatus;
+use App\Actions\Rbac\CreateUser;
 use App\Actions\Rbac\InviteUser;
 use App\Actions\Rbac\RecordAccessAudit;
+use App\Actions\Rbac\RejectRegistration;
 use App\Actions\Rbac\ResendInvitation;
+use App\Actions\Rbac\UpdateUser;
 use App\Enums\RoleName;
+use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Access\AssignRoleRequest;
 use App\Http\Requests\Access\BulkUserStatusRequest;
 use App\Http\Requests\Access\InviteUserRequest;
+use App\Http\Requests\Access\ReviewRegistrationRequest;
+use App\Http\Requests\Access\StoreUserRequest;
+use App\Http\Requests\Access\UpdateUserRequest;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\UserInvitation;
+use App\Models\UserRegistration;
+use App\Support\Pagination\PageSize;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,11 +36,55 @@ class UserController extends Controller
 {
     public function create(): Response
     {
-        $this->authorize('invite', User::class);
+        $this->authorize('create', User::class);
 
         return Inertia::render('access/user-create', [
             'roles' => $this->assignableRoles(),
         ]);
+    }
+
+    public function inviteCreate(): Response
+    {
+        $this->authorize('invite', User::class);
+
+        return Inertia::render('access/user-invite', [
+            'roles' => $this->assignableRoles(),
+        ]);
+    }
+
+    public function store(StoreUserRequest $request, CreateUser $create): RedirectResponse
+    {
+        $create->execute($request->validated(), $request->user());
+
+        return to_route('access.users.index')->with('success', 'User created.');
+    }
+
+    public function edit(User $user): Response
+    {
+        $this->authorize('update', $user);
+
+        $user->load('roles:id,name,display_name,is_system');
+
+        return Inertia::render('access/user-edit', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'position' => $user->position,
+                'department' => $user->department,
+                'avatar' => $user->avatar,
+                'blocked' => $user->status->value === 'suspended',
+                'roleId' => $user->roles->first()?->id,
+            ],
+            'roles' => $this->assignableRoles(),
+        ]);
+    }
+
+    public function update(UpdateUserRequest $request, User $user, UpdateUser $update): RedirectResponse
+    {
+        $update->execute($user, $request->user(), $request->validated());
+
+        return to_route('access.users.index')->with('success', 'User updated.');
     }
 
     public function index(Request $request): Response
@@ -41,6 +95,7 @@ class UserController extends Controller
         $status = (string) $request->input('status', '');
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
+        $pageSize = PageSize::resolve($request);
         $sortColumns = [
             'name' => 'name',
             'status' => 'status',
@@ -60,12 +115,15 @@ class UserController extends Controller
                     static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
                     static fn ($query) => $query->orderBy('name'),
                 )
-                ->paginate(25)
-                ->withQueryString()
+                ->paginate($pageSize)
+                ->appends(PageSize::query($request, $pageSize))
                 ->through(static fn (User $user): array => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'position' => $user->position,
+                    'department' => $user->department,
+                    'avatar' => $user->avatar,
                     'status' => $user->status->value,
                     'role' => $user->roles->first() === null ? null : [
                         'id' => $user->roles->first()->id,
@@ -75,6 +133,9 @@ class UserController extends Controller
                     ],
                     'createdAt' => $user->created_at?->toIso8601String(),
                 ]),
+            'activeUsersCount' => User::query()
+                ->where('status', UserStatus::Active->value)
+                ->count(),
             'invitations' => UserInvitation::query()
                 ->with('role:id,name,display_name')
                 ->whereNull('accepted_at')
@@ -91,8 +152,24 @@ class UserController extends Controller
                     ],
                     'expiresAt' => $invitation->expires_at->toIso8601String(),
                 ])->values(),
+            'registrations' => $request->user()->can('users.review_registrations')
+                ? UserRegistration::query()
+                    ->where('status', 'pending')
+                    ->latest()
+                    ->get(['id', 'name', 'email', 'status', 'created_at'])
+                    ->map(static fn (UserRegistration $registration): array => [
+                        'id' => $registration->id,
+                        'name' => $registration->name,
+                        'email' => $registration->email,
+                        'status' => $registration->status->value,
+                        'createdAt' => $registration->created_at?->toIso8601String(),
+                    ])->values()
+                : collect(),
             'roles' => $this->assignableRoles(),
+            'canCreate' => $request->user()->can('users.create'),
             'canInvite' => $request->user()->can('users.invite'),
+            'canReviewRegistrations' => $request->user()->can('users.review_registrations'),
+            'canEdit' => $request->user()->can('users.update'),
             'canSuspend' => $request->user()->can('users.suspend'),
             'canReactivate' => $request->user()->can('users.update'),
             'filters' => [
@@ -100,6 +177,7 @@ class UserController extends Controller
                 'status' => $status,
                 'sort' => $sort,
                 'direction' => $direction,
+                'perPage' => $pageSize,
             ],
         ]);
     }
@@ -124,6 +202,62 @@ class UserController extends Controller
         $invite->execute($request->string('email')->toString(), $role, $request->user());
 
         return back()->with('success', 'Invitation sent.');
+    }
+
+    public function registrations(): Response
+    {
+        $this->authorize('reviewRegistrations', User::class);
+
+        return Inertia::render('access/registrations', [
+            'registrations' => UserRegistration::query()
+                ->where('status', 'pending')
+                ->latest()
+                ->get(['id', 'name', 'email', 'status', 'created_at'])
+                ->map(static fn (UserRegistration $registration): array => [
+                    'id' => $registration->id,
+                    'name' => $registration->name,
+                    'email' => $registration->email,
+                    'status' => $registration->status->value,
+                    'createdAt' => $registration->created_at?->toIso8601String(),
+                ])->values(),
+        ]);
+    }
+
+    public function reviewRegistration(UserRegistration $registration): Response
+    {
+        $this->authorize('reviewRegistrations', User::class);
+
+        return Inertia::render('access/registration-review', [
+            'registration' => [
+                'id' => $registration->id,
+                'name' => $registration->name,
+                'email' => $registration->email,
+                'status' => $registration->status->value,
+                'createdAt' => $registration->created_at?->toIso8601String(),
+            ],
+            'roles' => $this->assignableRoles(),
+        ]);
+    }
+
+    public function approveRegistration(
+        ReviewRegistrationRequest $request,
+        UserRegistration $registration,
+        ApproveRegistration $approve,
+    ): RedirectResponse {
+        $role = Role::query()->findOrFail($request->integer('role_id'));
+        $approve->execute($registration, $role, $request->user());
+
+        return to_route('access.users.index')->with('success', 'Registration approved and user created.');
+    }
+
+    public function rejectRegistration(
+        UserRegistration $registration,
+        RejectRegistration $reject,
+    ): RedirectResponse {
+        abort_unless(request()->user()->can('users.review_registrations'), 403);
+        $reject->execute($registration, request()->user());
+
+        return to_route('access.users.index')->with('success', 'Registration rejected.');
     }
 
     public function assignRole(AssignRoleRequest $request, User $user, AssignRoleToUser $assign): RedirectResponse

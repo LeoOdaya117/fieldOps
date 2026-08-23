@@ -21,6 +21,7 @@ export type AuditTableFilters = {
     subject: string;
     from: string;
     to: string;
+    perPage?: number;
     sort?: string;
     direction?: 'asc' | 'desc';
 };

@@ -4,6 +4,10 @@ import { ActionLink } from '@/components/action-link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+    DEFAULT_PAGE_SIZE,
+    PageSizeSelect,
+} from '@/components/ui/page-size-select';
+import {
     Sheet,
     SheetClose,
     SheetContent,
@@ -20,6 +24,7 @@ type SearchFilterSheetProps = {
     description?: string;
     resetHref: string;
     activeFilterCount?: number;
+    pageSize?: number;
     children: ReactNode;
 };
 
@@ -29,6 +34,7 @@ export default function SearchFilterSheet({
     description,
     resetHref,
     activeFilterCount = 0,
+    pageSize = DEFAULT_PAGE_SIZE,
     children,
 }: SearchFilterSheetProps) {
     return (
@@ -61,6 +67,25 @@ export default function SearchFilterSheet({
                 >
                     <div className="flex-1 space-y-5 overflow-y-auto p-4">
                         {children}
+                        <div className="grid gap-2 border-t border-border pt-5">
+                            <label
+                                htmlFor="filter-page-size"
+                                className="text-sm font-medium"
+                            >
+                                Rows per page
+                            </label>
+                            <PageSizeSelect
+                                key={pageSize}
+                                id="filter-page-size"
+                                name="per_page"
+                                pageSize={pageSize}
+                                className="w-full"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Choose how many records appear in each table
+                                page.
+                            </p>
+                        </div>
                     </div>
                     <SheetFooter className="flex-row justify-end border-t border-border">
                         <SheetClose asChild>

@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Access\BulkRoleDeleteRequest;
 use App\Http\Requests\Access\SaveRoleRequest;
 use App\Models\Role;
+use App\Support\Pagination\PageSize;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,7 @@ class RoleController extends Controller
         $permissionsMin = trim((string) $request->input('permissions_min', ''));
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
+        $pageSize = PageSize::resolve($request);
         $sortColumns = [
             'display_name' => 'display_name',
             'is_system' => 'is_system',
@@ -53,8 +55,8 @@ class RoleController extends Controller
                 static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
                 static fn ($query) => $query->orderBy('is_system', 'desc')->orderBy('display_name'),
             )
-            ->paginate(10)
-            ->withQueryString();
+            ->paginate($pageSize)
+            ->appends(PageSize::query($request, $pageSize));
 
         return Inertia::render('access/roles', [
             'roles' => $roles->through(static fn (Role $role): array => [
@@ -75,6 +77,7 @@ class RoleController extends Controller
                 'permissionsMin' => $permissionsMin,
                 'sort' => $sort,
                 'direction' => $direction,
+                'perPage' => $pageSize,
             ],
         ]);
     }

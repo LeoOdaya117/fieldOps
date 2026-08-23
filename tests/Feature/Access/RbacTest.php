@@ -127,7 +127,7 @@ class RbacTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_admin_can_open_dedicated_user_invitation_page(): void
+    public function test_admin_can_open_direct_user_creation_page_and_optional_invitation_page(): void
     {
         $admin = User::factory()->create();
         $admin->syncRoles(RoleName::Administrator->value);
@@ -138,15 +138,26 @@ class RbacTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('access/user-create')
                 ->has('roles'));
+
+        $this->actingAs($admin)
+            ->get(route('access.users.invite.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('access/user-invite')
+                ->has('roles'));
     }
 
-    public function test_basic_user_cannot_open_user_invitation_page(): void
+    public function test_basic_user_cannot_open_direct_creation_or_invitation_pages(): void
     {
         $user = User::factory()->create();
         $user->syncRoles(RoleName::User->value);
 
         $this->actingAs($user)
             ->get(route('access.users.create'))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->get(route('access.users.invite.create'))
             ->assertForbidden();
     }
 
@@ -297,6 +308,42 @@ class RbacTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('filters.sort', 'permissions_count')
                 ->where('filters.direction', 'desc'));
+    }
+
+    public function test_access_tables_default_to_fifty_rows_and_accept_one_hundred(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::Owner->value);
+
+        $this->actingAs($owner)
+            ->get(route('access.roles.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.perPage', 50)
+                ->where('roles.per_page', 50));
+
+        $this->actingAs($owner)
+            ->get(route('access.users.index', ['per_page' => 100]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.perPage', 100)
+                ->where('users.per_page', 100));
+
+        $this->actingAs($owner)
+            ->get(route('access.audit.index', ['per_page' => 100]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.perPage', 100)
+                ->where('events.per_page', 100));
+    }
+
+    public function test_access_table_page_size_falls_back_for_unrecognized_values(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::Owner->value);
+
+        $this->actingAs($owner)
+            ->get(route('access.roles.index', ['per_page' => 101]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.perPage', 50)
+                ->where('roles.per_page', 50));
     }
 
     public function test_last_active_owner_cannot_be_suspended_or_reassigned(): void

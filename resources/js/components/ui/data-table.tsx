@@ -1,5 +1,7 @@
 import type { ComponentProps, Key, ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { TablePagination } from '@/components/ui/table-pagination';
+import type { TablePaginationProps } from '@/components/ui/table-pagination';
 import { cn } from '@/lib/utils';
 
 type DataTableColumn<T> = {
@@ -16,9 +18,11 @@ type DataTableProps<T = unknown> = ComponentProps<'table'> & {
     data?: readonly T[];
     addDefaultColumns?: boolean;
     containerClassName?: string;
+    scrollContainerClassName?: string;
     tableColumns?:
         | readonly DataTableColumn<T>[]
         | (() => readonly DataTableColumn<T>[]);
+    pagination?: TablePaginationProps | null;
     getRowKey?: (row: T, index: number) => Key;
     getRowProps?: (
         row: T,
@@ -33,7 +37,9 @@ function DataTable<T>({
     data,
     addDefaultColumns = false,
     containerClassName,
+    scrollContainerClassName,
     tableColumns,
+    pagination,
     getRowKey,
     getRowProps,
     ...props
@@ -52,77 +58,91 @@ function DataTable<T>({
         <div
             data-slot="data-table-container"
             className={cn(
-                'relative w-full overscroll-x-contain overflow-x-auto rounded-xl border border-border/80 bg-card shadow-sm ring-1 ring-border/20',
+                'relative w-full rounded-xl border border-border/80 bg-card shadow-sm ring-1 ring-border/20',
                 containerClassName,
             )}
         >
-            <table
-                data-slot="data-table"
-                className={cn('w-full caption-bottom text-left text-sm', className)}
-                {...props}
-            >
-                {caption ? <caption className="sr-only">{caption}</caption> : null}
-                {isDeclarative ? (
-                    <>
-                        <DataTableHeader>
-                            <DataTableRow className="hover:bg-transparent">
-                                {columns.map((column) => (
-                                    <DataTableHead
-                                        key={column.key}
-                                        scope="col"
-                                        className={column.headerClassName}
-                                    >
-                                        {column.header}
-                                    </DataTableHead>
-                                ))}
-                            </DataTableRow>
-                        </DataTableHeader>
-                        <DataTableBody>
-                            {(data ?? []).map((row, index) => {
-                                const rowProps = getRowProps?.(row, index);
-
-                                return (
-                                    <DataTableRow
-                                        key={getRowKey?.(row, index) ?? index}
-                                        {...rowProps}
-                                    >
-                                        {columns.map((column) => (
-                                            <DataTableCell
-                                                key={column.key}
-                                                className={column.cellClassName}
-                                            >
-                                                {column.cell
-                                                    ? column.cell(row, index)
-                                                    : typeof column.accessor ===
-                                                        'function'
-                                                      ? column.accessor(
-                                                            row,
-                                                            index,
-                                                        )
-                                                    : column.accessor
-                                                      ? (() => {
-                                                            const value =
-                                                                row[
-                                                                    column
-                                                                        .accessor
-                                                                ];
-
-                                                            return value == null
-                                                                ? null
-                                                                : String(value);
-                                                        })()
-                                                      : null}
-                                            </DataTableCell>
-                                        ))}
-                                    </DataTableRow>
-                                );
-                            })}
-                        </DataTableBody>
-                    </>
-                ) : (
-                    children
+            {pagination ? (
+                <TablePagination {...pagination} position="top" />
+            ) : null}
+            <div
+                data-slot="data-table-scroll-container"
+                className={cn(
+                    'w-full overflow-x-auto overscroll-x-contain',
+                    scrollContainerClassName,
                 )}
-            </table>
+            >
+                <table
+                    data-slot="data-table"
+                    className={cn('w-full caption-bottom text-left text-sm', className)}
+                    {...props}
+                >
+                    {caption ? <caption className="sr-only">{caption}</caption> : null}
+                    {isDeclarative ? (
+                        <>
+                            <DataTableHeader>
+                                <DataTableRow className="hover:bg-transparent">
+                                    {columns.map((column) => (
+                                        <DataTableHead
+                                            key={column.key}
+                                            scope="col"
+                                            className={column.headerClassName}
+                                        >
+                                            {column.header}
+                                        </DataTableHead>
+                                    ))}
+                                </DataTableRow>
+                            </DataTableHeader>
+                            <DataTableBody>
+                                {(data ?? []).map((row, index) => {
+                                    const rowProps = getRowProps?.(row, index);
+
+                                    return (
+                                        <DataTableRow
+                                            key={getRowKey?.(row, index) ?? index}
+                                            {...rowProps}
+                                        >
+                                            {columns.map((column) => (
+                                                <DataTableCell
+                                                    key={column.key}
+                                                    className={column.cellClassName}
+                                                >
+                                                    {column.cell
+                                                        ? column.cell(row, index)
+                                                        : typeof column.accessor ===
+                                                            'function'
+                                                          ? column.accessor(
+                                                                row,
+                                                                index,
+                                                            )
+                                                        : column.accessor
+                                                          ? (() => {
+                                                                const value =
+                                                                    row[
+                                                                        column
+                                                                            .accessor
+                                                                    ];
+
+                                                                return value == null
+                                                                    ? null
+                                                                    : String(value);
+                                                            })()
+                                                          : null}
+                                                </DataTableCell>
+                                            ))}
+                                        </DataTableRow>
+                                    );
+                                })}
+                            </DataTableBody>
+                        </>
+                    ) : (
+                        children
+                    )}
+                </table>
+            </div>
+            {pagination ? (
+                <TablePagination {...pagination} position="bottom" />
+            ) : null}
         </div>
     );
 }

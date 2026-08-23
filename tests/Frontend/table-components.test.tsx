@@ -1,15 +1,30 @@
 import { forwardRef } from 'react';
 import type { FormHTMLAttributes, ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+const inertiaRouter = vi.hoisted(() => ({ get: vi.fn() }));
+
 vi.mock('@inertiajs/react', () => ({
+    router: inertiaRouter,
     Form: forwardRef<
         HTMLFormElement,
-        FormHTMLAttributes<HTMLFormElement>
-    >(({ children, ...props }, ref) => (
-        <form ref={ref} {...props}>
+        FormHTMLAttributes<HTMLFormElement> & { onSuccess?: () => void }
+    >(({ children, onSuccess, onSubmit, ...props }, ref) => (
+        <form
+            ref={ref}
+            {...props}
+            onSubmit={(event) => {
+                onSubmit?.(event);
+
+                if (!event.defaultPrevented) {
+                    onSuccess?.();
+                }
+
+                event.preventDefault();
+            }}
+        >
             {children}
         </form>
     )),
@@ -76,6 +91,73 @@ describe('reusable data table components', () => {
             screen.getByRole('button', { name: 'Clear selected rows' }),
         );
         expect(onClear).toHaveBeenCalledOnce();
+    });
+
+    it('forwards successful bulk submissions to the caller', async () => {
+        const user = userEvent.setup();
+        const onSuccess = vi.fn();
+
+        render(
+            <BulkActions selectedIds={[4]} onClear={vi.fn()}>
+                <BulkActionForm
+                    action="/access/users/bulk/reactivate"
+                    method="patch"
+                    ids={[4]}
+                    onSuccess={onSuccess}
+                >
+                    Reactivate selected
+                </BulkActionForm>
+            </BulkActions>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Bulk actions' }));
+        fireEvent.submit(
+            document.querySelector(
+                'form[action="/access/users/bulk/reactivate"]',
+            ) as HTMLFormElement,
+        );
+        expect(onSuccess).toHaveBeenCalledOnce();
+    });
+
+    it('requires confirmation before submitting a bulk action', async () => {
+        const user = userEvent.setup();
+        const submitSpy = vi
+            .spyOn(HTMLFormElement.prototype, 'submit')
+            .mockImplementation(() => undefined);
+
+        render(
+            <BulkActions selectedIds={[4, 9]} onClear={vi.fn()}>
+                <BulkActionForm
+                    action="/access/users/bulk/reactivate"
+                    method="patch"
+                    ids={[4, 9]}
+                    confirmation={{
+                        title: 'Reactivate 2 selected user(s)?',
+                        description: 'These accounts will regain access.',
+                        confirmLabel: 'Reactivate users',
+                    }}
+                >
+                    Reactivate selected
+                </BulkActionForm>
+            </BulkActions>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Bulk actions' }));
+        await user.click(
+            screen.getByRole('menuitem', { name: 'Reactivate selected' }),
+        );
+
+        expect(screen.getByRole('dialog')).toHaveTextContent(
+            'Reactivate 2 selected user(s)?',
+        );
+        expect(submitSpy).not.toHaveBeenCalled();
+
+        await user.click(
+            screen.getByRole('button', { name: 'Reactivate users' }),
+        );
+
+        expect(submitSpy).toHaveBeenCalledOnce();
+        submitSpy.mockRestore();
     });
 
     it('renders a shared toolbar for table context and metadata', () => {
@@ -204,6 +286,7 @@ describe('reusable data table components', () => {
                 ]}
                 getRowKey={(row) => row.id}
                 containerClassName="rounded-none border-0"
+                scrollContainerClassName="px-4"
             />,
         );
 
@@ -219,6 +302,46 @@ describe('reusable data table components', () => {
         expect(
             document.querySelector('[data-slot="data-table-container"]'),
         ).toHaveClass('rounded-none', 'border-0');
+        expect(
+            document.querySelector('[data-slot="data-table-scroll-container"]'),
+        ).toHaveClass('px-4');
+    });
+
+    it('renders pagination inside the data table container when configured', () => {
+        render(
+            <DataTable
+                caption="Paginated records"
+                data={[{ id: 1, name: 'Example' }]}
+                tableColumns={[
+                    { key: 'name', header: 'Name', accessor: 'name' },
+                ]}
+                pagination={{
+                    currentPage: 2,
+                    lastPage: 3,
+                    total: 25,
+                    from: 11,
+                    to: 20,
+                    itemLabel: 'records',
+                    previousUrl: '/records?page=1',
+                    nextUrl: '/records?page=3',
+                }}
+            />,
+        );
+
+        const container = document.querySelector(
+            '[data-slot="data-table-container"]',
+        );
+
+        expect(container).toContainElement(screen.getByRole('table'));
+        const navigations = screen.getAllByRole('navigation');
+
+        expect(container).toContainElement(navigations[0]);
+        expect(navigations).toHaveLength(2);
+        expect(navigations[0]).toHaveAccessibleName('Table pagination');
+        expect(navigations[0]).toHaveClass('px-4');
+        expect(navigations[0]).toHaveClass('lg:flex-row');
+        expect(navigations[0]).not.toHaveClass('border-b');
+        expect(navigations[1]).not.toHaveClass('border-t');
     });
 
     it('adds optional default audit columns to declarative tables', () => {
@@ -256,6 +379,8 @@ describe('reusable data table components', () => {
     });
 
     it('renders reusable pagination controls with disabled edge states', () => {
+        inertiaRouter.get.mockClear();
+
         render(
             <TablePagination
                 currentPage={2}
@@ -263,6 +388,7 @@ describe('reusable data table components', () => {
                 total={25}
                 from={11}
                 to={20}
+                pageSize={50}
                 itemLabel="roles"
                 previousUrl="/access/roles?page=1"
                 nextUrl="/access/roles?page=3"
@@ -282,6 +408,21 @@ describe('reusable data table components', () => {
         expect(screen.getByRole('link', { name: 'Next' })).toHaveAttribute(
             'href',
             '/access/roles?page=3',
+        );
+        expect(
+            screen.getByRole('combobox', { name: 'Rows per page' }),
+        ).toHaveValue('50');
+        expect(screen.getByRole('option', { name: '100' })).toBeInTheDocument();
+
+        fireEvent.change(
+            screen.getByRole('combobox', { name: 'Rows per page' }),
+            { target: { value: '100' } },
+        );
+
+        expect(inertiaRouter.get).toHaveBeenCalledWith(
+            expect.stringContaining('per_page=100'),
+            {},
+            { preserveScroll: true },
         );
     });
 
@@ -319,9 +460,6 @@ describe('reusable data table components', () => {
 
         expect(
             screen.getByRole('link', { name: 'Sort User descending' }),
-        ).toHaveAttribute(
-            'href',
-            '/access/users?sort=name&direction=desc',
-        );
+        ).toHaveAttribute('href', '/access/users?sort=name&direction=desc');
     });
 });

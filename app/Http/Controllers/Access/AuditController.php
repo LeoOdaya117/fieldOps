@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Access;
 
 use App\Http\Controllers\Controller;
 use App\Models\AccessAuditEvent;
+use App\Support\Pagination\PageSize;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -21,6 +22,7 @@ class AuditController extends Controller
         $toValue = trim((string) $request->input('to', ''));
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
+        $pageSize = PageSize::resolve($request);
         $sortColumns = [
             'event' => 'event',
             'subject_type' => 'subject_type',
@@ -57,8 +59,8 @@ class AuditController extends Controller
                     static fn ($query) => $query->latest('occurred_at'),
                 ),
             )
-            ->paginate(50)
-            ->withQueryString()
+            ->paginate($pageSize)
+            ->appends(PageSize::query($request, $pageSize))
             ->through(static fn (AccessAuditEvent $event): array => [
                 'id' => $event->id,
                 'event' => $event->event,
@@ -81,6 +83,7 @@ class AuditController extends Controller
                 'to' => $to?->format('Y-m-d') ?? '',
                 'sort' => $sort,
                 'direction' => $direction,
+                'perPage' => $pageSize,
             ],
         ]);
     }

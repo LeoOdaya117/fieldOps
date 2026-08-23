@@ -1,12 +1,14 @@
-import { Form } from '@inertiajs/react';
-import { CalendarDays, Clock3, Mail, ShieldCheck } from 'lucide-react';
+import { CalendarDays, Clock3, Mail, Pencil, ShieldCheck } from 'lucide-react';
 import { SortableColumn } from '@/components/sortable-column';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { DataTableColumn } from '@/components/ui/data-table';
-import { Button } from '@/components/ui/button';
-import { TableActionForm, TableActions } from '@/components/ui/table-actions';
+import {
+    TableActionForm,
+    TableActionLink,
+    TableActions,
+} from '@/components/ui/table-actions';
 
 export type RoleOption = {
     id: number;
@@ -19,6 +21,9 @@ export type UserRow = {
     id: number;
     name: string;
     email: string;
+    position: string | null;
+    department: string | null;
+    avatar: string | null;
     status: 'active' | 'suspended';
     role: {
         id: number;
@@ -36,9 +41,18 @@ export type Invitation = {
     expiresAt: string;
 };
 
+export type Registration = {
+    id: number;
+    name: string;
+    email: string;
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: string | null;
+};
+
 export type UserTableFilters = {
     search: string;
     status: string;
+    perPage?: number;
     sort?: string;
     direction?: 'asc' | 'desc';
 };
@@ -149,9 +163,72 @@ export function invitationTableColumns(): DataTableColumn<Invitation>[] {
     ];
 }
 
+export function registrationTableColumns(): DataTableColumn<Registration>[] {
+    return [
+        {
+            key: 'applicant',
+            header: 'Applicant',
+            headerClassName: 'px-6',
+            cellClassName: 'px-6',
+            cell: (registration) => (
+                <div className="min-w-0">
+                    <div className="truncate font-semibold">
+                        {registration.name}
+                    </div>
+                    <div className="mt-1 flex items-center gap-1.5 truncate text-sm text-muted-foreground">
+                        <Mail className="size-3.5 shrink-0" />
+                        {registration.email}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            key: 'status',
+            header: 'Status',
+            cell: (registration) => (
+                <Badge
+                    className="border-warning/30 bg-warning/10 text-warning"
+                    variant="outline"
+                >
+                    <span className="size-1.5 rounded-full bg-current" />
+                    {registration.status}
+                </Badge>
+            ),
+        },
+        {
+            key: 'submitted',
+            header: 'Submitted',
+            cell: (registration) => (
+                <div className="flex items-center gap-2 text-sm whitespace-nowrap text-muted-foreground">
+                    <Clock3 className="size-3.5" />
+                    {registration.createdAt
+                        ? new Date(registration.createdAt).toLocaleDateString()
+                        : '—'}
+                </div>
+            ),
+        },
+        {
+            key: 'actions',
+            header: 'Actions',
+            headerClassName: 'px-6 text-right',
+            cellClassName: 'px-6',
+            cell: (registration) => (
+                <TableActions label={`Actions for ${registration.name}`}>
+                    <TableActionLink
+                        href={`/access/users/registrations/${registration.id}`}
+                    >
+                        <Pencil />
+                        Review
+                    </TableActionLink>
+                </TableActions>
+            ),
+        },
+    ];
+}
+
 type UserTableOptions = {
-    roles: RoleOption[];
     filters: UserTableFilters;
+    canEdit: boolean;
     canSuspend: boolean;
     canReactivate: boolean;
     selectedUserIds: number[];
@@ -163,8 +240,8 @@ type UserTableOptions = {
 };
 
 export function userTableColumns({
-    roles,
     filters,
+    canEdit,
     canSuspend,
     canReactivate,
     selectedUserIds,
@@ -231,6 +308,7 @@ export function userTableColumns({
             cell: (user) => (
                 <div className="flex items-center gap-3">
                     <Avatar className="size-9 rounded-lg">
+                        <AvatarImage src={user.avatar ?? undefined} alt="" />
                         <AvatarFallback className="rounded-lg bg-primary/10 text-xs font-semibold text-primary">
                             {initials(user.name)}
                         </AvatarFallback>
@@ -268,28 +346,9 @@ export function userTableColumns({
             key: 'role',
             header: 'Role',
             cell: (user) => (
-                <Form
-                    action={`/access/users/${user.id}/role`}
-                    method="patch"
-                    className="flex min-w-[220px] gap-2"
-                >
-                    <span className="sr-only">Assign role</span>
-                    <select
-                        name="role_id"
-                        defaultValue={user.role?.id ?? ''}
-                        className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm"
-                        aria-label={`Role for ${user.name}`}
-                    >
-                        {roles.map((role) => (
-                            <option key={role.id} value={role.id}>
-                                {role.display_name}
-                            </option>
-                        ))}
-                    </select>
-                    <Button variant="outline" size="sm">
-                        Save
-                    </Button>
-                </Form>
+                <Badge variant="secondary">
+                    {user.role?.displayName ?? 'No role assigned'}
+                </Badge>
             ),
         },
         {
@@ -322,31 +381,42 @@ export function userTableColumns({
             headerClassName: 'px-6 text-right',
             cellClassName: 'px-6',
             cell: (user) =>
+                canEdit ||
                 (user.status === 'active' ? canSuspend : canReactivate) ? (
                     <TableActions label={`Actions for ${user.name}`}>
-                        {user.status === 'active' ? (
-                            <TableActionForm
-                                action={`/access/users/${user.id}/suspend`}
-                                method="patch"
-                                destructive
-                                confirmation={{
-                                    title: `Suspend ${user.name}?`,
-                                    description:
-                                        'This account will lose access immediately. You can reactivate it later from the user table.',
-                                    confirmLabel: 'Suspend user',
-                                }}
+                        {canEdit && (
+                            <TableActionLink
+                                href={`/access/users/${user.id}/edit`}
                             >
-                                Suspend
-                            </TableActionForm>
-                        ) : (
-                            <TableActionForm
-                                action={`/access/users/${user.id}/reactivate`}
-                                method="patch"
-                            >
-                                <ShieldCheck />
-                                Reactivate
-                            </TableActionForm>
+                                <Pencil />
+                                Edit
+                            </TableActionLink>
                         )}
+                        {user.status === 'active'
+                            ? canSuspend && (
+                                  <TableActionForm
+                                      action={`/access/users/${user.id}/suspend`}
+                                      method="patch"
+                                      destructive
+                                      confirmation={{
+                                          title: `Suspend ${user.name}?`,
+                                          description:
+                                              'This account will lose access immediately. You can reactivate it later from the user table.',
+                                          confirmLabel: 'Suspend user',
+                                      }}
+                                  >
+                                      Suspend
+                                  </TableActionForm>
+                              )
+                            : canReactivate && (
+                                  <TableActionForm
+                                      action={`/access/users/${user.id}/reactivate`}
+                                      method="patch"
+                                  >
+                                      <ShieldCheck />
+                                      Reactivate
+                                  </TableActionForm>
+                              )}
                     </TableActions>
                 ) : null,
         },

@@ -54,5 +54,7 @@ describe('SearchFilterSheet', () => {
             'href',
             '/access/roles',
         );
+        expect(screen.getByLabelText('Rows per page')).toHaveValue('50');
+        expect(screen.getByRole('option', { name: '100' })).toBeInTheDocument();
     });
 });

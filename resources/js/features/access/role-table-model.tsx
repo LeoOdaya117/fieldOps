@@ -24,6 +24,7 @@ export type RoleTableFilters = {
     type: string;
     assigned: string;
     permissionsMin: string;
+    perPage?: number;
     sort?: string;
     direction?: 'asc' | 'desc';
 };
