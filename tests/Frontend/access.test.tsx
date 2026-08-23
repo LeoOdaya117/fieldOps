@@ -199,7 +199,8 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
     });
 
-    it('keeps role creation and editing on dedicated pages', () => {
+    it('keeps role creation and editing on dedicated pages', async () => {
+        const user = userEvent.setup();
         const permissions = [
             { id: 1, name: 'audit.view' },
             { id: 2, name: 'dashboard.view' },
@@ -250,6 +251,76 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('button', { name: 'Save changes' }),
         ).toBeInTheDocument();
+        expect(
+            screen.getByText('Role details').closest('[data-slot="card"]'),
+        ).toHaveClass('w-full');
+        expect(
+            document.querySelector('[data-slot="role-details-fields"]'),
+        ).toHaveClass('items-start');
+        expect(
+            document.querySelector('[data-slot="permission-groups"]'),
+        ).not.toHaveClass('lg:grid-cols-2');
+        expect(
+            screen.getByRole('checkbox', { name: 'Select all permissions' }),
+        ).toHaveAttribute('data-state', 'indeterminate');
+        expect(
+            screen.getByRole('checkbox', {
+                name: 'Select all Dashboard permissions',
+            }),
+        ).toHaveAttribute('data-state', 'checked');
+        expect(
+            screen.getByRole('button', { name: 'Collapse Audit permissions' }),
+        ).toBeInTheDocument();
+
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Expand Dashboard permissions',
+            }),
+        );
+        expect(
+            screen.getByRole('button', {
+                name: 'Collapse Dashboard permissions',
+            }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', {
+                name: 'Collapse Audit permissions',
+            }),
+        ).not.toBeInTheDocument();
+
+        await user.click(
+            screen.getByRole('checkbox', { name: 'Select all permissions' }),
+        );
+        expect(
+            screen.getByRole('checkbox', { name: 'Select all permissions' }),
+        ).toHaveAttribute('data-state', 'checked');
+        expect(
+            screen.getByRole('checkbox', { name: /dashboard\.view/ }),
+        ).toBeChecked();
+
+        await user.click(
+            screen.getByRole('button', { name: 'Expand Roles permissions' }),
+        );
+        expect(
+            screen.getByRole('checkbox', { name: /roles\.create/ }),
+        ).toBeChecked();
+
+        await user.click(
+            screen.getByRole('checkbox', {
+                name: 'Select all Roles permissions',
+            }),
+        );
+        expect(
+            screen.getByRole('checkbox', {
+                name: 'Select all Roles permissions',
+            }),
+        ).toHaveAttribute('data-state', 'unchecked');
+        expect(
+            screen.getByRole('checkbox', { name: 'Select all permissions' }),
+        ).toHaveAttribute('data-state', 'indeterminate');
+        expect(
+            screen.getByRole('checkbox', { name: /roles\.create/ }),
+        ).not.toBeChecked();
     });
 
     it('keeps user invitations on a dedicated page', () => {
