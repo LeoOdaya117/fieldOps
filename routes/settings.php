@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\Settings\SystemSettingsController;
 /* @chisel-password-confirmation */
 use Illuminate\Auth\Middleware\RequirePassword;
 /* @end-chisel-password-confirmation */
@@ -12,6 +13,13 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    Route::get('settings/system', [SystemSettingsController::class, 'edit'])
+        ->middleware('can:settings.manage_system')
+        ->name('system-settings.edit');
+    Route::patch('settings/system', [SystemSettingsController::class, 'update'])
+        ->middleware('can:settings.manage_system')
+        ->name('system-settings.update');
 });
 
 Route::middleware(['auth', 'verified', 'active'])->group(function () {

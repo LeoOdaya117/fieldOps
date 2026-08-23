@@ -1,5 +1,12 @@
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-react';
+import {
+    BookOpen,
+    Folder,
+    LayoutGrid,
+    Menu,
+    Search,
+    Settings2,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { Breadcrumbs } from '@/components/breadcrumbs';
@@ -33,6 +40,7 @@ import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useInitials } from '@/hooks/use-initials';
 import { cn, toUrl } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import { edit as editSystemSettings } from '@/routes/system-settings';
 import type { BreadcrumbItem, NavItem } from '@/types';
 
 type Props = {
@@ -46,6 +54,12 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
 ];
+
+const systemSettingsItem: NavItem = {
+    title: 'System settings',
+    href: editSystemSettings(),
+    icon: Settings2,
+};
 
 const rightNavItems: NavItem[] = [
     {
@@ -67,6 +81,10 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
     const { auth } = page.props;
     const getInitials = useInitials();
     const { isCurrentUrl, whenCurrentUrl } = useCurrentUrl();
+    const permissions = auth.authorization?.permissions ?? [];
+    const canManageSystemSettings =
+        auth.authorization?.isOwner ||
+        permissions.includes('settings.manage_system');
 
     return (
         <>
@@ -109,6 +127,23 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                                                     <span>{item.title}</span>
                                                 </Link>
                                             ))}
+                                            {canManageSystemSettings && (
+                                                <Link
+                                                    href={
+                                                        systemSettingsItem.href
+                                                    }
+                                                    className="flex items-center space-x-2 font-medium"
+                                                >
+                                                    {systemSettingsItem.icon && (
+                                                        <systemSettingsItem.icon className="h-5 w-5" />
+                                                    )}
+                                                    <span>
+                                                        {
+                                                            systemSettingsItem.title
+                                                        }
+                                                    </span>
+                                                </Link>
+                                            )}
                                         </div>
 
                                         <div className="flex flex-col space-y-4">

@@ -1,9 +1,8 @@
 import { Link } from '@inertiajs/react';
 import {
-    BookOpen,
-    FolderGit2,
     LayoutGrid,
     ScrollText,
+    Settings2,
     ShieldCheck,
     Users,
 } from 'lucide-react';
@@ -22,6 +21,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { edit as editSystemSettings } from '@/routes/system-settings';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -32,19 +32,6 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
-
 export function AppSidebar() {
     const { auth } = usePage().props;
     const permissions = auth.authorization?.permissions ?? [];
@@ -52,6 +39,7 @@ export function AppSidebar() {
         auth.authorization?.isOwner || permissions.includes(permission);
 
     const accessItems: NavItem[] = [];
+    const footerItems: NavItem[] = [];
 
     if (can('users.view')) {
         accessItems.push({
@@ -77,6 +65,14 @@ export function AppSidebar() {
         });
     }
 
+    if (can('settings.manage_system')) {
+        footerItems.push({
+            title: 'System settings',
+            href: editSystemSettings(),
+            icon: Settings2,
+        });
+    }
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -97,7 +93,9 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
+                {footerItems.length > 0 && (
+                    <NavFooter items={footerItems} className="mt-auto" />
+                )}
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

@@ -6,15 +6,18 @@ enum PermissionKey: string
 {
     case DashboardView = 'dashboard.view';
     case UsersView = 'users.view';
+    case UsersCreate = 'users.create';
     case UsersInvite = 'users.invite';
     case UsersUpdate = 'users.update';
     case UsersSuspend = 'users.suspend';
+    case UsersReviewRegistrations = 'users.review_registrations';
     case RolesView = 'roles.view';
     case RolesCreate = 'roles.create';
     case RolesUpdate = 'roles.update';
     case RolesDelete = 'roles.delete';
     case RolesAssign = 'roles.assign';
     case AuditView = 'audit.view';
+    case SettingsManageSystem = 'settings.manage_system';
 
     /** @return list<string> */
     public static function values(): array

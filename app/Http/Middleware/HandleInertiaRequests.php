@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\SystemSettings;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -61,7 +62,11 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
-            'name' => config('app.name'),
+            'name' => SystemSettings::name(),
+            'system' => [
+                'name' => SystemSettings::name(),
+                'timezone' => SystemSettings::timezone(),
+            ],
             'auth' => [
                 'user' => $user?->makeHidden(['roles', 'permissions']),
                 'authorization' => $authorization,

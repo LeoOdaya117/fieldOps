@@ -4,10 +4,18 @@ use App\Http\Controllers\Access\AuditController;
 use App\Http\Controllers\Access\RoleController;
 use App\Http\Controllers\Access\UserController;
 use App\Http\Controllers\Auth\InvitationController;
+use App\Http\Controllers\Auth\RegistrationController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
+
+Route::middleware('guest')->group(function () {
+    Route::get('register', [RegistrationController::class, 'create'])->name('register');
+    Route::post('register', [RegistrationController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('register.store');
+});
 
 Route::get('invitations/{token}', [InvitationController::class, 'show'])->name('invitation.accept');
 Route::post('invitations/{token}', [InvitationController::class, 'accept'])
@@ -19,7 +27,15 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
 
     Route::prefix('access')->name('access.')->group(function () {
         Route::get('users', [UserController::class, 'index'])->middleware('can:users.view')->name('users.index');
-        Route::get('users/create', [UserController::class, 'create'])->middleware('can:users.invite')->name('users.create');
+        Route::get('users/create', [UserController::class, 'create'])->middleware('can:users.create')->name('users.create');
+        Route::post('users', [UserController::class, 'store'])->middleware([RequirePassword::class, 'can:users.create'])->name('users.store');
+        Route::get('users/invite', [UserController::class, 'inviteCreate'])->middleware('can:users.invite')->name('users.invite.create');
+        Route::get('users/registrations', [UserController::class, 'registrations'])->middleware('can:users.review_registrations')->name('users.registrations.index');
+        Route::get('users/registrations/{registration}', [UserController::class, 'reviewRegistration'])->middleware('can:users.review_registrations')->name('users.registrations.show');
+        Route::post('users/registrations/{registration}/approve', [UserController::class, 'approveRegistration'])->middleware([RequirePassword::class, 'can:users.review_registrations'])->name('users.registrations.approve');
+        Route::post('users/registrations/{registration}/reject', [UserController::class, 'rejectRegistration'])->middleware([RequirePassword::class, 'can:users.review_registrations'])->name('users.registrations.reject');
+        Route::get('users/{user}/edit', [UserController::class, 'edit'])->middleware('can:users.update')->name('users.edit');
+        Route::patch('users/{user}', [UserController::class, 'update'])->middleware([RequirePassword::class, 'can:users.update'])->name('users.update');
         Route::post('users/invitations', [UserController::class, 'invite'])->middleware([RequirePassword::class, 'can:users.invite'])->name('users.invite');
         Route::post('users/invitations/{invitation}/resend', [UserController::class, 'resendInvitation'])->middleware([RequirePassword::class, 'can:users.invite'])->name('users.invitations.resend');
         Route::delete('users/invitations/{invitation}', [UserController::class, 'revokeInvitation'])->middleware([RequirePassword::class, 'can:users.invite'])->name('users.invitations.revoke');

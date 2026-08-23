@@ -5,6 +5,7 @@ import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import SystemSettingsLayout from '@/layouts/settings/system-layout';
 
 const appName = import.meta.env.VITE_APP_NAME || 'FieldOps';
 
@@ -16,6 +17,8 @@ createInertiaApp({
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
+            case name === 'settings/system':
+                return [AppLayout, SystemSettingsLayout];
             case name.startsWith('settings/'):
                 return [AppLayout, SettingsLayout];
             default:

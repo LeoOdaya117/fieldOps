@@ -21,6 +21,16 @@ class UserPolicy
         return $user->can('users.invite');
     }
 
+    public function create(User $user): bool
+    {
+        return $user->can('users.create');
+    }
+
+    public function reviewRegistrations(User $user): bool
+    {
+        return $user->can('users.review_registrations');
+    }
+
     public function update(User $user, User $subject): bool
     {
         return $user->can('users.update') && ! $user->is($subject);
