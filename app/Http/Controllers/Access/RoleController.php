@@ -10,6 +10,7 @@ use App\Http\Requests\Access\BulkRoleDeleteRequest;
 use App\Http\Requests\Access\SaveRoleRequest;
 use App\Models\Role;
 use App\Support\Pagination\PageSize;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -104,6 +105,33 @@ class RoleController extends Controller
                 'permissions' => $role->permissions()->orderBy('name')->pluck('name')->values(),
             ],
             'permissions' => Permission::query()->orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    public function show(Role $role): Response
+    {
+        $this->authorize('view', $role);
+
+        $role->load(['permissions:id,name', 'users:id,name,email']);
+
+        return Inertia::render('access/role-show', [
+            'role' => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'displayName' => $role->display_name,
+                'description' => $role->description,
+                'isSystem' => (bool) $role->is_system,
+                'usersCount' => $role->users->count(),
+                'permissionsCount' => $role->permissions->count(),
+                'permissions' => $role->permissions->sortBy('name')->values()->map(static fn ($permission): string => $permission->name)->all(),
+                'users' => $role->users->sortBy('name')->values()->map(static fn (Model $user): array => [
+                    'id' => (int) $user->getKey(),
+                    'name' => (string) $user->getAttribute('name'),
+                    'email' => (string) $user->getAttribute('email'),
+                ])->all(),
+            ],
+            'canEdit' => request()->user()?->can('update', $role) === true,
+            'canDelete' => request()->user()?->can('delete', $role) === true,
         ]);
     }
 

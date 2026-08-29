@@ -9,6 +9,7 @@ enum PermissionKey: string
     case UsersCreate = 'users.create';
     case UsersInvite = 'users.invite';
     case UsersUpdate = 'users.update';
+    case UsersDelete = 'users.delete';
     case UsersSuspend = 'users.suspend';
     case UsersReviewRegistrations = 'users.review_registrations';
     case RolesView = 'roles.view';
@@ -17,6 +18,9 @@ enum PermissionKey: string
     case RolesDelete = 'roles.delete';
     case RolesAssign = 'roles.assign';
     case AuditView = 'audit.view';
+    case IpBlocksView = 'ip_blocks.view';
+    case IpBlocksManage = 'ip_blocks.manage';
+    case VisitLogsView = 'visit_logs.view';
     case SettingsManageSystem = 'settings.manage_system';
 
     /** @return list<string> */

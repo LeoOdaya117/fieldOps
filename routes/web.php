@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Access\AuditController;
+use App\Http\Controllers\Access\BlockedIpAddressController;
 use App\Http\Controllers\Access\RoleController;
 use App\Http\Controllers\Access\UserController;
+use App\Http\Controllers\Access\VisitLogController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\RegistrationController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -36,6 +38,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::post('users/registrations/{registration}/reject', [UserController::class, 'rejectRegistration'])->middleware([RequirePassword::class, 'can:users.review_registrations'])->name('users.registrations.reject');
         Route::get('users/{user}/edit', [UserController::class, 'edit'])->middleware('can:users.update')->name('users.edit');
         Route::patch('users/{user}', [UserController::class, 'update'])->middleware([RequirePassword::class, 'can:users.update'])->name('users.update');
+        Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware([RequirePassword::class, 'can:users.delete'])->name('users.destroy');
         Route::post('users/invitations', [UserController::class, 'invite'])->middleware([RequirePassword::class, 'can:users.invite'])->name('users.invite');
         Route::post('users/invitations/{invitation}/resend', [UserController::class, 'resendInvitation'])->middleware([RequirePassword::class, 'can:users.invite'])->name('users.invitations.resend');
         Route::delete('users/invitations/{invitation}', [UserController::class, 'revokeInvitation'])->middleware([RequirePassword::class, 'can:users.invite'])->name('users.invitations.revoke');
@@ -44,16 +47,30 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::patch('users/{user}/role', [UserController::class, 'assignRole'])->middleware([RequirePassword::class, 'can:roles.assign'])->name('users.role');
         Route::patch('users/{user}/suspend', [UserController::class, 'suspend'])->middleware([RequirePassword::class, 'can:users.suspend'])->name('users.suspend');
         Route::patch('users/{user}/reactivate', [UserController::class, 'reactivate'])->middleware([RequirePassword::class, 'can:users.update'])->name('users.reactivate');
+        Route::get('users/{user}', [UserController::class, 'show'])->middleware('can:users.view')->name('users.show');
 
         Route::get('roles', [RoleController::class, 'index'])->middleware('can:roles.view')->name('roles.index');
         Route::get('roles/create', [RoleController::class, 'create'])->middleware('can:roles.create')->name('roles.create');
         Route::post('roles', [RoleController::class, 'store'])->middleware([RequirePassword::class, 'can:roles.create'])->name('roles.store');
         Route::delete('roles/bulk', [RoleController::class, 'bulkDestroy'])->middleware([RequirePassword::class, 'can:roles.delete'])->name('roles.bulk.destroy');
+        Route::get('roles/{role}', [RoleController::class, 'show'])->middleware('can:roles.view')->name('roles.show');
         Route::get('roles/{role}/edit', [RoleController::class, 'edit'])->middleware('can:roles.update')->name('roles.edit');
         Route::patch('roles/{role}', [RoleController::class, 'update'])->middleware([RequirePassword::class, 'can:roles.update'])->name('roles.update');
         Route::delete('roles/{role}', [RoleController::class, 'destroy'])->middleware([RequirePassword::class, 'can:roles.delete'])->name('roles.destroy');
 
         Route::get('audit', [AuditController::class, 'index'])->middleware('can:audit.view')->name('audit.index');
+        Route::get('audit/{accessAuditEvent}', [AuditController::class, 'show'])->middleware('can:audit.view')->name('audit.show');
+        Route::get('ip-blocks', [BlockedIpAddressController::class, 'index'])->middleware('can:ip_blocks.view')->name('ip-blocks.index');
+        Route::get('ip-blocks/create', [BlockedIpAddressController::class, 'create'])->middleware('can:ip_blocks.manage')->name('ip-blocks.create');
+        Route::post('ip-blocks', [BlockedIpAddressController::class, 'store'])->middleware([RequirePassword::class, 'can:ip_blocks.manage'])->name('ip-blocks.store');
+        Route::get('ip-blocks/{blockedIpAddress}', [BlockedIpAddressController::class, 'show'])->middleware('can:ip_blocks.view')->name('ip-blocks.show');
+        Route::get('ip-blocks/{blockedIpAddress}/edit', [BlockedIpAddressController::class, 'edit'])->middleware('can:ip_blocks.manage')->name('ip-blocks.edit');
+        Route::delete('ip-blocks/{blockedIpAddress}', [BlockedIpAddressController::class, 'destroy'])->middleware([RequirePassword::class, 'can:ip_blocks.manage'])->name('ip-blocks.destroy');
+        Route::patch('ip-blocks/{blockedIpAddress}', [BlockedIpAddressController::class, 'update'])->middleware([RequirePassword::class, 'can:ip_blocks.manage'])->name('ip-blocks.update');
+        Route::patch('ip-blocks/{blockedIpAddress}/activate', [BlockedIpAddressController::class, 'activate'])->middleware([RequirePassword::class, 'can:ip_blocks.manage'])->name('ip-blocks.activate');
+        Route::patch('ip-blocks/{blockedIpAddress}/deactivate', [BlockedIpAddressController::class, 'deactivate'])->middleware([RequirePassword::class, 'can:ip_blocks.manage'])->name('ip-blocks.deactivate');
+        Route::get('visit-logs', [VisitLogController::class, 'index'])->middleware('can:visit_logs.view')->name('visit-logs.index');
+        Route::get('visit-logs/{visitLog}', [VisitLogController::class, 'show'])->middleware('can:visit_logs.view')->name('visit-logs.show');
     });
 });
 
