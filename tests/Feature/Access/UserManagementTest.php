@@ -125,6 +125,38 @@ class UserManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_soft_delete_a_user_and_invalidate_their_sessions(): void
+    {
+        $admin = $this->admin();
+        $target = User::factory()->create();
+
+        DB::table('sessions')->insert([
+            'id' => 'deleted-user-session',
+            'user_id' => $target->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'test',
+            'payload' => 'payload',
+            'last_activity' => now()->timestamp,
+        ]);
+
+        $this->actingAs($admin)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->delete(route('access.users.destroy', $target))
+            ->assertRedirect(route('access.users.index'));
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id,
+            'record_status' => 0,
+        ]);
+        $this->assertNull(User::query()->whereKey($target->id)->first());
+        $this->assertTrue(User::withTrashed()->whereKey($target->id)->firstOrFail()->trashed());
+        $this->assertDatabaseMissing('sessions', ['id' => 'deleted-user-session']);
+        $this->assertDatabaseHas('access_audit_events', [
+            'event' => 'user.deleted',
+            'subject_id' => (string) $target->id,
+        ]);
+    }
+
     public function test_admin_can_replace_and_remove_a_user_photo(): void
     {
         Storage::fake('public');

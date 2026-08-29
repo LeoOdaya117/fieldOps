@@ -150,4 +150,31 @@ describe('app sidebar navigation', () => {
             screen.queryByRole('link', { name: 'System settings' }),
         ).not.toBeInTheDocument();
     });
+
+    it('shows security navigation to users with the matching permissions', () => {
+        usePageMock.mockReturnValue({
+            url: '/access/ip-blocks',
+            props: {
+                name: 'FieldOps',
+                auth: {
+                    user: { name: 'Security admin' },
+                    authorization: {
+                        permissions: ['ip_blocks.view', 'visit_logs.view'],
+                        isOwner: false,
+                    },
+                },
+            },
+        });
+
+        render(<AppSidebar />);
+
+        expect(screen.getByRole('link', { name: 'Blocked IPs' })).toHaveAttribute(
+            'href',
+            '/access/ip-blocks',
+        );
+        expect(screen.getByRole('link', { name: 'Visit logs' })).toHaveAttribute(
+            'href',
+            '/access/visit-logs',
+        );
+    });
 });

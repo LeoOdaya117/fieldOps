@@ -47,6 +47,33 @@ class RbacTest extends TestCase
         $this->actingAs($owner)->get(route('access.audit.index'))->assertOk();
     }
 
+    public function test_access_resources_have_authorized_details_pages(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::Owner->value);
+        $user = User::factory()->create();
+        $role = Role::query()->where('name', RoleName::Technician->value)->firstOrFail();
+        $event = AccessAuditEvent::query()->create([
+            'event' => 'test.details',
+            'subject_type' => User::class,
+            'subject_id' => (string) $user->id,
+            'occurred_at' => now(),
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('access.users.show', $user))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('access/user-show'));
+        $this->actingAs($owner)
+            ->get(route('access.roles.show', $role))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('access/role-show'));
+        $this->actingAs($owner)
+            ->get(route('access.audit.show', $event))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('access/audit-show'));
+    }
+
     public function test_admin_cannot_grant_owner_or_permissions_they_do_not_have(): void
     {
         $admin = User::factory()->withTwoFactor()->create();
