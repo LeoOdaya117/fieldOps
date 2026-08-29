@@ -203,7 +203,7 @@ export default function RolesPage({
                                         title: `Delete ${selectedRoleIds.length} selected role(s)?`,
                                         description:
                                             'This action cannot be undone.',
-                                        confirmLabel: 'Delete roles',
+                                        confirmLabel: 'Delete',
                                     }}
                                     onSuccess={() => setSelectedRoleIds([])}
                                 >

@@ -1,4 +1,4 @@
-import { Edit, KeyRound, ShieldCheck, Trash2, Users } from 'lucide-react';
+import { Edit, Eye, KeyRound, ShieldCheck, Trash2, Users } from 'lucide-react';
 import { SortableColumn } from '@/components/sortable-column';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -8,6 +8,7 @@ import {
     TableActionLink,
     TableActions,
 } from '@/components/ui/table-actions';
+import { edit as editRole, show as showRole } from '@/routes/access/roles';
 
 export type Role = {
     id: number;
@@ -250,33 +251,37 @@ export function roleTableColumns({
             cell: (role) => {
                 const canManageRole = canManageSystemRoles || !role.isSystem;
 
-                return !canManageRole ? (
-                    <div className="flex justify-end">
-                        <Badge variant="outline">Read only</Badge>
-                    </div>
-                ) : (
+                return (
                     <TableActions label={`Actions for ${role.displayName}`}>
-                        <TableActionLink
-                            href={`/access/roles/${role.id}/edit`}
-                            aria-label={`Edit ${role.displayName}`}
-                        >
-                            <Edit />
-                            Edit
+                        <TableActionLink href={showRole.url(role.id)}>
+                            <Eye />
+                            View
                         </TableActionLink>
-                        <TableActionForm
-                            action={`/access/roles/${role.id}`}
-                            method="delete"
-                            destructive
-                            confirmation={{
-                                title: `Delete ${role.displayName}?`,
-                                description:
-                                    'This will archive the role and remove it from active role lists. You can restore it later from the audit history.',
-                                confirmLabel: 'Delete role',
-                            }}
-                        >
-                            <Trash2 />
-                            <span>Delete</span>
-                        </TableActionForm>
+                        {canManageRole && (
+                            <>
+                                <TableActionLink
+                                    href={editRole.url(role.id)}
+                                    aria-label={`Edit ${role.displayName}`}
+                                >
+                                    <Edit />
+                                    Edit
+                                </TableActionLink>
+                                <TableActionForm
+                                    action={`/access/roles/${role.id}`}
+                                    method="delete"
+                                    destructive
+                                    confirmation={{
+                                        title: `Delete ${role.displayName}?`,
+                                        description:
+                                            'This will archive the role and remove it from active role lists. You can restore it later from the audit history.',
+                                        confirmLabel: 'Delete',
+                                    }}
+                                >
+                                    <Trash2 />
+                                    <span>Delete</span>
+                                </TableActionForm>
+                            </>
+                        )}
                     </TableActions>
                 );
             },

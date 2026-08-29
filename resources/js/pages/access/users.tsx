@@ -210,7 +210,7 @@ export default function UsersPage({
                             >
                                 <option value="">All statuses</option>
                                 <option value="active">Active</option>
-                                <option value="suspended">Suspended</option>
+                                <option value="suspended">Blocked</option>
                             </select>
                         </div>
                     </SearchFilterSheet>
@@ -314,15 +314,15 @@ export default function UsersPage({
                                         ids={selectedUserIds}
                                         destructive
                                         confirmation={{
-                                            title: `Suspend ${selectedUserIds.length} selected user(s)?`,
+                                            title: `Block ${selectedUserIds.length} selected user(s)?`,
                                             description:
-                                                'These accounts will lose access immediately. You can reactivate them later.',
-                                            confirmLabel: 'Suspend users',
+                                                'These accounts will lose access immediately. You can unblock them later.',
+                                            confirmLabel: 'Block',
                                         }}
                                         onSuccess={() => setSelectedUserIds([])}
                                     >
                                         <ShieldCheck />
-                                        Suspend selected
+                                        Block selected
                                     </BulkActionForm>
                                 )}
                                 {canReactivate && (
@@ -331,15 +331,15 @@ export default function UsersPage({
                                         method="patch"
                                         ids={selectedUserIds}
                                         confirmation={{
-                                            title: `Reactivate ${selectedUserIds.length} selected user(s)?`,
+                                            title: `Unblock ${selectedUserIds.length} selected user(s)?`,
                                             description:
                                                 'These accounts will regain access immediately.',
-                                            confirmLabel: 'Reactivate users',
+                                            confirmLabel: 'Unblock',
                                         }}
                                         onSuccess={() => setSelectedUserIds([])}
                                     >
                                         <ShieldCheck />
-                                        Reactivate selected
+                                        Unblock selected
                                     </BulkActionForm>
                                 )}
                             </BulkActions>

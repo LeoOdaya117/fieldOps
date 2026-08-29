@@ -1,4 +1,12 @@
-import { CalendarDays, Clock3, Mail, Pencil, ShieldCheck } from 'lucide-react';
+import {
+    CalendarDays,
+    Clock3,
+    Eye,
+    Mail,
+    Pencil,
+    ShieldCheck,
+    Trash2,
+} from 'lucide-react';
 import { SortableColumn } from '@/components/sortable-column';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +17,11 @@ import {
     TableActionLink,
     TableActions,
 } from '@/components/ui/table-actions';
+import {
+    destroy as deleteUser,
+    edit as editUser,
+    show as showUser,
+} from '@/routes/access/users';
 
 export type RoleOption = {
     id: number;
@@ -31,6 +44,7 @@ export type UserRow = {
         displayName: string;
         isSystem: boolean;
     } | null;
+    canDelete?: boolean;
     createdAt: string | null;
 };
 
@@ -380,45 +394,61 @@ export function userTableColumns({
             header: 'Actions',
             headerClassName: 'px-6 text-right',
             cellClassName: 'px-6',
-            cell: (user) =>
-                canEdit ||
-                (user.status === 'active' ? canSuspend : canReactivate) ? (
-                    <TableActions label={`Actions for ${user.name}`}>
-                        {canEdit && (
-                            <TableActionLink
-                                href={`/access/users/${user.id}/edit`}
-                            >
-                                <Pencil />
-                                Edit
-                            </TableActionLink>
-                        )}
-                        {user.status === 'active'
-                            ? canSuspend && (
-                                  <TableActionForm
-                                      action={`/access/users/${user.id}/suspend`}
-                                      method="patch"
-                                      destructive
-                                      confirmation={{
-                                          title: `Suspend ${user.name}?`,
-                                          description:
-                                              'This account will lose access immediately. You can reactivate it later from the user table.',
-                                          confirmLabel: 'Suspend user',
-                                      }}
-                                  >
-                                      Suspend
-                                  </TableActionForm>
-                              )
-                            : canReactivate && (
-                                  <TableActionForm
-                                      action={`/access/users/${user.id}/reactivate`}
-                                      method="patch"
-                                  >
-                                      <ShieldCheck />
-                                      Reactivate
-                                  </TableActionForm>
-                              )}
-                    </TableActions>
-                ) : null,
+            cell: (user) => (
+                <TableActions label={`Actions for ${user.name}`}>
+                    <TableActionLink href={showUser.url(user.id)}>
+                        <Eye />
+                        View
+                    </TableActionLink>
+                    {canEdit && (
+                        <TableActionLink href={editUser.url(user.id)}>
+                            <Pencil />
+                            Edit
+                        </TableActionLink>
+                    )}
+                    {user.canDelete && (
+                        <TableActionForm
+                            action={deleteUser.url(user.id)}
+                            method="delete"
+                            destructive
+                            confirmation={{
+                                title: `Delete ${user.name}?`,
+                                description:
+                                    'This account will be removed from active users and all active sessions will be signed out.',
+                                confirmLabel: 'Delete',
+                            }}
+                        >
+                            <Trash2 />
+                            Delete
+                        </TableActionForm>
+                    )}
+                    {user.status === 'active'
+                        ? canSuspend && (
+                              <TableActionForm
+                                  action={`/access/users/${user.id}/suspend`}
+                                  method="patch"
+                                  destructive
+                                  confirmation={{
+                                      title: `Block ${user.name}?`,
+                                      description:
+                                          'This account will lose access immediately. You can unblock it later from the user table.',
+                                      confirmLabel: 'Block',
+                                  }}
+                              >
+                                  Block
+                              </TableActionForm>
+                          )
+                        : canReactivate && (
+                              <TableActionForm
+                                  action={`/access/users/${user.id}/reactivate`}
+                                  method="patch"
+                              >
+                                  <ShieldCheck />
+                                  Unblock
+                              </TableActionForm>
+                          )}
+                </TableActions>
+            ),
         },
     ];
 }
