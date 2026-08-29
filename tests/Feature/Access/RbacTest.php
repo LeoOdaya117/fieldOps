@@ -197,6 +197,7 @@ class RbacTest extends TestCase
 
         $this->actingAs($owner)
             ->withSession(['auth.password_confirmed_at' => time()])
+            ->from(route('access.users.index'))
             ->patch(route('access.users.bulk.suspend'), [
                 'ids' => $targets->pluck('id')->all(),
             ])
