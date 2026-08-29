@@ -128,6 +128,7 @@ export default function IpBlocksPage({
                             from: blockedIpAddresses.from,
                             to: blockedIpAddresses.to,
                             pageSize,
+                            links: blockedIpAddresses.links,
                             itemLabel: 'IP addresses',
                             previousUrl,
                             nextUrl,

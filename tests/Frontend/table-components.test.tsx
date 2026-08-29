@@ -324,6 +324,23 @@ describe('reusable data table components', () => {
                     itemLabel: 'records',
                     previousUrl: '/records?page=1',
                     nextUrl: '/records?page=3',
+                    links: [
+                        {
+                            url: '/records?page=1',
+                            label: '1',
+                            active: false,
+                        },
+                        {
+                            url: '/records?page=2',
+                            label: '2',
+                            active: true,
+                        },
+                        {
+                            url: '/records?page=3',
+                            label: '3',
+                            active: false,
+                        },
+                    ],
                 }}
             />,
         );
@@ -378,7 +395,7 @@ describe('reusable data table components', () => {
         expect(screen.getByText('Active')).toBeInTheDocument();
     });
 
-    it('renders reusable pagination controls with disabled edge states', () => {
+    it('renders reusable numbered pagination controls with arrow navigation', () => {
         inertiaRouter.get.mockClear();
 
         render(
@@ -392,6 +409,23 @@ describe('reusable data table components', () => {
                 itemLabel="roles"
                 previousUrl="/access/roles?page=1"
                 nextUrl="/access/roles?page=3"
+                links={[
+                    {
+                        url: '/access/roles?page=1',
+                        label: '1',
+                        active: false,
+                    },
+                    {
+                        url: '/access/roles?page=2',
+                        label: '2',
+                        active: true,
+                    },
+                    {
+                        url: '/access/roles?page=3',
+                        label: '3',
+                        active: false,
+                    },
+                ]}
             />,
         );
 
@@ -401,14 +435,27 @@ describe('reusable data table components', () => {
         expect(
             screen.getByText(/Showing 11–20 of 25 roles/),
         ).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Previous' })).toHaveAttribute(
+        expect(
+            screen.getByRole('link', { name: 'Previous page' }),
+        ).toHaveAttribute('href', '/access/roles?page=1');
+        expect(screen.getByRole('link', { name: 'Page 1' })).toHaveAttribute(
             'href',
             '/access/roles?page=1',
         );
-        expect(screen.getByRole('link', { name: 'Next' })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: 'Page 2' })).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(screen.getByRole('link', { name: 'Page 3' })).toHaveAttribute(
             'href',
             '/access/roles?page=3',
         );
+        expect(screen.getByRole('link', { name: 'Next page' })).toHaveAttribute(
+            'href',
+            '/access/roles?page=3',
+        );
+        expect(screen.queryByText('Previous')).not.toBeInTheDocument();
+        expect(screen.queryByText('Next')).not.toBeInTheDocument();
         expect(
             screen.getByRole('combobox', { name: 'Rows per page' }),
         ).toHaveValue('50');
@@ -424,6 +471,84 @@ describe('reusable data table components', () => {
             {},
             { preserveScroll: true },
         );
+    });
+
+    it('renders ellipses and disabled arrows at pagination edges', () => {
+        render(
+            <TablePagination
+                currentPage={1}
+                lastPage={20}
+                total={200}
+                from={1}
+                to={10}
+                nextUrl="/records?page=2"
+                links={[
+                    {
+                        url: null,
+                        label: '&laquo; Previous',
+                        active: false,
+                    },
+                    {
+                        url: '/records?page=1',
+                        label: '1',
+                        active: true,
+                    },
+                    {
+                        url: '/records?page=2',
+                        label: '2',
+                        active: false,
+                    },
+                    {
+                        url: '/records?page=3',
+                        label: '3',
+                        active: false,
+                    },
+                    {
+                        url: '/records?page=4',
+                        label: '4',
+                        active: false,
+                    },
+                    {
+                        url: '/records?page=5',
+                        label: '5',
+                        active: false,
+                    },
+                    {
+                        url: '/records?page=6',
+                        label: '6',
+                        active: false,
+                    },
+                    { url: null, label: '...', active: false },
+                    {
+                        url: '/records?page=20',
+                        label: '20',
+                        active: false,
+                    },
+                    {
+                        url: '/records?page=2',
+                        label: 'Next &raquo;',
+                        active: false,
+                    },
+                ]}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: 'Previous page' }),
+        ).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByRole('link', { name: 'Next page' })).toHaveAttribute(
+            'href',
+            '/records?page=2',
+        );
+        expect(screen.getByRole('link', { name: 'Page 1' })).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(screen.getByRole('link', { name: 'Page 20' })).toHaveAttribute(
+            'href',
+            '/records?page=20',
+        );
+        expect(screen.getByText('…')).toBeInTheDocument();
     });
 
     it('sorts a column immediately when its header is clicked', () => {

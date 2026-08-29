@@ -241,6 +241,7 @@ export default function RolesPage({
                                       from: pagination.from,
                                       to: pagination.to,
                                       pageSize,
+                                      links: pagination.links,
                                       itemLabel: 'roles',
                                       previousUrl,
                                       nextUrl,

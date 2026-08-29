@@ -367,6 +367,7 @@ export default function UsersPage({
                             from: users.from,
                             to: users.to,
                             pageSize,
+                            links: users.links,
                             itemLabel: 'users',
                             previousUrl,
                             nextUrl,

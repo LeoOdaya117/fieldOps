@@ -229,6 +229,7 @@ export default function VisitLogsPage({
                             from: logs.from,
                             to: logs.to,
                             pageSize,
+                            links: logs.links,
                             itemLabel: 'visits',
                             previousUrl,
                             nextUrl,

@@ -172,6 +172,7 @@ export default function AuditPage({ events, eventTypes, filters }: Props) {
                             from: events.from,
                             to: events.to,
                             pageSize,
+                            links: events.links,
                             itemLabel: 'events',
                             previousUrl,
                             nextUrl,
