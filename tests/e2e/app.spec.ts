@@ -49,14 +49,14 @@ test('the one-page product funnel is readable, responsive, and accessible', asyn
             name: 'Mobile navigation',
         });
         await expect(
-            mobileNavigation.getByRole('link', { name: 'Sign in' }),
+            mobileNavigation.getByRole('link', { name: 'Login' }),
         ).toBeVisible();
         await expect(
             mobileNavigation.getByRole('link', { name: 'Product tour' }),
         ).toHaveAttribute('href', '#tour');
     } else {
         await expect(
-            page.locator('header').getByRole('link', { name: 'Sign in' }),
+            page.locator('header').getByRole('link', { name: 'Login' }),
         ).toBeVisible();
         await expect(
             page.locator('header').getByRole('link', { name: 'Workflow' }),
