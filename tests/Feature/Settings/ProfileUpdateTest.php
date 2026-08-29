@@ -4,6 +4,8 @@ namespace Tests\Feature\Settings;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ProfileUpdateTest extends TestCase
@@ -34,6 +36,12 @@ class ProfileUpdateTest extends TestCase
 
         $response
             ->assertSessionHasNoErrors()
+            ->assertSessionHas('inertia.flash_data', [
+                'toast' => [
+                    'type' => 'success',
+                    'message' => 'Profile updated.',
+                ],
+            ])
             ->assertRedirect(route('profile.edit'));
 
         $user->refresh();
@@ -61,39 +69,54 @@ class ProfileUpdateTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
-    public function test_user_can_delete_their_account()
+    public function test_profile_details_and_photo_can_be_updated(): void
     {
+        Storage::fake('public');
         $user = User::factory()->create();
 
         $response = $this
             ->actingAs($user)
-            ->delete(route('profile.destroy'), [
-                'password' => 'password',
+            ->patch(route('profile.update'), [
+                'name' => $user->name,
+                'email' => $user->email,
+                'position' => 'Field supervisor',
+                'department' => 'Operations',
+                'photo' => UploadedFile::fake()->image('profile.png'),
             ]);
 
         $response
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('home'));
+            ->assertRedirect(route('profile.edit'));
 
-        $this->assertGuest();
-        $this->assertNull($user->fresh());
+        $user->refresh();
+
+        $this->assertSame('Field supervisor', $user->position);
+        $this->assertSame('Operations', $user->department);
+        $this->assertNotNull($user->avatar_path);
+        Storage::disk('public')->assertExists($user->avatar_path);
     }
 
-    public function test_correct_password_must_be_provided_to_delete_account()
+    public function test_profile_photo_can_be_removed(): void
     {
-        $user = User::factory()->create();
+        Storage::fake('public');
+        $user = User::factory()->create(['avatar_path' => 'users/1/profile.png']);
+        Storage::disk('public')->put($user->avatar_path, 'profile');
 
         $response = $this
             ->actingAs($user)
-            ->from(route('profile.edit'))
-            ->delete(route('profile.destroy'), [
-                'password' => 'wrong-password',
+            ->patch(route('profile.update'), [
+                'name' => $user->name,
+                'email' => $user->email,
+                'position' => $user->position,
+                'department' => $user->department,
+                'remove_photo' => '1',
             ]);
 
         $response
-            ->assertSessionHasErrors('password')
+            ->assertSessionHasNoErrors()
             ->assertRedirect(route('profile.edit'));
 
-        $this->assertNotNull($user->fresh());
+        $this->assertNull($user->refresh()->avatar_path);
+        Storage::disk('public')->assertMissing('users/1/profile.png');
     }
 }

@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import { dashboard, register } from '@/routes';
+import { dashboard, login } from '@/routes';
 import { LandingFooter } from './landing-footer';
 import { LandingHeader } from './landing-header';
 import {
@@ -18,8 +18,8 @@ type LandingPageProps = {
 };
 
 export function LandingPage({ isAuthenticated }: LandingPageProps) {
-    const primaryHref = isAuthenticated ? dashboard() : register();
-    const primaryLabel = isAuthenticated ? 'Open Dashboard' : 'Start Free';
+    const primaryHref = isAuthenticated ? dashboard() : login();
+    const primaryLabel = isAuthenticated ? 'Open Dashboard' : 'Sign in';
 
     return (
         <>

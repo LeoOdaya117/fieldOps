@@ -47,7 +47,6 @@ vi.mock('@/routes', () => ({
     dashboard: () => '/dashboard',
     home: () => '/',
     login: () => '/login',
-    register: () => '/register',
 }));
 
 import { ScrollReveal } from '@/components/scroll-reveal';
@@ -94,16 +93,16 @@ describe('LandingPage', () => {
         });
     });
 
-    it('routes every guest conversion CTA to registration', () => {
+    it('routes every guest conversion CTA to sign in', () => {
         render(<LandingPage isAuthenticated={false} />);
 
-        const startFreeLinks = screen.getAllByRole('link', {
-            name: 'Start Free',
+        const signInLinks = screen.getAllByRole('link', {
+            name: 'Sign in',
         });
 
-        expect(startFreeLinks.length).toBeGreaterThanOrEqual(3);
-        startFreeLinks.forEach((link) => {
-            expect(link).toHaveAttribute('href', '/register');
+        expect(signInLinks.length).toBeGreaterThanOrEqual(2);
+        signInLinks.forEach((link) => {
+            expect(link).toHaveAttribute('href', '/login');
         });
         expect(
             screen.getAllByRole('link', { name: 'Login' })[0],
@@ -177,7 +176,7 @@ describe('LandingPage', () => {
             expect(link).toHaveAttribute('href', '/dashboard');
         });
         expect(
-            screen.queryByRole('link', { name: 'Start Free' }),
+            screen.queryByRole('link', { name: 'Sign in' }),
         ).not.toBeInTheDocument();
     });
 

@@ -1,4 +1,5 @@
 import AuthLayoutTemplate from '@/layouts/auth/auth-split-layout';
+import { FlashAlert } from '@/components/flash-alert';
 import type { AuthLayoutProps } from '@/types';
 
 export default function AuthLayout({
@@ -13,6 +14,7 @@ export default function AuthLayout({
             description={description}
             artwork={artwork}
         >
+            <FlashAlert />
             {children}
         </AuthLayoutTemplate>
     );

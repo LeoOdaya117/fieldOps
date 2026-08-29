@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import AppLogoIcon from '@/components/app-logo-icon';
-import { dashboard, login, register } from '@/routes';
+import { dashboard, login } from '@/routes';
 import { landingJourneyNavigation } from '../data';
 
 export function LandingFooter({
@@ -58,12 +58,6 @@ export function LandingFooter({
                                 className="inline-flex min-h-10 items-center justify-center rounded-full px-4 text-xs font-bold text-primary-foreground/75 hover:text-primary-foreground"
                             >
                                 Login
-                            </Link>
-                            <Link
-                                href={register()}
-                                className="inline-flex min-h-10 items-center justify-center rounded-full bg-primary-foreground px-5 text-xs font-extrabold text-primary"
-                            >
-                                Start Free
                             </Link>
                         </>
                     )}

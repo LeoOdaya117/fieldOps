@@ -3,17 +3,30 @@ export type User = {
     name: string;
     email: string;
     avatar?: string;
+    position?: string | null;
+    department?: string | null;
     email_verified_at: string | null;
     /* @chisel-2fa */
     two_factor_enabled?: boolean;
     /* @end-chisel-2fa */
     created_at: string;
     updated_at: string;
+    status: 'active' | 'suspended';
     [key: string]: unknown;
 };
 
 export type Auth = {
     user: User;
+    authorization: {
+        role: {
+            id: number;
+            name: string;
+            displayName: string;
+            isSystem: boolean;
+        } | null;
+        permissions: string[];
+        isOwner: boolean;
+    };
 };
 
 /* @chisel-passkeys */

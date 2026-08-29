@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 const e2eUser = {
-    email: process.env.E2E_USER_EMAIL ?? 'test@example.com',
+    email: process.env.E2E_USER_EMAIL ?? 'user@example.com',
     password: process.env.E2E_USER_PASSWORD ?? 'password',
 };
 
@@ -49,14 +49,14 @@ test('the one-page product funnel is readable, responsive, and accessible', asyn
             name: 'Mobile navigation',
         });
         await expect(
-            mobileNavigation.getByRole('link', { name: 'Start Free' }),
+            mobileNavigation.getByRole('link', { name: 'Login' }),
         ).toBeVisible();
         await expect(
             mobileNavigation.getByRole('link', { name: 'Product tour' }),
         ).toHaveAttribute('href', '#tour');
     } else {
         await expect(
-            page.locator('header').getByRole('link', { name: 'Start Free' }),
+            page.locator('header').getByRole('link', { name: 'Login' }),
         ).toBeVisible();
         await expect(
             page.locator('header').getByRole('link', { name: 'Workflow' }),
@@ -139,7 +139,7 @@ test('removed marketing URLs return not found', async ({ request }) => {
     }
 });
 
-test('login and registration keep the landing visual language', async ({
+test('login and invitation links keep the landing visual language', async ({
     page,
 }) => {
     await page.emulateMedia({ colorScheme: 'light' });
@@ -153,13 +153,10 @@ test('login and registration keep the landing visual language', async ({
         ),
     ).toBeAttached();
 
-    await page.goto('/register');
+    await page.goto('/invitations/not-a-real-token');
     await expect(
-        page.getByRole('heading', { name: 'Create an account' }),
+        page.getByRole('heading', { name: 'Invitation unavailable' }),
     ).toBeVisible();
-    await expect(
-        page.getByAltText('Field worker reviewing a work order on a tablet'),
-    ).toBeAttached();
 });
 
 test('an authenticated user can use the dashboard and theme settings', async ({

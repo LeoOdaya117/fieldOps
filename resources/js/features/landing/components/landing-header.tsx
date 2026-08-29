@@ -3,7 +3,7 @@ import { Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import AppLogoIcon from '@/components/app-logo-icon';
 import { cn } from '@/lib/utils';
-import { dashboard, login, register } from '@/routes';
+import { dashboard, login } from '@/routes';
 import { landingJourneyNavigation } from '../data';
 
 type LandingHeaderProps = {
@@ -75,12 +75,6 @@ export function LandingHeader({ isAuthenticated }: LandingHeaderProps) {
                             >
                                 Login
                             </Link>
-                            <Link
-                                href={register()}
-                                className="inline-flex min-h-10 items-center justify-center rounded-full bg-primary px-5 text-xs font-bold text-primary-foreground shadow-sm transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-primary/90 motion-reduce:transition-none dark:bg-brand dark:text-brand-foreground dark:hover:bg-brand/90"
-                            >
-                                Start Free
-                            </Link>
                         </>
                     )}
                 </div>
@@ -144,13 +138,6 @@ export function LandingHeader({ isAuthenticated }: LandingHeaderProps) {
                                         onClick={closeMenu}
                                     >
                                         Login
-                                    </Link>
-                                    <Link
-                                        href={register()}
-                                        className="inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground dark:bg-brand dark:text-brand-foreground"
-                                        onClick={closeMenu}
-                                    >
-                                        Start Free
                                     </Link>
                                 </>
                             )}

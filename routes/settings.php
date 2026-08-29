@@ -2,21 +2,27 @@
 
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Controllers\Settings\SystemSettingsController;
 /* @chisel-password-confirmation */
 use Illuminate\Auth\Middleware\RequirePassword;
 /* @end-chisel-password-confirmation */
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'active'])->group(function () {
     Route::redirect('settings', '/settings/profile');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    Route::get('settings/system', [SystemSettingsController::class, 'edit'])
+        ->middleware('can:settings.manage_system')
+        ->name('system-settings.edit');
+    Route::patch('settings/system', [SystemSettingsController::class, 'update'])
+        ->middleware('can:settings.manage_system')
+        ->name('system-settings.update');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
+Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::get('settings/security', [SecurityController::class, 'edit'])
         /* @chisel-password-confirmation */
         ->middleware(RequirePassword::class)

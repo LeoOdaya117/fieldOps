@@ -5,102 +5,94 @@ import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { landingAssets } from '@/features/landing/data';
-import { login } from '@/routes';
-import { store } from '@/routes/register';
 
-type Props = {
-    passwordRules: string;
-};
-
-export default function Register({ passwordRules }: Props) {
+export default function Register({
+    passwordRules,
+}: {
+    passwordRules?: string;
+}) {
     return (
         <>
-            <Head title="Register" />
+            <Head title="Request an account" />
             <Form
-                {...store.form()}
-                resetOnSuccess={['password', 'password_confirmation']}
-                disableWhileProcessing
+                action="/register"
+                method="post"
                 className="flex flex-col gap-6"
             >
                 {({ processing, errors }) => (
                     <>
-                        <div className="grid gap-6">
+                        <div className="grid gap-5">
                             <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="register-name">Full name</Label>
                                 <Input
-                                    id="name"
-                                    type="text"
+                                    id="register-name"
+                                    name="name"
                                     required
                                     autoFocus
                                     autoComplete="name"
-                                    name="name"
                                     placeholder="Full name"
                                 />
-                                <InputError
-                                    message={errors.name}
-                                    className="mt-2"
-                                />
+                                <InputError message={errors.name} />
                             </div>
-
                             <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                                <Label htmlFor="register-email">
+                                    Email address
+                                </Label>
                                 <Input
-                                    id="email"
+                                    id="register-email"
+                                    name="email"
                                     type="email"
                                     required
                                     autoComplete="email"
-                                    name="email"
                                     placeholder="email@example.com"
                                 />
                                 <InputError message={errors.email} />
                             </div>
-
                             <div className="grid gap-2">
-                                <Label htmlFor="password">Password</Label>
+                                <Label htmlFor="register-password">
+                                    Password
+                                </Label>
                                 <PasswordInput
-                                    id="password"
+                                    id="register-password"
+                                    name="password"
                                     required
                                     autoComplete="new-password"
-                                    name="password"
                                     placeholder="Password"
-                                    passwordrules={passwordRules}
                                 />
                                 <InputError message={errors.password} />
+                                {passwordRules && (
+                                    <p className="text-xs text-muted-foreground">
+                                        {passwordRules}
+                                    </p>
+                                )}
                             </div>
-
                             <div className="grid gap-2">
-                                <Label htmlFor="password_confirmation">
+                                <Label htmlFor="register-password-confirmation">
                                     Confirm password
                                 </Label>
                                 <PasswordInput
-                                    id="password_confirmation"
+                                    id="register-password-confirmation"
+                                    name="password_confirmation"
                                     required
                                     autoComplete="new-password"
-                                    name="password_confirmation"
-                                    placeholder="Confirm password"
-                                    passwordrules={passwordRules}
+                                    placeholder="Repeat password"
                                 />
                                 <InputError
                                     message={errors.password_confirmation}
                                 />
                             </div>
-
                             <Button
-                                type="submit"
                                 className="mt-2 w-full"
-                                data-test="register-user-button"
+                                disabled={processing}
                             >
-                                {processing && <Spinner />}
-                                Create account
+                                Submit registration
                             </Button>
                         </div>
-
-                        <div className="text-center text-sm text-muted-foreground">
+                        <p className="text-center text-sm text-muted-foreground">
                             Already have an account?{' '}
-                            <TextLink href={login()}>Log in</TextLink>
-                        </div>
+                            <TextLink href="/login">Log in</TextLink>
+                        </p>
                     </>
                 )}
             </Form>
@@ -109,10 +101,11 @@ export default function Register({ passwordRules }: Props) {
 }
 
 Register.layout = {
-    title: 'Create an account',
-    description: 'Enter your details below to create your account',
+    title: 'Request access to FieldOps',
+    description:
+        'Submit your details for administrator review before using the workspace.',
     artwork: {
-        src: landingAssets.fieldWorkerTablet,
-        alt: 'Field worker reviewing a work order on a tablet',
+        src: landingAssets.fieldWorkerServiceVan,
+        alt: 'Field worker checking a service van beside a city water tower',
     },
 };
