@@ -65,6 +65,22 @@ export function AppSidebar() {
         });
     }
 
+    if (can('ip_blocks.view')) {
+        accessItems.push({
+            title: 'Blocked IPs',
+            href: '/access/ip-blocks',
+            icon: ShieldCheck,
+        });
+    }
+
+    if (can('visit_logs.view')) {
+        accessItems.push({
+            title: 'Visit logs',
+            href: '/access/visit-logs',
+            icon: ScrollText,
+        });
+    }
+
     if (can('settings.manage_system')) {
         footerItems.push({
             title: 'System settings',

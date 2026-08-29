@@ -67,6 +67,8 @@ class AuditController extends Controller
                 'actor' => $event->actor === null ? null : ['id' => $event->actor->id, 'name' => $event->actor->name, 'email' => $event->actor->email],
                 'subjectType' => $event->subject_type,
                 'subjectId' => $event->subject_id,
+                'ipAddress' => $event->ip_address,
+                'userAgent' => $event->user_agent,
                 'before' => $event->before,
                 'after' => $event->after,
                 'occurredAt' => $event->occurred_at->toIso8601String(),
@@ -84,6 +86,31 @@ class AuditController extends Controller
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
+            ],
+        ]);
+    }
+
+    public function show(AccessAuditEvent $accessAuditEvent): Response
+    {
+        $this->authorize('view', $accessAuditEvent);
+        $accessAuditEvent->load('actor:id,name,email');
+
+        return Inertia::render('access/audit-show', [
+            'event' => [
+                'id' => $accessAuditEvent->id,
+                'event' => $accessAuditEvent->event,
+                'actor' => $accessAuditEvent->actor === null ? null : [
+                    'id' => $accessAuditEvent->actor->id,
+                    'name' => $accessAuditEvent->actor->name,
+                    'email' => $accessAuditEvent->actor->email,
+                ],
+                'subjectType' => $accessAuditEvent->subject_type,
+                'subjectId' => $accessAuditEvent->subject_id,
+                'ipAddress' => $accessAuditEvent->ip_address,
+                'userAgent' => $accessAuditEvent->user_agent,
+                'before' => $accessAuditEvent->before,
+                'after' => $accessAuditEvent->after,
+                'occurredAt' => $accessAuditEvent->occurred_at->toIso8601String(),
             ],
         ]);
     }

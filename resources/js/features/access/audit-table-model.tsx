@@ -1,8 +1,10 @@
-import { CalendarClock, FileDiff, UserRound } from 'lucide-react';
+import { CalendarClock, Eye, FileDiff, UserRound } from 'lucide-react';
 import { SortableColumn } from '@/components/sortable-column';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import type { DataTableColumn } from '@/components/ui/data-table';
+import { TableActionLink, TableActions } from '@/components/ui/table-actions';
+import { show as showAuditEvent } from '@/routes/access/audit';
 
 export type AuditEvent = {
     id: number;
@@ -10,6 +12,8 @@ export type AuditEvent = {
     actor: { id: number; name: string; email: string } | null;
     subjectType: string | null;
     subjectId: string | null;
+    ipAddress?: string | null;
+    userAgent?: string | null;
     before: Record<string, unknown> | null;
     after: Record<string, unknown> | null;
     occurredAt: string;
@@ -178,6 +182,15 @@ export function auditTableColumns({
                 ),
         },
         {
+            key: 'ip_address',
+            header: 'Source IP',
+            cell: (event) => (
+                <code className="font-mono text-xs text-muted-foreground">
+                    {event.ipAddress ?? '—'}
+                </code>
+            ),
+        },
+        {
             key: 'occurred',
             header: (
                 <SortableColumn
@@ -214,6 +227,20 @@ export function auditTableColumns({
                     <ChangePreview label="Before" value={event.before} />
                     <ChangePreview label="After" value={event.after} />
                 </div>
+            ),
+        },
+        {
+            key: 'actions',
+            header: 'Actions',
+            headerClassName: 'px-6 text-right',
+            cellClassName: 'px-6',
+            cell: (event) => (
+                <TableActions label={`Actions for audit event ${event.id}`}>
+                    <TableActionLink href={showAuditEvent.url(event.id)}>
+                        <Eye />
+                        View
+                    </TableActionLink>
+                </TableActions>
             ),
         },
     ];

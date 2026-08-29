@@ -7,6 +7,7 @@ use App\Actions\Rbac\AssignRoleToUser;
 use App\Actions\Rbac\BulkChangeUserStatus;
 use App\Actions\Rbac\ChangeUserStatus;
 use App\Actions\Rbac\CreateUser;
+use App\Actions\Rbac\DeleteUser;
 use App\Actions\Rbac\InviteUser;
 use App\Actions\Rbac\RecordAccessAudit;
 use App\Actions\Rbac\RejectRegistration;
@@ -17,6 +18,7 @@ use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Access\AssignRoleRequest;
 use App\Http\Requests\Access\BulkUserStatusRequest;
+use App\Http\Requests\Access\DeleteUserRequest;
 use App\Http\Requests\Access\InviteUserRequest;
 use App\Http\Requests\Access\ReviewRegistrationRequest;
 use App\Http\Requests\Access\StoreUserRequest;
@@ -80,11 +82,50 @@ class UserController extends Controller
         ]);
     }
 
+    public function show(User $user): Response
+    {
+        $this->authorize('view', $user);
+
+        $user->load('roles:id,name,display_name,is_system');
+
+        return Inertia::render('access/user-show', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'position' => $user->position,
+                'department' => $user->department,
+                'avatar' => $user->avatar,
+                'status' => $user->status->value,
+                'role' => $user->roles->first() === null ? null : [
+                    'id' => $user->roles->first()->id,
+                    'name' => $user->roles->first()->name,
+                    'displayName' => $user->roles->first()->display_name,
+                ],
+                'emailVerifiedAt' => $user->email_verified_at?->toIso8601String(),
+                'createdAt' => $user->created_at?->toIso8601String(),
+                'updatedAt' => $user->updated_at?->toIso8601String(),
+            ],
+            'canEdit' => request()->user()?->can('update', $user) === true,
+            'canDelete' => request()->user()?->can('delete', $user) === true,
+            'canSuspend' => request()->user()?->can('suspend', $user) === true,
+            'canReactivate' => request()->user()?->can('update', $user) === true,
+        ]);
+    }
+
     public function update(UpdateUserRequest $request, User $user, UpdateUser $update): RedirectResponse
     {
         $update->execute($user, $request->user(), $request->validated());
 
         return to_route('access.users.index')->with('success', 'User updated.');
+    }
+
+    public function destroy(DeleteUserRequest $request, User $user, DeleteUser $delete): RedirectResponse
+    {
+        $this->authorize('delete', $user);
+        $delete->execute($user, $request->user());
+
+        return to_route('access.users.index')->with('success', 'User deleted.');
     }
 
     public function index(Request $request): Response
@@ -117,7 +158,7 @@ class UserController extends Controller
                 )
                 ->paginate($pageSize)
                 ->appends(PageSize::query($request, $pageSize))
-                ->through(static fn (User $user): array => [
+                ->through(fn (User $user): array => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
@@ -131,6 +172,7 @@ class UserController extends Controller
                         'displayName' => $user->roles->first()->display_name,
                         'isSystem' => (bool) $user->roles->first()->is_system,
                     ],
+                    'canDelete' => $request->user()->can('delete', $user),
                     'createdAt' => $user->created_at?->toIso8601String(),
                 ]),
             'activeUsersCount' => User::query()

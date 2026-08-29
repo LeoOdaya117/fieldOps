@@ -36,6 +36,13 @@ class UserPolicy
         return $user->can('users.update') && ! $user->is($subject);
     }
 
+    public function delete(User $user, User $subject): bool
+    {
+        return $user->can('users.delete')
+            && ! $user->is($subject)
+            && ($user->isOwner() || ! $subject->isOwner());
+    }
+
     public function suspend(User $user, User $subject): bool
     {
         return $user->can('users.suspend') && ! $user->is($subject);
