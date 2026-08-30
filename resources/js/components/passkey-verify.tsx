@@ -19,7 +19,6 @@ type Props = {
     loadingLabel?: string;
     separator?: string;
     location?: BrowserLocation | null;
-    locationRequired?: boolean;
 };
 
 export default function PasskeyVerify({
@@ -28,7 +27,6 @@ export default function PasskeyVerify({
     loadingLabel,
     separator,
     location = null,
-    locationRequired = false,
 }: Props = {}) {
     useEffect(() => {
         Passkeys.configure({
@@ -70,7 +68,7 @@ export default function PasskeyVerify({
                     variant="outline"
                     className="w-full"
                     onClick={verify}
-                    disabled={isLoading || locationRequired}
+                    disabled={isLoading}
                 >
                     {isLoading ? <Spinner /> : <KeyRound className="h-4 w-4" />}
                     {isLoading

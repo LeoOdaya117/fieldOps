@@ -35,12 +35,7 @@ export default function Login({ status, canResetPassword }: Props) {
             <Head title="Log in" />
 
             {/* @chisel-passkeys */}
-            <PasskeyVerify
-                location={location}
-                locationRequired={
-                    locationStatus === 'idle' || locationStatus === 'pending'
-                }
-            />
+            <PasskeyVerify location={location} />
             {/* @end-chisel-passkeys */}
 
             <Form
@@ -127,11 +122,7 @@ export default function Login({ status, canResetPassword }: Props) {
                             <Button
                                 type="submit"
                                 className="mt-2 w-full"
-                                disabled={
-                                    processing ||
-                                    locationStatus === 'idle' ||
-                                    locationStatus === 'pending'
-                                }
+                                disabled={processing}
                                 data-test="login-button"
                             >
                                 {processing && <Spinner />}

@@ -150,11 +150,7 @@ export default function TwoFactorChallenge() {
                             <Button
                                 type="submit"
                                 className="w-full"
-                                disabled={
-                                    processing ||
-                                    locationStatus === 'idle' ||
-                                    locationStatus === 'pending'
-                                }
+                                disabled={processing}
                             >
                                 Continue
                             </Button>

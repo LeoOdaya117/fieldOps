@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use App\Listeners\RecordAuthenticationVisit;
 use App\Models\AccessAuditEvent;
 use App\Models\BlockedIpAddress;
 use App\Models\Role;
@@ -14,11 +13,8 @@ use App\Policies\RolePolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VisitLogPolicy;
 use Carbon\CarbonImmutable;
-use Illuminate\Auth\Events\Login;
-use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -45,9 +41,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(AccessAuditEvent::class, AccessAuditEventPolicy::class);
         Gate::policy(BlockedIpAddress::class, BlockedIpAddressPolicy::class);
         Gate::policy(VisitLog::class, VisitLogPolicy::class);
-
-        Event::listen(Login::class, [RecordAuthenticationVisit::class, 'handleLogin']);
-        Event::listen(Logout::class, [RecordAuthenticationVisit::class, 'handleLogout']);
 
         Gate::before(static function ($user): ?bool {
             return $user->isActive() && $user->isOwner() ? true : null;
