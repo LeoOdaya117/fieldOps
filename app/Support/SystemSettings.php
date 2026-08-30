@@ -3,7 +3,9 @@
 namespace App\Support;
 
 use App\Models\SystemSetting;
+use App\Models\Timezone;
 use DateTimeZone;
+use Illuminate\Support\Facades\Schema;
 
 final class SystemSettings
 {
@@ -39,6 +41,29 @@ final class SystemSettings
         $timezone = self::values()[self::TIMEZONE] ?? 'UTC';
 
         return in_array($timezone, DateTimeZone::listIdentifiers(), true) ? $timezone : 'UTC';
+    }
+
+    /** @return list<string> */
+    public static function timezoneOptions(): array
+    {
+        if (Schema::hasTable('timezones')) {
+            $timezones = Timezone::query()
+                ->orderBy('name')
+                ->pluck('name')
+                ->values()
+                ->all();
+
+            if ($timezones !== []) {
+                return array_values(array_map(static fn (mixed $timezone): string => (string) $timezone, $timezones));
+            }
+        }
+
+        return DateTimeZone::listIdentifiers();
+    }
+
+    public static function hasActiveTimezoneCatalog(): bool
+    {
+        return Schema::hasTable('timezones') && Timezone::query()->exists();
     }
 
     public static function paginationSize(): int

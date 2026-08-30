@@ -7,6 +7,8 @@ use App\Http\Controllers\Access\UserController;
 use App\Http\Controllers\Access\VisitLogController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\RegistrationController;
+use App\Http\Controllers\System\CountryController;
+use App\Http\Controllers\System\TimezoneController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
@@ -71,6 +73,24 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::patch('ip-blocks/{blockedIpAddress}/deactivate', [BlockedIpAddressController::class, 'deactivate'])->middleware([RequirePassword::class, 'can:ip_blocks.manage'])->name('ip-blocks.deactivate');
         Route::get('visit-logs', [VisitLogController::class, 'index'])->middleware('can:visit_logs.view')->name('visit-logs.index');
         Route::get('visit-logs/{visitLog}', [VisitLogController::class, 'show'])->middleware('can:visit_logs.view')->name('visit-logs.show');
+    });
+
+    Route::prefix('system')->name('system.')->group(function () {
+        Route::get('countries', [CountryController::class, 'index'])->middleware('can:countries.view')->name('countries.index');
+        Route::get('countries/create', [CountryController::class, 'create'])->middleware('can:countries.manage')->name('countries.create');
+        Route::post('countries', [CountryController::class, 'store'])->middleware([RequirePassword::class, 'can:countries.manage'])->name('countries.store');
+        Route::get('countries/{country}/edit', [CountryController::class, 'edit'])->middleware('can:countries.manage')->name('countries.edit');
+        Route::get('countries/{country}', [CountryController::class, 'show'])->middleware('can:countries.view')->name('countries.show');
+        Route::patch('countries/{country}', [CountryController::class, 'update'])->middleware([RequirePassword::class, 'can:countries.manage'])->name('countries.update');
+        Route::delete('countries/{country}', [CountryController::class, 'destroy'])->middleware([RequirePassword::class, 'can:countries.manage'])->name('countries.destroy');
+
+        Route::get('timezones', [TimezoneController::class, 'index'])->middleware('can:timezones.view')->name('timezones.index');
+        Route::get('timezones/create', [TimezoneController::class, 'create'])->middleware('can:timezones.manage')->name('timezones.create');
+        Route::post('timezones', [TimezoneController::class, 'store'])->middleware([RequirePassword::class, 'can:timezones.manage'])->name('timezones.store');
+        Route::get('timezones/{timezone}/edit', [TimezoneController::class, 'edit'])->middleware('can:timezones.manage')->name('timezones.edit');
+        Route::get('timezones/{timezone}', [TimezoneController::class, 'show'])->middleware('can:timezones.view')->name('timezones.show');
+        Route::patch('timezones/{timezone}', [TimezoneController::class, 'update'])->middleware([RequirePassword::class, 'can:timezones.manage'])->name('timezones.update');
+        Route::delete('timezones/{timezone}', [TimezoneController::class, 'destroy'])->middleware([RequirePassword::class, 'can:timezones.manage'])->name('timezones.destroy');
     });
 });
 

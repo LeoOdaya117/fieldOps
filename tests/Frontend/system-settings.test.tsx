@@ -46,6 +46,10 @@ describe('system settings page', () => {
         ).toBeInTheDocument();
         expect(screen.getByLabelText('System name')).toHaveValue('FieldOps');
         expect(screen.getByLabelText('Time zone')).toHaveValue('UTC');
+        expect(
+            screen.getByRole('option', { name: 'Asia/Manila' }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('option', { name: 'UTC' })).toBeInTheDocument();
         expect(screen.getByLabelText('Default rows per page')).toHaveValue(
             '50',
         );

@@ -4,12 +4,16 @@ namespace App\Providers;
 
 use App\Models\AccessAuditEvent;
 use App\Models\BlockedIpAddress;
+use App\Models\Country;
 use App\Models\Role;
+use App\Models\Timezone;
 use App\Models\User;
 use App\Models\VisitLog;
 use App\Policies\AccessAuditEventPolicy;
 use App\Policies\BlockedIpAddressPolicy;
+use App\Policies\CountryPolicy;
 use App\Policies\RolePolicy;
+use App\Policies\TimezonePolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VisitLogPolicy;
 use Carbon\CarbonImmutable;
@@ -40,6 +44,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Role::class, RolePolicy::class);
         Gate::policy(AccessAuditEvent::class, AccessAuditEventPolicy::class);
         Gate::policy(BlockedIpAddress::class, BlockedIpAddressPolicy::class);
+        Gate::policy(Country::class, CountryPolicy::class);
+        Gate::policy(Timezone::class, TimezonePolicy::class);
         Gate::policy(VisitLog::class, VisitLogPolicy::class);
 
         Gate::before(static function ($user): ?bool {

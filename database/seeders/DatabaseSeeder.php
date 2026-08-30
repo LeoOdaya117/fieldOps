@@ -17,6 +17,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RbacSeeder::class,
             DefaultAccountsSeeder::class,
+            CountrySeeder::class,
+            TimezoneSeeder::class,
         ]);
     }
 }

@@ -23,9 +23,18 @@ class UpdateSystemSettingsRequest extends FormRequest
     /** @return array<string, mixed> */
     public function rules(): array
     {
+        $timezoneRules = ['required', 'timezone'];
+
+        if (SystemSettings::hasActiveTimezoneCatalog()) {
+            $timezoneRules[] = Rule::exists('timezones', 'name')->where(
+                static fn ($query) => $query
+                    ->where('record_status', 1),
+            );
+        }
+
         return [
             'name' => ['required', 'string', 'max:120'],
-            'timezone' => ['required', 'timezone'],
+            'timezone' => $timezoneRules,
             'pagination_size' => ['required', 'integer', Rule::in(SystemSettings::paginationOptions())],
         ];
     }

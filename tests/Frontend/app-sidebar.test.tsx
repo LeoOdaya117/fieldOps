@@ -168,13 +168,38 @@ describe('app sidebar navigation', () => {
 
         render(<AppSidebar />);
 
-        expect(screen.getByRole('link', { name: 'Blocked IPs' })).toHaveAttribute(
+        expect(
+            screen.getByRole('link', { name: 'Blocked IPs' }),
+        ).toHaveAttribute('href', '/access/ip-blocks');
+        expect(
+            screen.getByRole('link', { name: 'Visit logs' }),
+        ).toHaveAttribute('href', '/access/visit-logs');
+    });
+
+    it('shows country and timezone navigation to users with catalog permissions', () => {
+        usePageMock.mockReturnValue({
+            url: '/system/countries',
+            props: {
+                name: 'FieldOps',
+                auth: {
+                    user: { name: 'Administrator' },
+                    authorization: {
+                        permissions: ['countries.view', 'timezones.view'],
+                        isOwner: false,
+                    },
+                },
+            },
+        });
+
+        render(<AppSidebar />);
+
+        expect(screen.getByRole('link', { name: 'Countries' })).toHaveAttribute(
             'href',
-            '/access/ip-blocks',
+            '/system/countries',
         );
-        expect(screen.getByRole('link', { name: 'Visit logs' })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: 'Timezones' })).toHaveAttribute(
             'href',
-            '/access/visit-logs',
+            '/system/timezones',
         );
     });
 });

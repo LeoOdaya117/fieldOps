@@ -6,7 +6,6 @@ use App\Actions\Settings\UpdateSystemSettings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateSystemSettingsRequest;
 use App\Support\SystemSettings;
-use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,7 +19,7 @@ class SystemSettingsController extends Controller
 
         return Inertia::render('settings/system', [
             'settings' => SystemSettings::values(),
-            'timezones' => DateTimeZone::listIdentifiers(),
+            'timezones' => SystemSettings::timezoneOptions(),
             'paginationOptions' => SystemSettings::paginationOptions(),
         ]);
     }

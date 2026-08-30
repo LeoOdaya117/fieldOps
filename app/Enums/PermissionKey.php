@@ -22,6 +22,10 @@ enum PermissionKey: string
     case IpBlocksManage = 'ip_blocks.manage';
     case VisitLogsView = 'visit_logs.view';
     case SettingsManageSystem = 'settings.manage_system';
+    case CountriesView = 'countries.view';
+    case CountriesManage = 'countries.manage';
+    case TimezonesView = 'timezones.view';
+    case TimezonesManage = 'timezones.manage';
 
     /** @return list<string> */
     public static function values(): array
