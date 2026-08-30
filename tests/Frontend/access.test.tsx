@@ -847,14 +847,35 @@ describe('access administration pages', () => {
                             statusCode: 302,
                             occurredAt: '2030-01-01T00:00:00Z',
                         },
+                        {
+                            id: 2,
+                            user: null,
+                            eventType: 'logout',
+                            outcome: 'success',
+                            ipAddress: '198.51.100.10',
+                            locationSource: null,
+                            locationCountryCode: null,
+                            locationRegion: null,
+                            locationCity: null,
+                            locationLatitude: null,
+                            locationLongitude: null,
+                            locationAccuracyMeters: null,
+                            locationTimezone: null,
+                            userAgent: 'Test browser',
+                            method: 'POST',
+                            routeName: 'logout',
+                            path: '/logout',
+                            statusCode: 302,
+                            occurredAt: '2030-01-01T01:00:00Z',
+                        },
                     ],
                     current_page: 1,
                     last_page: 1,
-                    total: 1,
+                    total: 2,
                     from: 1,
-                    to: 1,
+                    to: 2,
                 }}
-                eventTypes={['login']}
+                eventTypes={['login', 'logout']}
                 outcomes={['success']}
                 filters={{
                     ip: '',
@@ -872,9 +893,17 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('heading', { name: 'Visit logs' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('198.51.100.10')).toBeInTheDocument();
+        expect(screen.getAllByText('198.51.100.10')).toHaveLength(2);
         expect(screen.getByText('/login')).toBeInTheDocument();
-        expect(screen.getByText('302')).toBeInTheDocument();
+        expect(screen.getAllByText('302')).toHaveLength(2);
+        expect(screen.getByText('Login')).toHaveClass(
+            'bg-success/10',
+            'text-success',
+        );
+        expect(screen.getByText('Logout')).toHaveClass(
+            'bg-destructive/10',
+            'text-destructive',
+        );
         expect(
             screen.getByRole('button', { name: /Search & filter/ }),
         ).toBeInTheDocument();

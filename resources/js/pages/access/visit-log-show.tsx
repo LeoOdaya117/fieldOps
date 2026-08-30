@@ -6,6 +6,7 @@ import {
 } from '@/components/details-page';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { visitLogEventBadgeClassName } from '@/features/access/visit-log-table-model';
 import type { VisitLog } from '@/features/access/visit-log-table-model';
 import { dashboard } from '@/routes';
 import { index as visitLogsIndex } from '@/routes/access/visit-logs';
@@ -63,7 +64,12 @@ export default function VisitLogShowPage({ log }: { log: VisitLog }) {
                 >
                     <div className="space-y-6 p-4 sm:p-6">
                         <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="secondary">
+                            <Badge
+                                variant="outline"
+                                className={visitLogEventBadgeClassName(
+                                    log.eventType,
+                                )}
+                            >
                                 {label(log.eventType)}
                             </Badge>
                             <Badge variant="outline">

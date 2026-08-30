@@ -51,6 +51,18 @@ export type VisitLogTableFilters = {
     direction?: 'asc' | 'desc';
 };
 
+export function visitLogEventBadgeClassName(eventType: string): string {
+    if (eventType === 'login') {
+        return 'border-success/30 bg-success/10 text-success';
+    }
+
+    if (eventType === 'logout') {
+        return 'border-destructive/30 bg-destructive/10 text-destructive';
+    }
+
+    return 'border-border bg-background text-foreground';
+}
+
 type VisitLogTableOptions = {
     filters: VisitLogTableFilters;
     firstRowNumber: number;
@@ -220,7 +232,12 @@ export function visitLogTableColumns({
             header: 'Event',
             cell: (log) => (
                 <div className="min-w-[150px] space-y-1">
-                    <Badge variant="secondary">{label(log.eventType)}</Badge>
+                    <Badge
+                        variant="outline"
+                        className={visitLogEventBadgeClassName(log.eventType)}
+                    >
+                        {label(log.eventType)}
+                    </Badge>
                     <div className="text-xs text-muted-foreground">
                         {label(log.outcome)}
                     </div>
