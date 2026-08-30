@@ -35,11 +35,19 @@ export default function RegistrationsPage({
                 ) : (
                     <DataTable
                         caption="Pending user registrations"
-                        className="min-w-[720px]"
+                        className="min-w-max"
                         containerClassName="rounded-none border-0 shadow-none ring-0"
                         scrollContainerClassName="px-4"
                         data={registrations}
                         tableColumns={registrationTableColumns}
+                        columnVisibility={{
+                            storageKey: 'access.registrations',
+                            defaultVisibleKeys: [
+                                'applicant',
+                                'status',
+                                'submitted',
+                            ],
+                        }}
                         getRowKey={(registration) => registration.id}
                     />
                 )}

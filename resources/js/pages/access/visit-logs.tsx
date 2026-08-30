@@ -226,7 +226,7 @@ export default function VisitLogsPage({
                 ) : (
                     <DataTable
                         caption="FieldOps visit logs"
-                        className="min-w-[1500px]"
+                        className="min-w-max"
                         containerClassName="rounded-none border-0 shadow-none ring-0"
                         scrollContainerClassName="px-4"
                         data={logs.data}
@@ -236,6 +236,19 @@ export default function VisitLogsPage({
                                 firstRowNumber: logs.from ?? 1,
                             })
                         }
+                        columnVisibility={{
+                            storageKey: 'access.visit-logs',
+                            defaultVisibleKeys: [
+                                'occurred_at',
+                                'ip_address',
+                                'location',
+                                'user',
+                                'event',
+                                'request',
+                                'status',
+                                'user_agent',
+                            ],
+                        }}
                         getRowKey={(log) => log.id}
                         pagination={{
                             currentPage: logs.current_page,

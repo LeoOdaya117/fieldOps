@@ -1,5 +1,12 @@
 import type { ComponentProps, Key, ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
+import {
+    DataTableColumnVisibility,
+    useDataTableColumnVisibility,
+} from '@/components/ui/data-table-column-visibility';
+import type {
+    DataTableColumnVisibilityOptions,
+} from '@/components/ui/data-table-column-visibility';
 import { TablePagination } from '@/components/ui/table-pagination';
 import type { TablePaginationProps } from '@/components/ui/table-pagination';
 import { cn } from '@/lib/utils';
@@ -7,6 +14,8 @@ import { cn } from '@/lib/utils';
 type DataTableColumn<T> = {
     key: string;
     header: ReactNode;
+    label?: string;
+    hideable?: boolean;
     headerClassName?: string;
     cellClassName?: string;
     accessor?: keyof T | ((row: T, index: number) => ReactNode);
@@ -22,6 +31,8 @@ type DataTableProps<T = unknown> = ComponentProps<'table'> & {
     tableColumns?:
         | readonly DataTableColumn<T>[]
         | (() => readonly DataTableColumn<T>[]);
+    columnVisibility?: DataTableColumnVisibilityOptions;
+    toolbar?: ReactNode;
     pagination?: TablePaginationProps | null;
     getRowKey?: (row: T, index: number) => Key;
     getRowProps?: (
@@ -39,6 +50,8 @@ function DataTable<T>({
     containerClassName,
     scrollContainerClassName,
     tableColumns,
+    columnVisibility,
+    toolbar,
     pagination,
     getRowKey,
     getRowProps,
@@ -52,7 +65,29 @@ function DataTable<T>({
             : addDefaultColumns
               ? mergeDefaultColumns(configuredColumns ?? [])
               : configuredColumns;
+    const hideableColumns =
+        columns?.filter((column) => column.hideable !== false) ?? [];
+    const columnVisibilityState = useDataTableColumnVisibility({
+        storageKey: columnVisibility?.storageKey ?? null,
+        columnKeys: hideableColumns.map((column) => column.key),
+        defaultVisibleKeys: columnVisibility?.defaultVisibleKeys,
+    });
+    const canManageColumns =
+        columnVisibility !== undefined &&
+        columns !== undefined &&
+        hideableColumns.length > 0;
+    const visibleColumnKeys = new Set(columnVisibilityState.visibleKeys);
+    const renderedColumns = canManageColumns
+        ? columns?.filter(
+              (column) =>
+                  column.hideable === false ||
+                  visibleColumnKeys.has(column.key),
+          )
+        : columns;
     const isDeclarative = columns !== undefined;
+    const hasToolbarContent =
+        toolbar !== undefined && toolbar !== null && toolbar !== false;
+    const hasDataTableToolbar = hasToolbarContent || canManageColumns;
 
     return (
         <div
@@ -62,6 +97,39 @@ function DataTable<T>({
                 containerClassName,
             )}
         >
+            {hasDataTableToolbar ? (
+                <DataTableToolbar
+                    className={cn(
+                        hasToolbarContent
+                            ? 'flex-row flex-wrap items-center justify-between'
+                            : 'items-end sm:justify-end',
+                    )}
+                >
+                    {hasToolbarContent ? (
+                        <div className="min-w-0 flex-1">{toolbar}</div>
+                    ) : null}
+                    {canManageColumns ? (
+                        <div className="shrink-0">
+                            <DataTableColumnVisibility
+                                columns={hideableColumns.map((column) => ({
+                                    key: column.key,
+                                    label: getColumnLabel(column),
+                                }))}
+                                visibleKeys={
+                                    columnVisibilityState.visibleKeys
+                                }
+                                defaultVisibleKeys={
+                                    columnVisibilityState.defaultVisibleKeys
+                                }
+                                onVisibleKeysChange={
+                                    columnVisibilityState.setVisibleKeys
+                                }
+                                onReset={columnVisibilityState.reset}
+                            />
+                        </div>
+                    ) : null}
+                </DataTableToolbar>
+            ) : null}
             {pagination ? (
                 <TablePagination {...pagination} position="top" />
             ) : null}
@@ -82,7 +150,7 @@ function DataTable<T>({
                         <>
                             <DataTableHeader>
                                 <DataTableRow className="hover:bg-transparent">
-                                    {columns.map((column) => (
+                                    {renderedColumns?.map((column) => (
                                         <DataTableHead
                                             key={column.key}
                                             scope="col"
@@ -102,7 +170,7 @@ function DataTable<T>({
                                             key={getRowKey?.(row, index) ?? index}
                                             {...rowProps}
                                         >
-                                            {columns.map((column) => (
+                                            {renderedColumns?.map((column) => (
                                                 <DataTableCell
                                                     key={column.key}
                                                     className={column.cellClassName}
@@ -160,6 +228,20 @@ function readDefaultValue(row: unknown, key: string) {
     return record[key] ?? record[camelKey];
 }
 
+function getColumnLabel<T>(column: DataTableColumn<T>): string {
+    if (column.label) {
+        return column.label;
+    }
+
+    if (typeof column.header === 'string' || typeof column.header === 'number') {
+        return String(column.header);
+    }
+
+    return column.key
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 function formatDefaultDate(value: unknown) {
     if (!value) {
         return '—';
@@ -215,31 +297,37 @@ function defaultTableColumns(): DataTableColumn<unknown>[] {
         {
             key: 'created_at',
             header: 'Created',
+            label: 'Created',
             cell: (row) => formatDefaultDate(readDefaultValue(row, 'created_at')),
         },
         {
             key: 'updated_at',
             header: 'Updated',
+            label: 'Updated',
             cell: (row) => formatDefaultDate(readDefaultValue(row, 'updated_at')),
         },
         {
             key: 'created_by',
             header: 'Created by',
+            label: 'Created by',
             cell: (row) => formatActor(readDefaultValue(row, 'created_by')),
         },
         {
             key: 'updated_by',
             header: 'Updated by',
+            label: 'Updated by',
             cell: (row) => formatActor(readDefaultValue(row, 'updated_by')),
         },
         {
             key: 'status',
             header: 'Status',
+            label: 'Status',
             cell: (row) => formatDefaultValue(readDefaultValue(row, 'status')),
         },
         {
             key: 'record_status',
             header: 'Record status',
+            label: 'Record status',
             cell: (row) => formatRecordStatus(readDefaultValue(row, 'record_status')),
         },
     ];
@@ -327,6 +415,7 @@ function DataTableToolbar({ className, ...props }: ComponentProps<'div'>) {
 export {
     DataTable,
     type DataTableColumn,
+    type DataTableColumnVisibilityOptions,
     DataTableBody,
     DataTableCell,
     DataTableHead,

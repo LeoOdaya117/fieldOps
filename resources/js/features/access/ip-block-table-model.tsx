@@ -84,6 +84,7 @@ export function blockedIpTableColumns({
         {
             key: 'serial',
             header: '#',
+            hideable: false,
             headerClassName: 'w-12 px-2 text-center',
             cellClassName:
                 'w-12 px-2 text-center text-xs tabular-nums text-muted-foreground',
@@ -91,6 +92,7 @@ export function blockedIpTableColumns({
         },
         {
             key: 'ip_address',
+            label: 'IP address',
             header: (
                 <SortableColumn
                     action={ipBlocksIndex.url()}
@@ -110,6 +112,7 @@ export function blockedIpTableColumns({
         },
         {
             key: 'status',
+            label: 'Status',
             header: (
                 <SortableColumn
                     action={ipBlocksIndex.url()}
@@ -141,6 +144,7 @@ export function blockedIpTableColumns({
         {
             key: 'user',
             header: 'Observed user',
+            label: 'Observed user',
             headerClassName: 'px-6',
             cellClassName: 'px-6',
             cell: (rule) =>
@@ -170,6 +174,7 @@ export function blockedIpTableColumns({
         {
             key: 'reason',
             header: 'Reason',
+            label: 'Reason',
             cell: (rule) => (
                 <span className="block max-w-xs text-sm text-muted-foreground">
                     {rule.reason ?? 'No reason provided.'}
@@ -178,6 +183,7 @@ export function blockedIpTableColumns({
         },
         {
             key: 'last_seen_at',
+            label: 'Last seen',
             header: (
                 <SortableColumn
                     action={ipBlocksIndex.url()}
@@ -200,6 +206,7 @@ export function blockedIpTableColumns({
         {
             key: 'actions',
             header: 'Actions',
+            hideable: false,
             headerClassName: 'px-6 text-right',
             cellClassName: 'px-6',
             cell: (rule) => (

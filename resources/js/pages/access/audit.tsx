@@ -159,11 +159,22 @@ export default function AuditPage({ events, eventTypes, filters }: Props) {
                 ) : (
                     <DataTable
                         caption="FieldOps access audit events"
-                        className="min-w-[1160px]"
+                        className="min-w-max"
                         containerClassName="rounded-none border-0 shadow-none ring-0"
                         scrollContainerClassName="px-4"
                         data={events.data}
                         tableColumns={tableColumns}
+                        columnVisibility={{
+                            storageKey: 'access.audit',
+                            defaultVisibleKeys: [
+                                'event',
+                                'actor',
+                                'subject',
+                                'ip_address',
+                                'occurred',
+                                'changes',
+                            ],
+                        }}
                         getRowKey={(event) => event.id}
                         pagination={{
                             currentPage: events.current_page,
