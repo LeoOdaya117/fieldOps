@@ -51,7 +51,7 @@ function SortableColumn({
             size="sm"
             className={cn(
                 'h-8 gap-1.5 px-2 text-xs font-semibold tracking-normal text-foreground normal-case hover:bg-muted',
-                isActive && 'bg-primary/10 text-primary hover:bg-primary/15',
+                isActive && 'bg-link/10 text-link hover:bg-link/15',
             )}
             aria-label={`Sort ${label} ${nextDirection === 'asc' ? 'ascending' : 'descending'}`}
             aria-current={isActive ? 'true' : undefined}
@@ -60,12 +60,12 @@ function SortableColumn({
             {isActive ? (
                 direction === 'asc' ? (
                     <ArrowUpAZ
-                        className="size-3.5 text-primary"
+                        className="size-3.5 text-link"
                         aria-hidden="true"
                     />
                 ) : (
                     <ArrowDownAZ
-                        className="size-3.5 text-primary"
+                        className="size-3.5 text-link"
                         aria-hidden="true"
                     />
                 )

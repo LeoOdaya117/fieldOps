@@ -116,7 +116,7 @@ export function roleTableColumns({
             cellClassName: 'px-6',
             cell: (role) => (
                 <div className="flex min-w-[280px] items-start gap-3">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-link/10 text-link ring-1 ring-link/15">
                         <ShieldCheck className="size-4" />
                     </span>
                     <div className="min-w-0">

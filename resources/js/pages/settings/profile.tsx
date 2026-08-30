@@ -195,7 +195,7 @@ export default function Profile(
                                 <Card>
                                     <CardHeader>
                                         <div className="flex items-start gap-3">
-                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-link/10 text-link">
                                                 <ImagePlus className="size-4" />
                                             </span>
                                             <div className="min-w-0">
@@ -221,7 +221,7 @@ export default function Profile(
                                                     }
                                                     alt={`${auth.user.name} profile photo`}
                                                 />
-                                                <AvatarFallback className="rounded-xl bg-primary/10 text-lg font-semibold text-primary">
+                                                <AvatarFallback className="rounded-xl bg-link/10 text-lg font-semibold text-link">
                                                     {initials(auth.user.name)}
                                                 </AvatarFallback>
                                             </Avatar>

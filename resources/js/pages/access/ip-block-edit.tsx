@@ -76,7 +76,7 @@ export default function IpBlockEditPage({ blockedIpAddress }: Props) {
                     <Card className="overflow-hidden">
                         <CardHeader className="border-b border-border bg-muted/15 px-4 py-5 sm:px-6">
                             <div className="flex items-start gap-3">
-                                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-link/10 text-link">
                                     <GlobeLock className="size-5" />
                                 </span>
                                 <div className="min-w-0">
@@ -174,7 +174,7 @@ export default function IpBlockEditPage({ blockedIpAddress }: Props) {
 
                                     <CardFooter className="flex-col items-stretch gap-4 border-t border-border bg-muted/15 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                                         <div className="flex max-w-md items-start gap-2.5 text-xs leading-5 text-muted-foreground">
-                                            <ShieldAlert className="mt-0.5 size-4 shrink-0 text-primary" />
+                                            <ShieldAlert className="mt-0.5 size-4 shrink-0 text-link" />
                                             <p>
                                                 <span className="font-medium text-foreground">
                                                     Security check:
@@ -314,10 +314,10 @@ export default function IpBlockEditPage({ blockedIpAddress }: Props) {
                             </CardContent>
                         </Card>
                     ) : (
-                        <Card className="border-primary/20 bg-primary/5">
+                        <Card className="border-link/20 bg-link/5">
                             <CardHeader>
                                 <div className="flex items-start gap-3">
-                                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-link/10 text-link">
                                         <ShieldCheck className="size-4" />
                                     </span>
                                     <div>
@@ -331,7 +331,7 @@ export default function IpBlockEditPage({ blockedIpAddress }: Props) {
                             </CardHeader>
                             <CardContent className="pt-0">
                                 <div className="flex items-start gap-2.5 text-xs leading-5 text-muted-foreground">
-                                    <History className="mt-0.5 size-4 shrink-0 text-primary" />
+                                    <History className="mt-0.5 size-4 shrink-0 text-link" />
                                     <p>
                                         The address will remain in the directory
                                         with its first and last seen times for

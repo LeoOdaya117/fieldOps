@@ -132,7 +132,7 @@ export function auditTableColumns({
                 event.actor ? (
                     <div className="flex items-center gap-3">
                         <Avatar className="size-8 rounded-lg">
-                            <AvatarFallback className="rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
+                            <AvatarFallback className="rounded-lg bg-link/10 text-[11px] font-semibold text-link">
                                 {initials(event.actor.name)}
                             </AvatarFallback>
                         </Avatar>

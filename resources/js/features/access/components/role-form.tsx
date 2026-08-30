@@ -377,7 +377,7 @@ export default function RoleForm({
                                                                     key={
                                                                         permission.id
                                                                     }
-                                                                    className="group flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:border-primary/40 hover:bg-primary/5"
+                                                                    className="group flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:border-link/40 hover:bg-link/5"
                                                                 >
                                                                     <input
                                                                         type="checkbox"

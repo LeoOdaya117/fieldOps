@@ -140,7 +140,7 @@ export default function IpBlockShowPage({
                 >
                     <div className="space-y-6 p-4 sm:p-6">
                         <div className="flex items-center gap-3">
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-link/10 text-link">
                                 <GlobeLock className="size-5" />
                             </span>
                             <div className="min-w-0">
