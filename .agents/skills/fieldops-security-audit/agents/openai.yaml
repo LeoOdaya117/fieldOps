@@ -1,0 +1,4 @@
+interface:
+  display_name: "FieldOps Security Audit"
+  short_description: "Audit FieldOps code and changes for actionable security risks."
+  default_prompt: "Use $fieldops-security-audit to audit this FieldOps scope for security issues."

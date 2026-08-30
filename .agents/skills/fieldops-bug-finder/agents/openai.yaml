@@ -1,0 +1,4 @@
+interface:
+  display_name: "FieldOps Bug Finder"
+  short_description: "Reproduce and diagnose FieldOps bugs with evidence."
+  default_prompt: "Use $fieldops-bug-finder to investigate this FieldOps bug."

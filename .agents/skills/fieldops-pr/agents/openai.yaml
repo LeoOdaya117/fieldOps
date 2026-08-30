@@ -1,0 +1,4 @@
+interface:
+  display_name: "FieldOps PR"
+  short_description: "Prepare and submit FieldOps PRs with a mandatory passing-test gate."
+  default_prompt: "Use $fieldops-pr to prepare this FieldOps change for a pull request."
