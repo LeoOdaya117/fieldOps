@@ -1,4 +1,4 @@
-import { CalendarClock, Globe2, UserRound } from 'lucide-react';
+import { CalendarClock, Globe2, MapPin, UserRound } from 'lucide-react';
 import {
     DetailField,
     DetailsPage,
@@ -6,6 +6,7 @@ import {
 } from '@/components/details-page';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { visitLogEventBadgeClassName } from '@/features/access/visit-log-table-model';
 import type { VisitLog } from '@/features/access/visit-log-table-model';
 import { dashboard } from '@/routes';
 import { index as visitLogsIndex } from '@/routes/access/visit-logs';
@@ -28,11 +29,31 @@ function label(value: string | null): string {
         : 'Not recorded';
 }
 
+function locationLabel(log: VisitLog): string {
+    const place = [
+        log.locationCity,
+        log.locationRegion,
+        log.locationCountryCode,
+    ]
+        .filter(Boolean)
+        .join(', ');
+
+    if (place !== '') {
+        return place;
+    }
+
+    if (log.locationLatitude !== null && log.locationLongitude !== null) {
+        return `${log.locationLatitude.toFixed(5)}, ${log.locationLongitude.toFixed(5)}`;
+    }
+
+    return '';
+}
+
 export default function VisitLogShowPage({ log }: { log: VisitLog }) {
     return (
         <DetailsPage
             title="Visit log details"
-            description="Inspect the request context captured for this security activity event."
+            description="Inspect the request context captured when a user logged in or logged out."
             backHref={visitLogsIndex.url()}
             backLabel="Back to visit logs"
         >
@@ -43,7 +64,12 @@ export default function VisitLogShowPage({ log }: { log: VisitLog }) {
                 >
                     <div className="space-y-6 p-4 sm:p-6">
                         <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="secondary">
+                            <Badge
+                                variant="outline"
+                                className={visitLogEventBadgeClassName(
+                                    log.eventType,
+                                )}
+                            >
                                 {label(log.eventType)}
                             </Badge>
                             <Badge variant="outline">
@@ -65,11 +91,25 @@ export default function VisitLogShowPage({ log }: { log: VisitLog }) {
                                     {new Date(log.occurredAt).toLocaleString()}
                                 </span>
                             </DetailField>
+                            <DetailField label="Browser location">
+                                <span className="flex items-start gap-2">
+                                    <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                                    <span>
+                                        {locationLabel(log) || 'Not available'}
+                                        {log.locationSource === 'browser' ? (
+                                            <span className="mt-1 block text-xs text-muted-foreground">
+                                                Provided by the browser with
+                                                user permission.
+                                            </span>
+                                        ) : null}
+                                    </span>
+                                </span>
+                            </DetailField>
                             <DetailField label="User" className="sm:col-span-2">
                                 {log.user ? (
                                     <div className="flex items-center gap-3">
                                         <Avatar className="size-8 rounded-lg">
-                                            <AvatarFallback className="rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
+                                            <AvatarFallback className="rounded-lg bg-link/10 text-[11px] font-semibold text-link">
                                                 {initials(log.user.name)}
                                             </AvatarFallback>
                                         </Avatar>
@@ -115,6 +155,25 @@ export default function VisitLogShowPage({ log }: { log: VisitLog }) {
                             <code className="font-mono text-xs break-all text-muted-foreground">
                                 {log.routeName ?? 'Not recorded'}
                             </code>
+                        </DetailField>
+                        <DetailField label="Coordinates">
+                            {log.locationLatitude !== null &&
+                            log.locationLongitude !== null ? (
+                                <code className="font-mono text-xs">
+                                    {log.locationLatitude},{' '}
+                                    {log.locationLongitude}
+                                </code>
+                            ) : (
+                                'Not recorded'
+                            )}
+                        </DetailField>
+                        <DetailField label="Accuracy">
+                            {log.locationAccuracyMeters !== null
+                                ? `±${Math.round(log.locationAccuracyMeters)} m`
+                                : 'Not recorded'}
+                        </DetailField>
+                        <DetailField label="Timezone">
+                            {log.locationTimezone ?? 'Not recorded'}
                         </DetailField>
                         <DetailField label="Response status">
                             {log.statusCode ?? 'Not recorded'}

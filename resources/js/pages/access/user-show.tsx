@@ -162,7 +162,7 @@ export default function UserShowPage({
                                     src={user.avatar ?? undefined}
                                     alt=""
                                 />
-                                <AvatarFallback className="rounded-2xl bg-primary/10 text-lg font-semibold text-primary">
+                                <AvatarFallback className="rounded-2xl bg-link/10 text-lg font-semibold text-link">
                                     {initials(user.name)}
                                 </AvatarFallback>
                             </Avatar>

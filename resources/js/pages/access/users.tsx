@@ -73,7 +73,7 @@ function StatCard({
     return (
         <Card className="h-full gap-0 py-0">
             <CardContent className="flex min-h-24 items-center gap-3 p-3 sm:p-4">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-link/10 text-link">
                     {icon}
                 </span>
                 <div className="min-w-0 flex-1">

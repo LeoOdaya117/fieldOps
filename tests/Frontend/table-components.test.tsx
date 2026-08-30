@@ -44,6 +44,7 @@ vi.mock('@inertiajs/react', () => ({
 
 import { SortableColumn } from '@/components/sortable-column';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
+import { buttonVariants } from '@/components/ui/button';
 import {
     DataTable,
     DataTableBody,
@@ -61,6 +62,27 @@ import {
 import { TablePagination } from '@/components/ui/table-pagination';
 
 describe('reusable data table components', () => {
+    it('uses the high-contrast link token for links and active sorting', () => {
+        expect(buttonVariants({ variant: 'link' })).toContain('text-link');
+
+        render(
+            <SortableColumn
+                action="/access/users"
+                label="User"
+                sortKey="name"
+                sort="name"
+                direction="asc"
+            />,
+        );
+
+        expect(
+            screen.getByRole('link', { name: 'Sort User descending' }),
+        ).toHaveClass('bg-link/10', 'text-link');
+        expect(screen.getByRole('link').querySelector('svg')).toHaveClass(
+            'text-link',
+        );
+    });
+
     it('renders bulk actions with selected ids and a clear control', async () => {
         const user = userEvent.setup();
         const onClear = vi.fn();

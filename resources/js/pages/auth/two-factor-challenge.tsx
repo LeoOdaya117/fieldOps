@@ -10,11 +10,20 @@ import {
     InputOTPSlot,
 } from '@/components/ui/input-otp';
 import { OTP_MAX_LENGTH } from '@/hooks/use-two-factor-auth';
+import {
+    browserLocationPayload,
+    useBrowserLocation,
+} from '@/hooks/use-browser-location';
 import { store } from '@/routes/two-factor/login';
 
 export default function TwoFactorChallenge() {
     const [showRecoveryInput, setShowRecoveryInput] = useState<boolean>(false);
     const [code, setCode] = useState<string>('');
+    const {
+        location,
+        request: requestLocation,
+        status: locationStatus,
+    } = useBrowserLocation();
 
     const authConfigContent = useMemo<{
         title: string;
@@ -56,6 +65,10 @@ export default function TwoFactorChallenge() {
             <div className="space-y-6">
                 <Form
                     {...store.form()}
+                    transform={(data) => ({
+                        ...data,
+                        ...browserLocationPayload(location),
+                    })}
                     className="space-y-4"
                     resetOnError
                     resetOnSuccess={!showRecoveryInput}
@@ -103,6 +116,36 @@ export default function TwoFactorChallenge() {
                                     <InputError message={errors.code} />
                                 </div>
                             )}
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => void requestLocation()}
+                                disabled={
+                                    locationStatus === 'pending' ||
+                                    locationStatus === 'available'
+                                }
+                            >
+                                {locationStatus === 'pending'
+                                    ? 'Requesting location…'
+                                    : locationStatus === 'available'
+                                      ? 'Location access granted'
+                                      : 'Allow location access'}
+                            </Button>
+
+                            <p
+                                className="text-center text-xs text-muted-foreground"
+                                aria-live="polite"
+                            >
+                                {locationStatus === 'idle'
+                                    ? 'Allow browser location so it can be recorded with this login.'
+                                    : locationStatus === 'pending'
+                                      ? 'Respond to the browser location permission prompt.'
+                                      : locationStatus === 'available'
+                                        ? 'Browser location will be included with this login.'
+                                        : 'Browser location is unavailable. Use HTTPS or localhost and allow permission if prompted.'}
+                            </p>
 
                             <Button
                                 type="submit"

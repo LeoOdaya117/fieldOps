@@ -31,7 +31,7 @@ function SettingHeading({
 }) {
     return (
         <div className="flex items-start gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-link/10 text-link">
                 {icon}
             </span>
             <div className="min-w-0">

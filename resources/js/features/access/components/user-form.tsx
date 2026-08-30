@@ -66,7 +66,7 @@ function SectionHeading({
 }) {
     return (
         <div className="flex items-start gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-link/10 text-link">
                 {icon}
             </span>
             <div className="min-w-0">
@@ -299,7 +299,7 @@ export default function UserForm({
                                                     }
                                                     alt=""
                                                 />
-                                                <AvatarFallback className="rounded-xl bg-primary/10 text-lg font-semibold text-primary">
+                                                <AvatarFallback className="rounded-xl bg-link/10 text-lg font-semibold text-link">
                                                     {initials(
                                                         user?.name ??
                                                             'New User',
@@ -440,7 +440,7 @@ export default function UserForm({
                                             />
                                         </div>
                                         <div className="flex items-start gap-3 rounded-lg bg-muted/30 p-3 text-xs leading-5 text-muted-foreground">
-                                            <ShieldAlert className="mt-0.5 size-4 shrink-0 text-primary" />
+                                            <ShieldAlert className="mt-0.5 size-4 shrink-0 text-link" />
                                             <p>
                                                 Password values are never shown
                                                 in the audit history. Changing
@@ -455,7 +455,7 @@ export default function UserForm({
 
                         <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
-                                <ShieldAlert className="mt-0.5 size-4 shrink-0 text-primary" />
+                                <ShieldAlert className="mt-0.5 size-4 shrink-0 text-link" />
                                 <p>
                                     Changes require password confirmation and
                                     are recorded in the access audit history.

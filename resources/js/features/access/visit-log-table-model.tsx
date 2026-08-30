@@ -1,4 +1,4 @@
-import { Eye, Globe2, UserRound } from 'lucide-react';
+import { Eye, Globe2, MapPin, UserRound } from 'lucide-react';
 import { SortableColumn } from '@/components/sortable-column';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,14 @@ export type VisitLog = {
     eventType: string;
     outcome: string | null;
     ipAddress: string;
+    locationSource: string | null;
+    locationCountryCode: string | null;
+    locationRegion: string | null;
+    locationCity: string | null;
+    locationLatitude: number | null;
+    locationLongitude: number | null;
+    locationAccuracyMeters: number | null;
+    locationTimezone: string | null;
     userAgent: string | null;
     method: string;
     routeName: string | null;
@@ -32,6 +40,7 @@ export type VisitLog = {
 export type VisitLogTableFilters = {
     ip: string;
     user: string;
+    location: string;
     event: string;
     outcome: string;
     statusCode: string;
@@ -41,6 +50,18 @@ export type VisitLogTableFilters = {
     sort?: string;
     direction?: 'asc' | 'desc';
 };
+
+export function visitLogEventBadgeClassName(eventType: string): string {
+    if (eventType === 'login') {
+        return 'border-success/30 bg-success/10 text-success';
+    }
+
+    if (eventType === 'logout') {
+        return 'border-destructive/30 bg-destructive/10 text-destructive';
+    }
+
+    return 'border-border bg-background text-foreground';
+}
 
 type VisitLogTableOptions = {
     filters: VisitLogTableFilters;
@@ -74,6 +95,7 @@ export function visitLogTableColumns({
     const hidden = {
         ip: filters.ip,
         user: filters.user,
+        location: filters.location,
         event: filters.event,
         outcome: filters.outcome,
         status_code: filters.statusCode,
@@ -131,13 +153,61 @@ export function visitLogTableColumns({
             ),
         },
         {
+            key: 'location',
+            header: (
+                <SortableColumn
+                    action={visitLogsIndex.url()}
+                    label="Location"
+                    sortKey="location_city"
+                    sort={sort}
+                    direction={direction}
+                    hidden={hidden}
+                />
+            ),
+            cell: (log) => {
+                const place = [
+                    log.locationCity,
+                    log.locationRegion,
+                    log.locationCountryCode,
+                ]
+                    .filter(Boolean)
+                    .join(', ');
+                const coordinates =
+                    log.locationLatitude !== null &&
+                    log.locationLongitude !== null
+                        ? `${log.locationLatitude.toFixed(5)}, ${log.locationLongitude.toFixed(5)}`
+                        : null;
+
+                return (
+                    <div className="flex min-w-[190px] items-start gap-2">
+                        <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                            <div className="truncate text-sm">
+                                {place || coordinates || 'Not available'}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                {coordinates ?? 'Coordinates unavailable'}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                {log.locationSource === 'browser'
+                                    ? log.locationAccuracyMeters !== null
+                                        ? `Browser location · ±${Math.round(log.locationAccuracyMeters)} m`
+                                        : 'Browser location'
+                                    : 'Location unavailable'}
+                            </div>
+                        </div>
+                    </div>
+                );
+            },
+        },
+        {
             key: 'user',
             header: 'User',
             cell: (log) =>
                 log.user ? (
                     <div className="flex min-w-[210px] items-center gap-3">
                         <Avatar className="size-8 rounded-lg">
-                            <AvatarFallback className="rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
+                            <AvatarFallback className="rounded-lg bg-link/10 text-[11px] font-semibold text-link">
                                 {initials(log.user.name)}
                             </AvatarFallback>
                         </Avatar>
@@ -162,7 +232,12 @@ export function visitLogTableColumns({
             header: 'Event',
             cell: (log) => (
                 <div className="min-w-[150px] space-y-1">
-                    <Badge variant="secondary">{label(log.eventType)}</Badge>
+                    <Badge
+                        variant="outline"
+                        className={visitLogEventBadgeClassName(log.eventType)}
+                    >
+                        {label(log.eventType)}
+                    </Badge>
                     <div className="text-xs text-muted-foreground">
                         {label(log.outcome)}
                     </div>

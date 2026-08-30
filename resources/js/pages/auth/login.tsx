@@ -8,6 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { landingAssets } from '@/features/landing/data';
+import {
+    browserLocationPayload,
+    useBrowserLocation,
+} from '@/hooks/use-browser-location';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 /* @chisel-passkeys */
@@ -20,16 +24,26 @@ type Props = {
 };
 
 export default function Login({ status, canResetPassword }: Props) {
+    const {
+        location,
+        request: requestLocation,
+        status: locationStatus,
+    } = useBrowserLocation();
+
     return (
         <>
             <Head title="Log in" />
 
             {/* @chisel-passkeys */}
-            <PasskeyVerify />
+            <PasskeyVerify location={location} />
             {/* @end-chisel-passkeys */}
 
             <Form
                 {...store.form()}
+                transform={(data) => ({
+                    ...data,
+                    ...browserLocationPayload(location),
+                })}
                 resetOnSuccess={['password']}
                 className="flex flex-col gap-6"
             >
@@ -78,8 +92,36 @@ export default function Login({ status, canResetPassword }: Props) {
                             </div>
 
                             <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => void requestLocation()}
+                                disabled={
+                                    locationStatus === 'pending' ||
+                                    locationStatus === 'available'
+                                }
+                            >
+                                {locationStatus === 'pending'
+                                    ? 'Requesting location…'
+                                    : locationStatus === 'available'
+                                      ? 'Location access granted'
+                                      : 'Allow location access'}
+                            </Button>
+                            <p
+                                className="text-center text-xs text-muted-foreground"
+                                aria-live="polite"
+                            >
+                                {locationStatus === 'idle'
+                                    ? 'Allow browser location so it can be recorded with this login.'
+                                    : locationStatus === 'pending'
+                                      ? 'Respond to the browser location permission prompt.'
+                                      : locationStatus === 'available'
+                                        ? 'Browser location will be included with this login.'
+                                        : 'Browser location is unavailable. Use HTTPS or localhost and allow permission if prompted.'}
+                            </p>
+                            <Button
                                 type="submit"
-                                className="mt-4 w-full"
+                                className="mt-2 w-full"
                                 disabled={processing}
                                 data-test="login-button"
                             >

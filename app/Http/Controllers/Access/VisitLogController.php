@@ -18,6 +18,7 @@ class VisitLogController extends Controller
 
         $ip = trim((string) $request->input('ip', ''));
         $user = trim((string) $request->input('user', ''));
+        $location = trim((string) $request->input('location', ''));
         $event = (string) $request->input('event', '');
         $outcome = (string) $request->input('outcome', '');
         $statusCode = $request->integer('status_code');
@@ -29,6 +30,7 @@ class VisitLogController extends Controller
         $sortColumns = [
             'occurred_at' => 'occurred_at',
             'ip_address' => 'ip_address',
+            'location_city' => 'location_city',
             'event_type' => 'event_type',
             'status_code' => 'status_code',
         ];
@@ -36,11 +38,17 @@ class VisitLogController extends Controller
         $to = $this->parseDate($toValue);
 
         $logs = VisitLog::query()
+            ->whereIn('event_type', VisitLog::EVENT_TYPES)
             ->with('user:id,name,email')
             ->when($ip !== '', static fn ($query) => $query->where('ip_address', 'like', "%{$ip}%"))
             ->when($user !== '', static fn ($query) => $query->whereHas('user', static fn ($query) => $query
                 ->where('name', 'like', "%{$user}%")
                 ->orWhere('email', 'like', "%{$user}%")))
+            ->when($location !== '', static fn ($query) => $query->where(static function ($query) use ($location): void {
+                $query->where('location_city', 'like', "%{$location}%")
+                    ->orWhere('location_region', 'like', "%{$location}%")
+                    ->orWhere('location_country_code', 'like', "%{$location}%");
+            }))
             ->when(in_array($event, VisitLog::EVENT_TYPES, true), static fn ($query) => $query->where('event_type', $event))
             ->when(in_array($outcome, VisitLog::OUTCOMES, true), static fn ($query) => $query->where('outcome', $outcome))
             ->when($statusCode >= 100 && $statusCode <= 599, static fn ($query) => $query->where('status_code', $statusCode))
@@ -53,23 +61,7 @@ class VisitLogController extends Controller
             )
             ->paginate($pageSize)
             ->appends(PageSize::query($request, $pageSize))
-            ->through(static fn (VisitLog $log): array => [
-                'id' => $log->id,
-                'user' => $log->user === null ? null : [
-                    'id' => $log->user->id,
-                    'name' => $log->user->name,
-                    'email' => $log->user->email,
-                ],
-                'eventType' => $log->event_type,
-                'outcome' => $log->outcome,
-                'ipAddress' => $log->ip_address,
-                'userAgent' => $log->user_agent,
-                'method' => $log->method,
-                'routeName' => $log->route_name,
-                'path' => $log->path,
-                'statusCode' => $log->status_code,
-                'occurredAt' => $log->occurred_at->toIso8601String(),
-            ]);
+            ->through(fn (VisitLog $log): array => $this->serialize($log));
 
         return Inertia::render('access/visit-logs', [
             'logs' => $logs,
@@ -78,6 +70,7 @@ class VisitLogController extends Controller
             'filters' => [
                 'ip' => $ip,
                 'user' => $user,
+                'location' => $location,
                 'event' => $event,
                 'outcome' => $outcome,
                 'statusCode' => $statusCode > 0 ? (string) $statusCode : '',
@@ -96,24 +89,38 @@ class VisitLogController extends Controller
         $visitLog->load('user:id,name,email');
 
         return Inertia::render('access/visit-log-show', [
-            'log' => [
-                'id' => $visitLog->id,
-                'user' => $visitLog->user === null ? null : [
-                    'id' => $visitLog->user->id,
-                    'name' => $visitLog->user->name,
-                    'email' => $visitLog->user->email,
-                ],
-                'eventType' => $visitLog->event_type,
-                'outcome' => $visitLog->outcome,
-                'ipAddress' => $visitLog->ip_address,
-                'userAgent' => $visitLog->user_agent,
-                'method' => $visitLog->method,
-                'routeName' => $visitLog->route_name,
-                'path' => $visitLog->path,
-                'statusCode' => $visitLog->status_code,
-                'occurredAt' => $visitLog->occurred_at->toIso8601String(),
-            ],
+            'log' => $this->serialize($visitLog),
         ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function serialize(VisitLog $log): array
+    {
+        return [
+            'id' => $log->id,
+            'user' => $log->user === null ? null : [
+                'id' => $log->user->id,
+                'name' => $log->user->name,
+                'email' => $log->user->email,
+            ],
+            'eventType' => $log->event_type,
+            'outcome' => $log->outcome,
+            'ipAddress' => $log->ip_address,
+            'locationSource' => $log->location_source,
+            'locationCountryCode' => $log->location_country_code,
+            'locationRegion' => $log->location_region,
+            'locationCity' => $log->location_city,
+            'locationLatitude' => $log->location_latitude,
+            'locationLongitude' => $log->location_longitude,
+            'locationAccuracyMeters' => $log->location_accuracy_meters,
+            'locationTimezone' => $log->location_timezone,
+            'userAgent' => $log->user_agent,
+            'method' => $log->method,
+            'routeName' => $log->route_name,
+            'path' => $log->path,
+            'statusCode' => $log->status_code,
+            'occurredAt' => $log->occurred_at->toIso8601String(),
+        ];
     }
 
     private function parseDate(string $value): ?CarbonImmutable

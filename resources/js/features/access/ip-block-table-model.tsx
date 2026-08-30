@@ -147,7 +147,7 @@ export function blockedIpTableColumns({
                 rule.user ? (
                     <div className="flex min-w-[210px] items-center gap-3">
                         <Avatar className="size-8 rounded-lg">
-                            <AvatarFallback className="rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
+                            <AvatarFallback className="rounded-lg bg-link/10 text-[11px] font-semibold text-link">
                                 {initials(rule.user.name)}
                             </AvatarFallback>
                         </Avatar>

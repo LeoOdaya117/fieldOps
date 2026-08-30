@@ -5,6 +5,7 @@ import {
     Mail,
     Pencil,
     ShieldCheck,
+    ShieldOff,
     Trash2,
 } from 'lucide-react';
 import { SortableColumn } from '@/components/sortable-column';
@@ -323,7 +324,7 @@ export function userTableColumns({
                 <div className="flex items-center gap-3">
                     <Avatar className="size-9 rounded-lg">
                         <AvatarImage src={user.avatar ?? undefined} alt="" />
-                        <AvatarFallback className="rounded-lg bg-primary/10 text-xs font-semibold text-primary">
+                        <AvatarFallback className="rounded-lg bg-link/10 text-xs font-semibold text-link">
                             {initials(user.name)}
                         </AvatarFallback>
                     </Avatar>
@@ -435,6 +436,7 @@ export function userTableColumns({
                                       confirmLabel: 'Block',
                                   }}
                               >
+                                  <ShieldOff />
                                   Block
                               </TableActionForm>
                           )

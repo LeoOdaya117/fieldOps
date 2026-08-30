@@ -86,7 +86,7 @@ export default function RoleShowPage({
                 >
                     <div className="space-y-6 p-4 sm:p-6">
                         <div className="flex items-start gap-3">
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-link/10 text-link">
                                 <ShieldCheck className="size-5" />
                             </span>
                             <div className="min-w-0">
@@ -166,7 +166,7 @@ export default function RoleShowPage({
                                 className="flex items-center gap-3 px-4 py-3 sm:px-6"
                             >
                                 <Avatar className="size-8 rounded-lg">
-                                    <AvatarFallback className="rounded-lg bg-primary/10 text-[11px] font-semibold text-primary">
+                                    <AvatarFallback className="rounded-lg bg-link/10 text-[11px] font-semibold text-link">
                                         {initials(user.name)}
                                     </AvatarFallback>
                                 </Avatar>
