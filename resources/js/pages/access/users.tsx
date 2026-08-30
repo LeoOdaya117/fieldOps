@@ -275,11 +275,15 @@ export default function UsersPage({
                 >
                     <DataTable
                         caption="Pending user invitations"
-                        className="min-w-[760px]"
+                        className="min-w-max"
                         containerClassName="rounded-none border-0 shadow-none ring-0"
                         scrollContainerClassName="px-4"
                         data={invitations}
                         tableColumns={invitationTableColumns}
+                        columnVisibility={{
+                            storageKey: 'access.invitations',
+                            defaultVisibleKeys: ['email', 'role', 'expires'],
+                        }}
                         getRowKey={(invitation) => invitation.id}
                     />
                 </IndexPageSection>
@@ -298,54 +302,6 @@ export default function UsersPage({
                         Manage roles
                     </ActionLink>
                 }
-                toolbar={
-                    (canSuspend || canReactivate) &&
-                    selectedUserIds.length > 0 ? (
-                        <div data-slot="bulk-actions-row" className="w-full">
-                            <BulkActions
-                                selectedIds={selectedUserIds}
-                                onClear={() => setSelectedUserIds([])}
-                                className="justify-start sm:justify-end"
-                            >
-                                {canSuspend && (
-                                    <BulkActionForm
-                                        action="/access/users/bulk/suspend"
-                                        method="patch"
-                                        ids={selectedUserIds}
-                                        destructive
-                                        confirmation={{
-                                            title: `Block ${selectedUserIds.length} selected user(s)?`,
-                                            description:
-                                                'These accounts will lose access immediately. You can unblock them later.',
-                                            confirmLabel: 'Block',
-                                        }}
-                                        onSuccess={() => setSelectedUserIds([])}
-                                    >
-                                        <ShieldCheck />
-                                        Block selected
-                                    </BulkActionForm>
-                                )}
-                                {canReactivate && (
-                                    <BulkActionForm
-                                        action="/access/users/bulk/reactivate"
-                                        method="patch"
-                                        ids={selectedUserIds}
-                                        confirmation={{
-                                            title: `Unblock ${selectedUserIds.length} selected user(s)?`,
-                                            description:
-                                                'These accounts will regain access immediately.',
-                                            confirmLabel: 'Unblock',
-                                        }}
-                                        onSuccess={() => setSelectedUserIds([])}
-                                    >
-                                        <ShieldCheck />
-                                        Unblock selected
-                                    </BulkActionForm>
-                                )}
-                            </BulkActions>
-                        </div>
-                    ) : null
-                }
             >
                 {users.data.length === 0 ? (
                     <p className="px-6 py-12 text-center text-sm text-muted-foreground">
@@ -354,11 +310,75 @@ export default function UsersPage({
                 ) : (
                     <DataTable
                         caption="FieldOps user accounts"
-                        className="min-w-[1040px]"
+                        className="min-w-max"
                         containerClassName="rounded-none border-0 shadow-none ring-0"
                         scrollContainerClassName="px-4"
                         data={users.data}
                         tableColumns={userTableColumns}
+                        toolbar={
+                            (canSuspend || canReactivate) &&
+                            selectedUserIds.length > 0 ? (
+                                <div
+                                    data-slot="bulk-actions-row"
+                                    className="min-w-0"
+                                >
+                                    <BulkActions
+                                        selectedIds={selectedUserIds}
+                                        onClear={() => setSelectedUserIds([])}
+                                        className="justify-start"
+                                    >
+                                        {canSuspend && (
+                                            <BulkActionForm
+                                                action="/access/users/bulk/suspend"
+                                                method="patch"
+                                                ids={selectedUserIds}
+                                                destructive
+                                                confirmation={{
+                                                    title: `Block ${selectedUserIds.length} selected user(s)?`,
+                                                    description:
+                                                        'These accounts will lose access immediately. You can unblock them later.',
+                                                    confirmLabel: 'Block',
+                                                }}
+                                                onSuccess={() =>
+                                                    setSelectedUserIds([])
+                                                }
+                                            >
+                                                <ShieldCheck />
+                                                Block selected
+                                            </BulkActionForm>
+                                        )}
+                                        {canReactivate && (
+                                            <BulkActionForm
+                                                action="/access/users/bulk/reactivate"
+                                                method="patch"
+                                                ids={selectedUserIds}
+                                                confirmation={{
+                                                    title: `Unblock ${selectedUserIds.length} selected user(s)?`,
+                                                    description:
+                                                        'These accounts will regain access immediately.',
+                                                    confirmLabel: 'Unblock',
+                                                }}
+                                                onSuccess={() =>
+                                                    setSelectedUserIds([])
+                                                }
+                                            >
+                                                <ShieldCheck />
+                                                Unblock selected
+                                            </BulkActionForm>
+                                        )}
+                                    </BulkActions>
+                                </div>
+                            ) : null
+                        }
+                        columnVisibility={{
+                            storageKey: 'access.users',
+                            defaultVisibleKeys: [
+                                'user',
+                                'status',
+                                'role',
+                                'created',
+                            ],
+                        }}
                         getRowKey={(user) => user.id}
                         pagination={{
                             currentPage: users.current_page,

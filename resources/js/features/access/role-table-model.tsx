@@ -59,6 +59,7 @@ export function roleTableColumns({
     return [
         {
             key: 'selection',
+            hideable: false,
             header: (
                 <Checkbox
                     checked={
@@ -90,6 +91,7 @@ export function roleTableColumns({
         {
             key: 'serial',
             header: '#',
+            hideable: false,
             headerClassName: 'w-12 px-2 text-center',
             cellClassName:
                 'w-12 px-2 text-center text-xs tabular-nums text-muted-foreground',
@@ -97,6 +99,7 @@ export function roleTableColumns({
         },
         {
             key: 'role',
+            label: 'Role',
             header: (
                 <SortableColumn
                     action="/access/roles"
@@ -140,6 +143,7 @@ export function roleTableColumns({
         },
         {
             key: 'type',
+            label: 'Type',
             header: (
                 <SortableColumn
                     action="/access/roles"
@@ -175,6 +179,7 @@ export function roleTableColumns({
         },
         {
             key: 'assigned',
+            label: 'Assigned users',
             header: (
                 <SortableColumn
                     action="/access/roles"
@@ -208,6 +213,7 @@ export function roleTableColumns({
         },
         {
             key: 'permissions',
+            label: 'Permissions',
             header: (
                 <SortableColumn
                     action="/access/roles"
@@ -246,6 +252,7 @@ export function roleTableColumns({
         {
             key: 'actions',
             header: 'Actions',
+            hideable: false,
             headerClassName: 'px-6 text-right',
             cellClassName: 'px-6',
             cell: (role) => {

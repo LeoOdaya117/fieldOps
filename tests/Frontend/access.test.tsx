@@ -1,5 +1,11 @@
 import type { FormEventHandler, FormHTMLAttributes, ReactNode } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -68,7 +74,10 @@ import VisitLogShowPage from '@/pages/access/visit-log-show';
 import VisitLogsPage from '@/pages/access/visit-logs';
 import RegisterPage from '@/pages/auth/register';
 
-afterEach(() => cleanup());
+afterEach(() => {
+    cleanup();
+    localStorage.clear();
+});
 
 describe('access administration pages', () => {
     it('provides consistent breadcrumbs across access pages', () => {
@@ -217,11 +226,75 @@ describe('access administration pages', () => {
             screen.getByRole('link', { name: 'Review all' }),
         ).toHaveAttribute('href', '/access/users/registrations');
         expect(screen.getAllByRole('table')).toHaveLength(2);
+        expect(
+            screen.getAllByRole('button', { name: 'Manage columns' }),
+        ).toHaveLength(2);
+        const userTable = screen.getByRole('table', {
+            name: 'FieldOps user accounts',
+        });
+        const userTableContainer = userTable.closest(
+            '[data-slot="data-table-container"]',
+        ) as HTMLElement;
+
+        await user.click(
+            within(userTableContainer).getByRole('button', {
+                name: 'Manage columns',
+            }),
+        );
+        await user.click(
+            screen.getByRole('menuitemcheckbox', { name: 'Created' }),
+        );
+        await user.keyboard('{Escape}');
+        expect(
+            screen.queryByRole('columnheader', { name: /Created/ }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('checkbox', { name: 'Select Alex' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Actions for Alex' }),
+        ).toBeInTheDocument();
+        expect(
+            localStorage.getItem('fieldops:data-table-columns:access.users'),
+        ).toContain('user');
+
+        const invitationTable = screen.getByRole('table', {
+            name: 'Pending user invitations',
+        });
+        const invitationTableContainer = invitationTable.closest(
+            '[data-slot="data-table-container"]',
+        ) as HTMLElement;
+
+        await user.click(
+            within(invitationTableContainer).getByRole('button', {
+                name: 'Manage columns',
+            }),
+        );
+        expect(
+            screen.getByRole('menuitemcheckbox', { name: 'Expires' }),
+        ).toBeInTheDocument();
+        expect(
+            localStorage.getItem(
+                'fieldops:data-table-columns:access.invitations',
+            ),
+        ).toContain('email');
+        await user.keyboard('{Escape}');
+
         await user.click(screen.getByRole('checkbox', { name: 'Select Alex' }));
         expect(screen.getByText('1 selected')).toBeInTheDocument();
         expect(
             document.querySelector('[data-slot="bulk-actions-row"]'),
         ).toBeInTheDocument();
+        const userManageColumns = within(userTableContainer).getByRole(
+            'button',
+            { name: 'Manage columns' },
+        );
+        const userBulkActions = within(userTableContainer).getByRole('button', {
+            name: 'Bulk actions',
+        });
+        expect(
+            userManageColumns.closest('[data-slot="data-table-toolbar"]'),
+        ).toBe(userBulkActions.closest('[data-slot="data-table-toolbar"]'));
         await user.click(
             screen.getByRole('button', { name: 'Clear selected rows' }),
         );
@@ -307,6 +380,21 @@ describe('access administration pages', () => {
             screen.getByRole('checkbox', { name: 'Select Reviewer' }),
         );
         expect(screen.getByText('1 selected')).toBeInTheDocument();
+        const roleTable = screen.getByRole('table', {
+            name: 'FieldOps role catalog',
+        });
+        const roleTableContainer = roleTable.closest(
+            '[data-slot="data-table-container"]',
+        ) as HTMLElement;
+        expect(
+            within(roleTableContainer)
+                .getByRole('button', { name: 'Manage columns' })
+                .closest('[data-slot="data-table-toolbar"]'),
+        ).toContainElement(
+            within(roleTableContainer).getByRole('button', {
+                name: 'Bulk actions',
+            }),
+        );
         await user.click(
             screen.getByRole('button', { name: 'Clear selected rows' }),
         );

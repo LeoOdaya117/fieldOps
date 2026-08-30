@@ -109,7 +109,7 @@ export default function IpBlocksPage({
                 ) : (
                     <DataTable
                         caption="IP address access records"
-                        className="min-w-[1220px]"
+                        className="min-w-max"
                         containerClassName="rounded-none border-0 shadow-none ring-0"
                         scrollContainerClassName="px-4"
                         data={blockedIpAddresses.data}
@@ -120,6 +120,16 @@ export default function IpBlocksPage({
                                 firstRowNumber: blockedIpAddresses.from ?? 1,
                             })
                         }
+                        columnVisibility={{
+                            storageKey: 'access.ip-blocks',
+                            defaultVisibleKeys: [
+                                'ip_address',
+                                'status',
+                                'user',
+                                'reason',
+                                'last_seen_at',
+                            ],
+                        }}
                         getRowKey={(rule) => rule.id}
                         pagination={{
                             currentPage: blockedIpAddresses.current_page,

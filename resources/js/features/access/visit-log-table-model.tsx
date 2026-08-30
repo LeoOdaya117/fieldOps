@@ -107,6 +107,7 @@ export function visitLogTableColumns({
         {
             key: 'serial',
             header: '#',
+            hideable: false,
             headerClassName: 'w-12 px-2 text-center',
             cellClassName:
                 'w-12 px-2 text-center text-xs tabular-nums text-muted-foreground',
@@ -114,6 +115,7 @@ export function visitLogTableColumns({
         },
         {
             key: 'occurred_at',
+            label: 'Occurred',
             header: (
                 <SortableColumn
                     action={visitLogsIndex.url()}
@@ -135,6 +137,7 @@ export function visitLogTableColumns({
         },
         {
             key: 'ip_address',
+            label: 'IP address',
             header: (
                 <SortableColumn
                     action={visitLogsIndex.url()}
@@ -154,6 +157,7 @@ export function visitLogTableColumns({
         },
         {
             key: 'location',
+            label: 'Location',
             header: (
                 <SortableColumn
                     action={visitLogsIndex.url()}
@@ -203,6 +207,7 @@ export function visitLogTableColumns({
         {
             key: 'user',
             header: 'User',
+            label: 'User',
             cell: (log) =>
                 log.user ? (
                     <div className="flex min-w-[210px] items-center gap-3">
@@ -230,6 +235,7 @@ export function visitLogTableColumns({
         {
             key: 'event',
             header: 'Event',
+            label: 'Event',
             cell: (log) => (
                 <div className="min-w-[150px] space-y-1">
                     <Badge
@@ -247,6 +253,7 @@ export function visitLogTableColumns({
         {
             key: 'request',
             header: 'Request',
+            label: 'Request',
             cell: (log) => (
                 <div className="min-w-[260px]">
                     <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
@@ -269,6 +276,7 @@ export function visitLogTableColumns({
         {
             key: 'status',
             header: 'Status',
+            label: 'Status',
             cell: (log) => (
                 <Badge
                     variant={
@@ -285,6 +293,7 @@ export function visitLogTableColumns({
         {
             key: 'user_agent',
             header: 'User agent',
+            label: 'User agent',
             cell: (log) => (
                 <span
                     className="block max-w-[280px] truncate text-xs text-muted-foreground"
@@ -297,6 +306,7 @@ export function visitLogTableColumns({
         {
             key: 'actions',
             header: 'Actions',
+            hideable: false,
             headerClassName: 'px-6 text-right',
             cellClassName: 'px-6',
             cell: (log) => (

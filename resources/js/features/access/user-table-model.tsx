@@ -103,6 +103,7 @@ export function invitationTableColumns(): DataTableColumn<Invitation>[] {
         {
             key: 'serial',
             header: '#',
+            hideable: false,
             headerClassName: 'w-12 px-2 text-center',
             cellClassName:
                 'w-12 px-2 text-center text-xs tabular-nums text-muted-foreground',
@@ -111,6 +112,7 @@ export function invitationTableColumns(): DataTableColumn<Invitation>[] {
         {
             key: 'email',
             header: 'Email',
+            label: 'Email',
             headerClassName: 'px-6',
             cellClassName: 'px-6',
             cell: (invitation) => (
@@ -132,6 +134,7 @@ export function invitationTableColumns(): DataTableColumn<Invitation>[] {
         {
             key: 'role',
             header: 'Role',
+            label: 'Role',
             cell: (invitation) => (
                 <Badge variant="secondary">{invitation.role.displayName}</Badge>
             ),
@@ -139,6 +142,7 @@ export function invitationTableColumns(): DataTableColumn<Invitation>[] {
         {
             key: 'expires',
             header: 'Expires',
+            label: 'Expires',
             cell: (invitation) => (
                 <div className="flex items-center gap-2 text-sm whitespace-nowrap">
                     <Clock3 className="size-3.5 text-muted-foreground" />
@@ -149,6 +153,7 @@ export function invitationTableColumns(): DataTableColumn<Invitation>[] {
         {
             key: 'actions',
             header: 'Actions',
+            hideable: false,
             headerClassName: 'px-6 text-right',
             cellClassName: 'px-6',
             cell: (invitation) => (
@@ -183,6 +188,7 @@ export function registrationTableColumns(): DataTableColumn<Registration>[] {
         {
             key: 'applicant',
             header: 'Applicant',
+            label: 'Applicant',
             headerClassName: 'px-6',
             cellClassName: 'px-6',
             cell: (registration) => (
@@ -200,6 +206,7 @@ export function registrationTableColumns(): DataTableColumn<Registration>[] {
         {
             key: 'status',
             header: 'Status',
+            label: 'Status',
             cell: (registration) => (
                 <Badge
                     className="border-warning/30 bg-warning/10 text-warning"
@@ -213,6 +220,7 @@ export function registrationTableColumns(): DataTableColumn<Registration>[] {
         {
             key: 'submitted',
             header: 'Submitted',
+            label: 'Submitted',
             cell: (registration) => (
                 <div className="flex items-center gap-2 text-sm whitespace-nowrap text-muted-foreground">
                     <Clock3 className="size-3.5" />
@@ -225,6 +233,7 @@ export function registrationTableColumns(): DataTableColumn<Registration>[] {
         {
             key: 'actions',
             header: 'Actions',
+            hideable: false,
             headerClassName: 'px-6 text-right',
             cellClassName: 'px-6',
             cell: (registration) => (
@@ -272,6 +281,7 @@ export function userTableColumns({
     return [
         {
             key: 'selection',
+            hideable: false,
             header: (
                 <Checkbox
                     checked={
@@ -298,6 +308,7 @@ export function userTableColumns({
         {
             key: 'serial',
             header: '#',
+            hideable: false,
             headerClassName: 'w-12 px-2 text-center',
             cellClassName:
                 'w-12 px-2 text-center text-xs tabular-nums text-muted-foreground',
@@ -305,6 +316,7 @@ export function userTableColumns({
         },
         {
             key: 'user',
+            label: 'User',
             header: (
                 <SortableColumn
                     action="/access/users"
@@ -342,6 +354,7 @@ export function userTableColumns({
         },
         {
             key: 'status',
+            label: 'Status',
             header: (
                 <SortableColumn
                     action="/access/users"
@@ -360,6 +373,7 @@ export function userTableColumns({
         {
             key: 'role',
             header: 'Role',
+            label: 'Role',
             cell: (user) => (
                 <Badge variant="secondary">
                     {user.role?.displayName ?? 'No role assigned'}
@@ -368,6 +382,7 @@ export function userTableColumns({
         },
         {
             key: 'created',
+            label: 'Created',
             header: (
                 <SortableColumn
                     action="/access/users"
@@ -393,6 +408,7 @@ export function userTableColumns({
         {
             key: 'actions',
             header: 'Actions',
+            hideable: false,
             headerClassName: 'px-6 text-right',
             cellClassName: 'px-6',
             cell: (user) => (

@@ -79,6 +79,7 @@ export function auditTableColumns({
         {
             key: 'serial',
             header: '#',
+            hideable: false,
             headerClassName: 'w-12 px-2 text-center',
             cellClassName:
                 'w-12 px-2 text-center text-xs tabular-nums text-muted-foreground',
@@ -86,6 +87,7 @@ export function auditTableColumns({
         },
         {
             key: 'event',
+            label: 'Event',
             header: (
                 <SortableColumn
                     action="/access/audit"
@@ -112,6 +114,7 @@ export function auditTableColumns({
         },
         {
             key: 'actor',
+            label: 'Actor',
             header: (
                 <SortableColumn
                     action="/access/audit"
@@ -156,6 +159,7 @@ export function auditTableColumns({
         },
         {
             key: 'subject',
+            label: 'Subject',
             header: (
                 <SortableColumn
                     action="/access/audit"
@@ -184,6 +188,7 @@ export function auditTableColumns({
         {
             key: 'ip_address',
             header: 'Source IP',
+            label: 'Source IP',
             cell: (event) => (
                 <code className="font-mono text-xs text-muted-foreground">
                     {event.ipAddress ?? '—'}
@@ -192,6 +197,7 @@ export function auditTableColumns({
         },
         {
             key: 'occurred',
+            label: 'Occurred',
             header: (
                 <SortableColumn
                     action="/access/audit"
@@ -220,6 +226,7 @@ export function auditTableColumns({
         {
             key: 'changes',
             header: 'Changes',
+            label: 'Changes',
             headerClassName: 'min-w-[380px] px-6',
             cellClassName: 'px-6',
             cell: (event) => (
@@ -232,6 +239,7 @@ export function auditTableColumns({
         {
             key: 'actions',
             header: 'Actions',
+            hideable: false,
             headerClassName: 'px-6 text-right',
             cellClassName: 'px-6',
             cell: (event) => (

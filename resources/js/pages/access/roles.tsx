@@ -185,36 +185,7 @@ export default function RolesPage({
                 </>
             }
         >
-            <IndexPageSection
-                toolbar={
-                    canDeleteRoles && selectedRoleIds.length > 0 ? (
-                        <div data-slot="bulk-actions-row" className="w-full">
-                            <BulkActions
-                                selectedIds={selectedRoleIds}
-                                onClear={() => setSelectedRoleIds([])}
-                                className="justify-start sm:justify-end"
-                            >
-                                <BulkActionForm
-                                    action="/access/roles/bulk"
-                                    method="delete"
-                                    ids={selectedRoleIds}
-                                    destructive
-                                    confirmation={{
-                                        title: `Delete ${selectedRoleIds.length} selected role(s)?`,
-                                        description:
-                                            'This action cannot be undone.',
-                                        confirmLabel: 'Delete',
-                                    }}
-                                    onSuccess={() => setSelectedRoleIds([])}
-                                >
-                                    <Trash2 />
-                                    Delete selected
-                                </BulkActionForm>
-                            </BulkActions>
-                        </div>
-                    ) : null
-                }
-            >
+            <IndexPageSection>
                 {roleRows.length === 0 ? (
                     <div className="px-6 py-12 text-center">
                         <p className="font-medium">No roles found</p>
@@ -226,11 +197,53 @@ export default function RolesPage({
                 ) : (
                     <DataTable
                         caption="FieldOps role catalog"
-                        className="min-w-[980px]"
+                        className="min-w-max"
                         containerClassName="rounded-none border-0 shadow-none ring-0"
                         scrollContainerClassName="px-4"
                         data={roleRows}
                         tableColumns={tableColumns}
+                        toolbar={
+                            canDeleteRoles && selectedRoleIds.length > 0 ? (
+                                <div
+                                    data-slot="bulk-actions-row"
+                                    className="min-w-0"
+                                >
+                                    <BulkActions
+                                        selectedIds={selectedRoleIds}
+                                        onClear={() => setSelectedRoleIds([])}
+                                        className="justify-start"
+                                    >
+                                        <BulkActionForm
+                                            action="/access/roles/bulk"
+                                            method="delete"
+                                            ids={selectedRoleIds}
+                                            destructive
+                                            confirmation={{
+                                                title: `Delete ${selectedRoleIds.length} selected role(s)?`,
+                                                description:
+                                                    'This action cannot be undone.',
+                                                confirmLabel: 'Delete',
+                                            }}
+                                            onSuccess={() =>
+                                                setSelectedRoleIds([])
+                                            }
+                                        >
+                                            <Trash2 />
+                                            Delete selected
+                                        </BulkActionForm>
+                                    </BulkActions>
+                                </div>
+                            ) : null
+                        }
+                        columnVisibility={{
+                            storageKey: 'access.roles',
+                            defaultVisibleKeys: [
+                                'role',
+                                'type',
+                                'assigned',
+                                'permissions',
+                            ],
+                        }}
                         getRowKey={(role) => role.id}
                         pagination={
                             pagination

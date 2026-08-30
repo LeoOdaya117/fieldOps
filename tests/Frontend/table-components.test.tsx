@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import type { FormHTMLAttributes, ReactNode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const inertiaRouter = vi.hoisted(() => ({ get: vi.fn() }));
 
@@ -62,6 +62,10 @@ import {
 import { TablePagination } from '@/components/ui/table-pagination';
 
 describe('reusable data table components', () => {
+    afterEach(() => {
+        localStorage.clear();
+    });
+
     it('uses the high-contrast link token for links and active sorting', () => {
         expect(buttonVariants({ variant: 'link' })).toContain('text-link');
 
@@ -238,6 +242,9 @@ describe('reusable data table components', () => {
         expect(
             screen.getByRole('cell', { name: /Regional manager/ }),
         ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Manage columns' }),
+        ).not.toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'Row actions' }));
         expect(screen.getByRole('menuitem', { name: 'Edit' })).toHaveAttribute(
             'href',
@@ -327,6 +334,181 @@ describe('reusable data table components', () => {
         expect(
             document.querySelector('[data-slot="data-table-scroll-container"]'),
         ).toHaveClass('px-4');
+    });
+
+    it('toggles declarative columns while preserving fixed utility columns', async () => {
+        const user = userEvent.setup();
+
+        render(
+            <DataTable
+                caption="Visible records"
+                data={[{ id: 7, name: 'Regional manager', email: 'manager@example.com', status: 'Active' }]}
+                tableColumns={[
+                    {
+                        key: 'selection',
+                        header: 'Select',
+                        hideable: false,
+                    },
+                    {
+                        key: 'name',
+                        header: 'Name',
+                        label: 'Name',
+                        accessor: 'name',
+                    },
+                    {
+                        key: 'email',
+                        header: 'Email',
+                        label: 'Email',
+                        accessor: 'email',
+                    },
+                    {
+                        key: 'status',
+                        header: 'Status',
+                        label: 'Status',
+                        accessor: 'status',
+                    },
+                    {
+                        key: 'actions',
+                        header: 'Actions',
+                        hideable: false,
+                    },
+                ]}
+                columnVisibility={{
+                    storageKey: 'tests.visibility',
+                    defaultVisibleKeys: ['name', 'status'],
+                }}
+                getRowKey={(row) => row.id}
+            />,
+        );
+
+        expect(screen.getByRole('columnheader', { name: 'Select' })).toBeInTheDocument();
+        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
+        expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
+        expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
+        expect(screen.queryByText('manager@example.com')).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
+
+        const checkAll = screen.getByRole('menuitemcheckbox', {
+            name: 'Check all columns',
+        });
+        expect(checkAll).toHaveAttribute('aria-checked', 'mixed');
+        expect(
+            screen.queryByRole('menuitemcheckbox', { name: 'Select' }),
+        ).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('menuitemcheckbox', { name: 'Name' }));
+
+        expect(checkAll).toHaveAttribute('aria-checked', 'mixed');
+
+        await user.keyboard('{Escape}');
+
+        expect(screen.queryByRole('columnheader', { name: 'Name' })).not.toBeInTheDocument();
+        expect(screen.queryByText('Regional manager')).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
+        const reopenedCheckAll = screen.getByRole('menuitemcheckbox', {
+            name: 'Check all columns',
+        });
+        await user.click(reopenedCheckAll);
+
+        await user.keyboard('{Escape}');
+
+        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
+        expect(screen.getByRole('columnheader', { name: 'Email' })).toBeInTheDocument();
+        expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
+        await user.click(
+            screen.getByRole('menuitemcheckbox', {
+                name: 'Check all columns',
+            }),
+        );
+
+        await user.keyboard('{Escape}');
+
+        expect(screen.queryByRole('columnheader', { name: 'Name' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: 'Status' })).not.toBeInTheDocument();
+        expect(screen.getByRole('columnheader', { name: 'Select' })).toBeInTheDocument();
+        expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument();
+
+        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
+        await user.click(screen.getByRole('menuitem', { name: 'Reset to defaults' }));
+
+        await user.keyboard('{Escape}');
+
+        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
+        expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
+    });
+
+    it('persists and safely restores column visibility per table key', async () => {
+        const user = userEvent.setup();
+        const table = (
+            <DataTable
+                caption="Persistent records"
+                data={[{ id: 1, name: 'Example', email: 'example@example.com' }]}
+                tableColumns={[
+                    { key: 'name', header: 'Name', accessor: 'name' },
+                    { key: 'email', header: 'Email', accessor: 'email' },
+                ]}
+                columnVisibility={{
+                    storageKey: 'tests.persistence',
+                    defaultVisibleKeys: ['name', 'email'],
+                }}
+                getRowKey={(row) => row.id}
+            />
+        );
+
+        const firstRender = render(table);
+
+        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
+        await user.click(screen.getByRole('menuitemcheckbox', { name: 'Name' }));
+
+        expect(localStorage.getItem('fieldops:data-table-columns:tests.persistence')).toBe(
+            JSON.stringify({ visibleKeys: ['email'] }),
+        );
+
+        firstRender.unmount();
+        render(table);
+
+        expect(screen.queryByRole('columnheader', { name: 'Name' })).not.toBeInTheDocument();
+        expect(screen.getByRole('columnheader', { name: 'Email' })).toBeInTheDocument();
+    });
+
+    it('falls back to defaults for malformed or entirely stale visibility data', () => {
+        const storageKey = 'fieldops:data-table-columns:tests.invalid';
+        localStorage.setItem(storageKey, '{invalid json');
+
+        const table = (
+            <DataTable
+                caption="Safe records"
+                data={[{ id: 1, name: 'Example', email: 'example@example.com' }]}
+                tableColumns={[
+                    { key: 'name', header: 'Name', accessor: 'name' },
+                    { key: 'email', header: 'Email', accessor: 'email' },
+                ]}
+                columnVisibility={{
+                    storageKey: 'tests.invalid',
+                    defaultVisibleKeys: ['name'],
+                }}
+                getRowKey={(row) => row.id}
+            />
+        );
+
+        const firstRender = render(table);
+
+        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
+
+        firstRender.unmount();
+        localStorage.setItem(storageKey, JSON.stringify({ visibleKeys: ['removed'] }));
+        render(table);
+
+        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
     });
 
     it('renders pagination inside the data table container when configured', () => {
