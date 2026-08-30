@@ -254,9 +254,10 @@ describe('access administration pages', () => {
         expect(
             screen.queryByRole('button', { name: 'Block' }),
         ).not.toBeInTheDocument();
-        expect(
-            screen.getByRole('menuitem', { name: 'Block' }),
-        ).toBeInTheDocument();
+        const blockAction = screen.getByRole('menuitem', { name: 'Block' });
+
+        expect(blockAction).toBeInTheDocument();
+        expect(blockAction.querySelector('svg')).toBeInTheDocument();
         expect(screen.getByRole('menuitem', { name: 'Edit' })).toHaveAttribute(
             'href',
             '/access/users/1/edit',
@@ -828,14 +829,22 @@ describe('access administration pages', () => {
                         {
                             id: 1,
                             user: null,
-                            eventType: 'blocked_request',
-                            outcome: 'blocked_ip',
+                            eventType: 'login',
+                            outcome: 'success',
                             ipAddress: '198.51.100.10',
+                            locationSource: null,
+                            locationCountryCode: null,
+                            locationRegion: null,
+                            locationCity: null,
+                            locationLatitude: null,
+                            locationLongitude: null,
+                            locationAccuracyMeters: null,
+                            locationTimezone: null,
                             userAgent: 'Test browser',
                             method: 'GET',
                             routeName: 'login',
                             path: '/login',
-                            statusCode: 403,
+                            statusCode: 302,
                             occurredAt: '2030-01-01T00:00:00Z',
                         },
                     ],
@@ -845,11 +854,12 @@ describe('access administration pages', () => {
                     from: 1,
                     to: 1,
                 }}
-                eventTypes={['blocked_request']}
-                outcomes={['blocked_ip']}
+                eventTypes={['login']}
+                outcomes={['success']}
                 filters={{
                     ip: '',
                     user: '',
+                    location: '',
                     event: '',
                     outcome: '',
                     statusCode: '',
@@ -864,7 +874,7 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
         expect(screen.getByText('198.51.100.10')).toBeInTheDocument();
         expect(screen.getByText('/login')).toBeInTheDocument();
-        expect(screen.getByText('403')).toBeInTheDocument();
+        expect(screen.getByText('302')).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: /Search & filter/ }),
         ).toBeInTheDocument();
@@ -997,14 +1007,22 @@ describe('access administration pages', () => {
                 log={{
                     id: 1,
                     user: null,
-                    eventType: 'page_visit',
+                    eventType: 'login',
                     outcome: 'success',
                     ipAddress: '203.0.113.10',
+                    locationSource: 'browser',
+                    locationCountryCode: 'PH',
+                    locationRegion: 'Metro Manila',
+                    locationCity: 'Manila',
+                    locationLatitude: 14.5995,
+                    locationLongitude: 120.9842,
+                    locationAccuracyMeters: 25.4,
+                    locationTimezone: 'Asia/Manila',
                     userAgent: 'Test browser',
-                    method: 'GET',
-                    routeName: 'dashboard',
-                    path: '/dashboard',
-                    statusCode: 200,
+                    method: 'POST',
+                    routeName: 'login.store',
+                    path: '/login',
+                    statusCode: 302,
                     occurredAt: '2030-01-01T00:00:00Z',
                 }}
             />,
@@ -1012,7 +1030,7 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('heading', { name: 'Visit log details' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('/dashboard')).toBeInTheDocument();
+        expect(screen.getByText('/login')).toBeInTheDocument();
 
         cleanup();
         render(

@@ -1,11 +1,14 @@
 import type { UrlMethodPair } from '@inertiajs/core';
 import { router } from '@inertiajs/react';
+import { Passkeys } from '@laravel/passkeys';
 import { usePasskeyVerify } from '@laravel/passkeys/react';
 import { KeyRound } from 'lucide-react';
+import { useEffect } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import type { BrowserLocation } from '@/hooks/use-browser-location';
 
 type Props = {
     routes?: {
@@ -15,6 +18,8 @@ type Props = {
     label?: string;
     loadingLabel?: string;
     separator?: string;
+    location?: BrowserLocation | null;
+    locationRequired?: boolean;
 };
 
 export default function PasskeyVerify({
@@ -22,7 +27,25 @@ export default function PasskeyVerify({
     label,
     loadingLabel,
     separator,
+    location = null,
+    locationRequired = false,
 }: Props = {}) {
+    useEffect(() => {
+        Passkeys.configure({
+            fetch: {
+                headers: {
+                    'X-Browser-Location-Latitude':
+                        location === null ? '' : String(location.latitude),
+                    'X-Browser-Location-Longitude':
+                        location === null ? '' : String(location.longitude),
+                    'X-Browser-Location-Accuracy':
+                        location === null ? '' : String(location.accuracy),
+                    'X-Browser-Location-Timezone': location?.timezone ?? '',
+                },
+            },
+        });
+    }, [location]);
+
     const { verify, isLoading, error, isSupported } = usePasskeyVerify({
         ...(routes && {
             routes: {
@@ -47,7 +70,7 @@ export default function PasskeyVerify({
                     variant="outline"
                     className="w-full"
                     onClick={verify}
-                    disabled={isLoading}
+                    disabled={isLoading || locationRequired}
                 >
                     {isLoading ? <Spinner /> : <KeyRound className="h-4 w-4" />}
                     {isLoading

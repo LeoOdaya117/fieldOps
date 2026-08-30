@@ -12,6 +12,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $event_type
  * @property string|null $outcome
  * @property string $ip_address
+ * @property string|null $location_source
+ * @property string|null $location_country_code
+ * @property string|null $location_region
+ * @property string|null $location_city
+ * @property float|null $location_latitude
+ * @property float|null $location_longitude
+ * @property float|null $location_accuracy_meters
+ * @property string|null $location_timezone
  * @property string|null $user_agent
  * @property string $method
  * @property string|null $route_name
@@ -23,17 +31,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class VisitLog extends Model
 {
     public const array EVENT_TYPES = [
-        'page_visit',
-        'authentication',
+        'login',
         'logout',
-        'blocked_request',
     ];
 
     public const array OUTCOMES = [
         'success',
-        'failed',
-        'blocked_ip',
-        'blocked_account',
     ];
 
     public $timestamps = false;
@@ -43,6 +46,14 @@ class VisitLog extends Model
         'event_type',
         'outcome',
         'ip_address',
+        'location_source',
+        'location_country_code',
+        'location_region',
+        'location_city',
+        'location_latitude',
+        'location_longitude',
+        'location_accuracy_meters',
+        'location_timezone',
         'user_agent',
         'method',
         'route_name',
@@ -56,6 +67,9 @@ class VisitLog extends Model
         return [
             'user_id' => 'integer',
             'status_code' => 'integer',
+            'location_latitude' => 'float',
+            'location_longitude' => 'float',
+            'location_accuracy_meters' => 'float',
             'occurred_at' => 'immutable_datetime',
         ];
     }

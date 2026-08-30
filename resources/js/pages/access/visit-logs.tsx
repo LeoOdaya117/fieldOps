@@ -53,17 +53,18 @@ export default function VisitLogsPage({
     return (
         <IndexPage
             title="Visit logs"
-            description="Review page visits, authentication activity, and blocked requests without exposing request secrets."
+            description="Review successful logins and logouts with request and browser location context."
             actions={
                 <SearchFilterSheet
                     action={visitLogsIndex.url()}
                     resetHref={visitLogsIndex.url()}
                     title="Search and filter visits"
-                    description="Narrow activity by network address, user, event, outcome, status, or date."
+                    description="Narrow activity by network address, user, location, event, outcome, status, or date."
                     activeFilterCount={
                         [
                             filters.ip,
                             filters.user,
+                            filters.location,
                             filters.event,
                             filters.outcome,
                             filters.statusCode,
@@ -86,6 +87,20 @@ export default function VisitLogsPage({
                             defaultValue={filters.ip}
                             placeholder="203.0.113.10"
                             autoFocus
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="visit-location"
+                            className="text-sm font-medium"
+                        >
+                            Location
+                        </label>
+                        <Input
+                            id="visit-location"
+                            name="location"
+                            defaultValue={filters.location}
+                            placeholder="City, region, or country"
                         />
                     </div>
                     <div className="grid gap-2">
@@ -197,15 +212,15 @@ export default function VisitLogsPage({
             <IndexPageSection>
                 {logs.data.length === 0 ? (
                     <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-                        <span className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <span className="flex size-10 items-center justify-center rounded-full bg-link/10 text-link">
                             <Activity className="size-5" />
                         </span>
                         <p className="text-sm font-medium">
                             No visits match the current filters.
                         </p>
                         <p className="max-w-md text-sm text-muted-foreground">
-                            Activity will appear here as people browse FieldOps
-                            or attempt to authenticate.
+                            Login and logout activity will appear here after
+                            users authenticate.
                         </p>
                     </div>
                 ) : (

@@ -1,5 +1,7 @@
 import { Link, router } from '@inertiajs/react';
 import { LogOut, Settings } from 'lucide-react';
+import { useState } from 'react';
+import type { MouseEvent } from 'react';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -8,6 +10,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
+import {
+    browserLocationPayload,
+    requestBrowserLocation,
+} from '@/hooks/use-browser-location';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import type { User } from '@/types';
@@ -18,10 +24,23 @@ type Props = {
 
 export function UserMenuContent({ user }: Props) {
     const cleanup = useMobileNavigation();
+    const [loggingOut, setLoggingOut] = useState(false);
 
-    const handleLogout = () => {
+    const handleLogout = async (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+
+        if (loggingOut) {
+            return;
+        }
+
+        setLoggingOut(true);
+        const location = await requestBrowserLocation();
+
         cleanup();
         router.flushAll();
+        router.post(logout(), browserLocationPayload(location), {
+            onFinish: () => setLoggingOut(false),
+        });
     };
 
     return (
@@ -47,16 +66,17 @@ export function UserMenuContent({ user }: Props) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-                <Link
+                <button
+                    type="button"
                     className="block w-full cursor-pointer"
-                    href={logout()}
-                    as="button"
                     onClick={handleLogout}
+                    disabled={loggingOut}
+                    aria-busy={loggingOut}
                     data-test="logout-button"
                 >
                     <LogOut className="mr-2" />
-                    Log out
-                </Link>
+                    {loggingOut ? 'Logging out…' : 'Log out'}
+                </button>
             </DropdownMenuItem>
         </>
     );

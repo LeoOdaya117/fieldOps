@@ -31,9 +31,6 @@ class BlockBlockedIpAddress
         }
 
         if ($isBlocked) {
-            $request->attributes->set('visit_log_event_type', 'blocked_request');
-            $request->attributes->set('visit_log_outcome', 'blocked_ip');
-
             return response('Access denied.', 403);
         }
 

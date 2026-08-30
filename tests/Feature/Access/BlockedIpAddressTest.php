@@ -6,7 +6,6 @@ use App\Enums\RoleName;
 use App\Models\AccessAuditEvent;
 use App\Models\BlockedIpAddress;
 use App\Models\User;
-use App\Models\VisitLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\Fluent\AssertableJson as Assert;
 use Tests\TestCase;
@@ -15,18 +14,16 @@ class BlockedIpAddressTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_allowed_ip_can_visit_a_page_and_the_visit_is_logged(): void
+    public function test_allowed_ip_can_visit_a_page_without_creating_a_visit_log(): void
     {
-        $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.10'])
-            ->get(route('home'))
+        $owner = $this->owner();
+
+        $this->actingAs($owner)
+            ->withServerVariables(['REMOTE_ADDR' => '198.51.100.10'])
+            ->get(route('dashboard'))
             ->assertOk();
 
-        $this->assertDatabaseHas('visit_logs', [
-            'event_type' => 'page_visit',
-            'outcome' => 'success',
-            'ip_address' => '198.51.100.10',
-            'path' => '/',
-        ]);
+        $this->assertDatabaseCount('visit_logs', 0);
     }
 
     public function test_blocked_ip_is_rejected_before_public_and_authentication_routes(): void
@@ -50,11 +47,10 @@ class BlockedIpAddressTest extends TestCase
                 ->assertSee('Access denied.');
         }
 
-        $this->assertSame(5, VisitLog::query()->where('event_type', 'blocked_request')->count());
-        $this->assertSame(5, VisitLog::query()->where('outcome', 'blocked_ip')->count());
+        $this->assertDatabaseCount('visit_logs', 0);
     }
 
-    public function test_blocked_ip_login_attempt_is_rejected_and_logged(): void
+    public function test_blocked_ip_login_attempt_is_rejected_without_creating_a_visit_log(): void
     {
         BlockedIpAddress::query()->create([
             'ip_address' => '198.51.100.11',
@@ -66,13 +62,7 @@ class BlockedIpAddressTest extends TestCase
             ->post(route('login.store'), ['email' => 'user@example.com', 'password' => 'password'])
             ->assertForbidden();
 
-        $this->assertDatabaseHas('visit_logs', [
-            'event_type' => 'blocked_request',
-            'outcome' => 'blocked_ip',
-            'ip_address' => '198.51.100.11',
-            'path' => '/login',
-            'status_code' => 403,
-        ]);
+        $this->assertDatabaseCount('visit_logs', 0);
     }
 
     public function test_ip_addresses_are_normalized_and_neighboring_addresses_are_not_blocked(): void
