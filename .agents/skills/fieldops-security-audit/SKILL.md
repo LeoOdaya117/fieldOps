@@ -35,4 +35,3 @@ For every confirmed or plausible issue, report:
 - Minimal remediation and regression-test recommendation.
 
 Prioritize actionable vulnerabilities over style concerns. If no issue is found, state what was checked, what commands ran, and the audit's limitations; do not claim that the repository is universally secure.
-

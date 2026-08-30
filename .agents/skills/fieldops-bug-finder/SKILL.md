@@ -34,4 +34,3 @@ Report:
 - Impact, affected paths, and confidence level.
 - Recommended fix and focused regression-test plan.
 - Limitations or follow-up evidence needed.
-

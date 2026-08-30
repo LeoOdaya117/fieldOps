@@ -42,4 +42,3 @@ Report:
 - Files or behavior changed.
 - Exact validation commands and pass/fail results.
 - Any checks not run, with the reason.
-
