@@ -69,10 +69,7 @@ export default function TimezonesPage({
                 </>
             }
         >
-            <IndexPageSection
-                title="Timezone directory"
-                description="Available IANA identifiers can be used by System Settings and future data-entry flows."
-            >
+            <IndexPageSection>
                 {timezones.data.length === 0 ? (
                     <p className="px-6 py-12 text-center text-sm text-muted-foreground">
                         No timezones match the current filters.

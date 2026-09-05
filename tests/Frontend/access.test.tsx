@@ -848,6 +848,9 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('heading', { name: 'Blocked IP addresses' }),
         ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('heading', { name: 'IP address directory' }),
+        ).not.toBeInTheDocument();
         expect(screen.getByText('203.0.113.10')).toBeInTheDocument();
         expect(screen.getByText('Field Operator')).toBeInTheDocument();
         expect(screen.getByText('operator@example.com')).toBeInTheDocument();

@@ -29,6 +29,7 @@ vi.mock('@inertiajs/react', () => {
         typeof href === 'string' ? href : href.url;
 
     return {
+        Head: () => null,
         Form: forwardRef<HTMLFormElement, FormProps>(function MockForm(
             { action, method, children, onSubmit, className },
             ref,
@@ -70,8 +71,14 @@ import {
     countryTableColumns,
     timezoneTableColumns,
 } from '@/features/system/reference-data-table-model';
-import type { Country, Timezone } from '@/features/system/types';
+import type {
+    Country,
+    PaginatedReferenceData,
+    Timezone,
+} from '@/features/system/types';
 import { DataTable } from '@/components/ui/data-table';
+import CountriesPage from '@/pages/system/countries';
+import TimezonesPage from '@/pages/system/timezones';
 
 const country: Country = {
     id: 1,
@@ -92,6 +99,28 @@ const timezone: Timezone = {
     updatedAt: null,
     createdBy: null,
     updatedBy: null,
+};
+
+const countryPageData: PaginatedReferenceData<Country> = {
+    data: [country],
+    current_page: 1,
+    last_page: 1,
+    total: 1,
+    from: 1,
+    to: 1,
+    per_page: 50,
+    links: [],
+};
+
+const timezonePageData: PaginatedReferenceData<Timezone> = {
+    data: [timezone],
+    current_page: 1,
+    last_page: 1,
+    total: 1,
+    from: 1,
+    to: 1,
+    per_page: 50,
+    links: [],
 };
 
 describe('system reference data UI', () => {
@@ -295,5 +324,35 @@ describe('system reference data UI', () => {
         expect(
             screen.getByText(/valid IANA timezone identifier/),
         ).toBeInTheDocument();
+    });
+
+    it('does not repeat the catalog heading inside country and timezone pages', () => {
+        const { unmount } = render(
+            <CountriesPage countries={countryPageData} />,
+        );
+
+        expect(
+            screen.getByRole('heading', { name: 'Countries', level: 2 }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('heading', {
+                name: 'Country directory',
+                level: 3,
+            }),
+        ).not.toBeInTheDocument();
+
+        unmount();
+
+        render(<TimezonesPage timezones={timezonePageData} />);
+
+        expect(
+            screen.getByRole('heading', { name: 'Timezones', level: 2 }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('heading', {
+                name: 'Timezone directory',
+                level: 3,
+            }),
+        ).not.toBeInTheDocument();
     });
 });

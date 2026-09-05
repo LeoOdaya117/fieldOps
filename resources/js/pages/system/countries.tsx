@@ -69,10 +69,7 @@ export default function CountriesPage({
                 </>
             }
         >
-            <IndexPageSection
-                title="Country directory"
-                description="Available countries can be selected by future FieldOps data-entry flows."
-            >
+            <IndexPageSection>
                 {countries.data.length === 0 ? (
                     <p className="px-6 py-12 text-center text-sm text-muted-foreground">
                         No countries match the current filters.
