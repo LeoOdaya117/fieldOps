@@ -142,7 +142,9 @@ test('an administrator can manage reference data across themes, responsive layou
     ).toBeVisible();
     await page.keyboard.press('Escape');
 
-    await page.goto('/system/countries');
+    await page.goto(
+        `/system/countries?search=${encodeURIComponent(updatedName)}`,
+    );
     row = page
         .getByRole('table', { name: 'Country directory' })
         .getByRole('row')
