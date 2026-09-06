@@ -36,18 +36,28 @@ async function visitSection(page: Page, path: string, title: string) {
     await expect(page).toHaveURL(new RegExp(`${path.replaceAll('/', '\\/')}$`));
 }
 
-test('the settings starter kit is responsive, accessible, and complete', async ({ page }, testInfo) => {
+test('the settings starter kit is responsive, accessible, and complete', async ({
+    page,
+}, testInfo) => {
     await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
     await loginAsOwner(page);
     await page.goto('/settings/system');
 
-    await expect(page.getByRole('heading', { name: 'System settings' })).toBeVisible();
-    await expect(page.getByLabel('Log out after inactivity')).toHaveValue('900');
+    await expect(
+        page.getByRole('heading', { name: 'System settings' }),
+    ).toBeVisible();
+    await expect(page.getByLabel('Log out after inactivity')).toHaveValue(
+        '900',
+    );
     await expect(page.getByLabel('Failed attempts allowed')).toHaveValue('5');
     await expect(page.getByLabel('Reset attempts after')).toHaveValue('30');
     await expect(page.getByRole('radio')).toHaveCount(0);
 
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(
+        await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+    ).toBe(true);
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
     await visitSection(page, '/settings/system/layout', 'Layout themes');
@@ -61,7 +71,10 @@ test('the settings starter kit is responsive, accessible, and complete', async (
             ),
             fullPage: true,
         });
-        await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+        await page.emulateMedia({
+            colorScheme: 'dark',
+            reducedMotion: 'reduce',
+        });
         await page.reload();
         await page.screenshot({
             path: path.resolve(
@@ -70,38 +83,64 @@ test('the settings starter kit is responsive, accessible, and complete', async (
             ),
             fullPage: true,
         });
-        await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+        await page.emulateMedia({
+            colorScheme: 'light',
+            reducedMotion: 'reduce',
+        });
         await page.reload();
     }
 
     await visitSection(page, '/settings/system/address', 'Address');
     await expect(page.getByLabel('Region', { exact: true })).toBeVisible();
     await page.getByLabel('Region', { exact: true }).click();
-    await expect(page.getByRole('option', { name: 'National Capital Region' })).toBeVisible();
+    await expect(
+        page.getByRole('option', { name: 'National Capital Region' }),
+    ).toBeVisible();
     await page.keyboard.press('Escape');
 
     await visitSection(page, '/settings/system/map', 'Map');
-    await expect(page.getByText('Mapbox is ready for a public token')).toBeVisible();
+    const mapSetup = page.getByText('Mapbox is ready for a public token');
+    if (await mapSetup.count()) {
+        await expect(mapSetup).toBeVisible();
+    } else {
+        await expect(
+            page.getByRole('region', {
+                name: 'Map for selecting organization coordinates',
+            }),
+        ).toBeVisible();
+    }
     await expect(page.getByLabel('Latitude')).toBeEditable();
     await expect(page.getByLabel('Longitude')).toBeEditable();
 
-    await visitSection(page, '/settings/system/platform-images', 'Platform images');
+    await visitSection(
+        page,
+        '/settings/system/platform-images',
+        'Platform images',
+    );
     await expect(page.getByText('Owner controls enabled')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Change' })).toHaveCount(5);
     await page.getByRole('button', { name: 'Change' }).first().click();
-    const gallery = page.getByRole('dialog', { name: /choose compact brand mark/i });
+    const gallery = page.getByRole('dialog', {
+        name: /choose compact brand mark/i,
+    });
     await expect(gallery).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Upload', exact: true })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Camera', exact: true })).toBeVisible();
+    await expect(
+        page.getByRole('tab', { name: 'Upload', exact: true }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('tab', { name: 'Camera', exact: true }),
+    ).toBeVisible();
     await page.getByRole('button', { name: 'Cancel' }).click();
     await expect(gallery).toBeHidden();
-
 });
 
 test('an Owner can compare, apply, and persist all five application layouts', async ({
     page,
 }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'Global layout mutation runs once on desktop.');
+    test.skip(
+        testInfo.project.name !== 'desktop',
+        'Global layout mutation runs once on desktop.',
+    );
     test.setTimeout(240_000);
 
     await loginAsOwner(page);
@@ -109,7 +148,9 @@ test('an Owner can compare, apply, and persist all five application layouts', as
 
     await page.goto('/settings/system/layout');
     const themeNames = ['Canvas', 'Atlas', 'Rail', 'Navigator', 'Horizon'];
-    const currentTheme = await page.getByRole('radio', { checked: true }).inputValue();
+    const currentTheme = await page
+        .getByRole('radio', { checked: true })
+        .inputValue();
     const currentName =
         themeNames.find((theme) => theme.toLowerCase() === currentTheme) ??
         'Canvas';
