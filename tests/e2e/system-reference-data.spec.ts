@@ -54,7 +54,7 @@ test('an administrator can manage reference data across themes, responsive layou
         page.getByRole('columnheader', { name: 'Record status' }),
     ).toBeVisible();
     await expect(
-        page.getByRole('columnheader', { name: 'Status' }),
+        page.getByRole('columnheader', { name: 'Status', exact: true }),
     ).toHaveCount(0);
 
     const table = page.getByRole('table', { name: 'Country directory' });
