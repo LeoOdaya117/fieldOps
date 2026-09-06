@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PlatformBranding;
 use App\Support\SystemSettings;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -66,6 +67,9 @@ class HandleInertiaRequests extends Middleware
             'system' => [
                 'name' => SystemSettings::name(),
                 'timezone' => SystemSettings::timezone(),
+                'theme' => SystemSettings::theme(),
+                'idleTimeoutSeconds' => SystemSettings::idleTimeoutSeconds(),
+                'branding' => PlatformBranding::values(),
             ],
             'auth' => [
                 'user' => $user?->makeHidden(['roles', 'permissions']),
