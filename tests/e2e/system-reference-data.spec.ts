@@ -65,8 +65,8 @@ test('an administrator can manage reference data across themes, responsive layou
 
     await page.getByRole('link', { name: 'Create country' }).click();
     await expect(page.getByLabel('Status', { exact: true })).toHaveCount(0);
-    await page.getByLabel('Country code').fill(code);
-    await page.getByLabel('Name', { exact: true }).fill(countryName);
+    await page.locator('form').getByLabel('Country code').fill(code);
+    await page.locator('form').getByLabel('Name', { exact: true }).fill(countryName);
     await page.getByRole('button', { name: 'Create country' }).click();
     await expect(page).toHaveURL(/\/system\/countries$/);
 
@@ -77,7 +77,7 @@ test('an administrator can manage reference data across themes, responsive layou
         .getByRole('button', { name: `Actions for ${countryName}` })
         .click();
     await page.getByRole('menuitem', { name: 'Edit' }).click();
-    await page.getByLabel('Name', { exact: true }).fill(updatedName);
+    await page.locator('form').getByLabel('Name', { exact: true }).fill(updatedName);
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page).toHaveURL(/\/system\/countries$/);
 
