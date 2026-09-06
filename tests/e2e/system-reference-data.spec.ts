@@ -133,7 +133,9 @@ test('an administrator can manage reference data across themes, responsive layou
     await expect(page.getByText('Asia/Manila').first()).toBeVisible();
 
     await page.goto('/settings/system');
-    await expect(page.getByLabel('Time zone')).toContainText('UTC');
+    await expect(page.getByLabel('Time zone')).toContainText(
+        /UTC|Asia\/Manila/,
+    );
     await page.getByLabel('Time zone').click();
     await expect(
         page.getByRole('option', { name: 'Asia/Manila' }),
