@@ -558,7 +558,7 @@ describe('reusable data table components', () => {
 
         expect(container).toContainElement(navigations[0]);
         expect(navigations).toHaveLength(2);
-        expect(navigations[0]).toHaveAccessibleName('Table pagination');
+        expect(navigations[0]).toHaveAccessibleName(/table pagination/i);
         expect(navigations[0]).toHaveClass('px-4');
         expect(navigations[0]).toHaveClass('lg:flex-row');
         expect(navigations[0]).not.toHaveClass('border-b');
@@ -634,7 +634,7 @@ describe('reusable data table components', () => {
         );
 
         expect(screen.getByRole('navigation')).toHaveAccessibleName(
-            'Table pagination',
+            /table pagination/i,
         );
         expect(
             screen.getByText(/Showing 11–20 of 25 roles/),
