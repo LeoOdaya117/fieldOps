@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             DefaultAccountsSeeder::class,
             CountrySeeder::class,
             TimezoneSeeder::class,
+            PsgcReferenceSeeder::class,
         ]);
     }
 }
