@@ -66,6 +66,7 @@ test('an administrator can manage reference data across themes, responsive layou
 
     await page.getByRole('link', { name: 'Create country' }).click();
     await expect(page.getByLabel('Status', { exact: true })).toHaveCount(0);
+
     let created = false;
     for (const code of codes) {
         await page.locator('form').getByLabel('Country code').fill(code);
@@ -92,6 +93,7 @@ test('an administrator can manage reference data across themes, responsive layou
             ).toBeVisible();
         }
     }
+
     expect(created).toBe(true);
     await page.goto(
         `/system/countries?search=${encodeURIComponent(countryName)}`,
