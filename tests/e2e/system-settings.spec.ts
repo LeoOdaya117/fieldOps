@@ -100,6 +100,7 @@ test('the settings starter kit is responsive, accessible, and complete', async (
 
     await visitSection(page, '/settings/system/map', 'Map');
     const mapSetup = page.getByText('Mapbox is ready for a public token');
+
     if (await mapSetup.count()) {
         await expect(mapSetup).toBeVisible();
     } else {
@@ -109,6 +110,7 @@ test('the settings starter kit is responsive, accessible, and complete', async (
             }),
         ).toBeVisible();
     }
+
     await expect(page.getByLabel('Latitude')).toBeEditable();
     await expect(page.getByLabel('Longitude')).toBeEditable();
 
