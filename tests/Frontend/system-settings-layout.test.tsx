@@ -13,6 +13,7 @@ vi.mock('@inertiajs/react', () => ({
         children?: ReactNode;
     }) => <a href={typeof href === 'string' ? href : href.url}>{children}</a>,
     usePage: usePageMock,
+    router: { visit: vi.fn() },
 }));
 
 import SystemSettingsLayout from '@/layouts/settings/system-layout';
@@ -32,18 +33,19 @@ describe('system settings navigation', () => {
         expect(
             screen.getByRole('heading', {
                 name: 'System settings',
-                level: 2,
+                level: 1,
             }),
         ).toBeInTheDocument();
         expect(screen.queryByText('My settings')).not.toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'System' })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: 'General' })).toHaveAttribute(
             'href',
             '/settings/system',
         );
-        expect(screen.getByRole('button', { name: 'Address' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Map' })).toBeDisabled();
         expect(
-            screen.getByRole('button', { name: 'Platform images' }),
-        ).toBeDisabled();
+            screen.getByRole('link', { name: 'Layout themes' }),
+        ).toHaveAttribute('href', '/settings/system/layout');
+        expect(screen.getByRole('link', { name: 'Address' })).toHaveAttribute('href', '/settings/system/address');
+        expect(screen.getByRole('link', { name: 'Map' })).toHaveAttribute('href', '/settings/system/map');
+        expect(screen.getByRole('link', { name: 'Platform images' })).toHaveAttribute('href', '/settings/system/platform-images');
     });
 });

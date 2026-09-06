@@ -7,7 +7,7 @@ import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import SystemSettingsLayout from '@/layouts/settings/system-layout';
 
-const appName = import.meta.env.VITE_APP_NAME || 'FieldOps';
+const appName = document.documentElement.dataset.platformName || 'FieldOps';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
@@ -17,7 +17,8 @@ createInertiaApp({
                 return null;
             case name.startsWith('auth/'):
                 return AuthLayout;
-            case name === 'settings/system':
+            case name === 'settings/system' ||
+                name.startsWith('settings/system/'):
                 return [AppLayout, SystemSettingsLayout];
             case name.startsWith('settings/'):
                 return [AppLayout, SettingsLayout];

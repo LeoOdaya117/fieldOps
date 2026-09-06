@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-06T10:47:44.6453442+08:00",
+  "title": "Design System: FieldOps",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Operational Indigo" },
+      "accent": { "role": "secondary", "displayName": "Selected Indigo Wash" },
+      "brand": { "role": "primary", "displayName": "FieldOps Brand Indigo" },
+      "background": { "role": "neutral", "displayName": "Cool Canvas" },
+      "foreground": { "role": "neutral", "displayName": "Ink" },
+      "card": { "role": "neutral", "displayName": "Workbench Surface" },
+      "muted": { "role": "neutral", "displayName": "Quiet Surface" },
+      "border": { "role": "neutral", "displayName": "Structural Hairline" }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Page Heading", "purpose": "Compact page-level orientation." },
+      "title": { "displayName": "Section Title", "purpose": "Workbench sections and shell context." },
+      "body": { "displayName": "Operational Body", "purpose": "Controls, descriptions, and repeated administration." },
+      "label": { "displayName": "Control Label", "purpose": "Persistent field and navigation labels." }
+    },
+    "shadows": [
+      { "name": "canvas-panel", "value": "0 1px 2px oklch(0.19 0.02 285 / 0.06), 0 12px 30px -24px oklch(0.19 0.02 285 / 0.28)", "purpose": "Soft inset-workspace separation in Canvas." },
+      { "name": "atlas-panel", "value": "0 1px 2px oklch(0.08 0.01 285 / 0.06)", "purpose": "Minimal structural lift in Atlas." },
+      { "name": "rail-panel", "value": "0 1px 2px oklch(0.19 0.02 285 / 0.05), 0 10px 28px -24px oklch(0.19 0.02 285 / 0.22)", "purpose": "Quiet ambient separation across the wide Rail canvas." },
+      { "name": "navigator-panel", "value": "0 1px 3px oklch(0.08 0.01 285 / 0.08)", "purpose": "Compact separation beside Navigator's double column." },
+      { "name": "horizon-panel", "value": "0 1px 2px oklch(0.08 0.01 285 / 0.08)", "purpose": "Low-profile depth in Horizon's focused column." }
+    ],
+    "motion": [
+      { "name": "state-color", "value": "transition: color, background-color, border-color", "purpose": "Brief hover and active feedback; disabled under reduced motion." },
+      { "name": "select-popover", "value": "fade + 95% zoom + 2px directional slide", "purpose": "Radix Select entry and exit; animation removed under reduced motion." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Decisive save and apply actions.",
+      "html": "<button class=\"ds-btn-primary\">Apply layout</button>",
+      "css": ".ds-btn-primary { height: 2.25rem; padding: 0.5rem 1rem; border: 0; border-radius: 0.5rem; background: var(--primary); color: var(--primary-foreground); font: 500 0.875rem/1.25 'Instrument Sans', ui-sans-serif, system-ui, sans-serif; transition: background-color 150ms, box-shadow 150ms; } .ds-btn-primary:hover { background: color-mix(in oklab, var(--primary) 90%, black); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Solid Select Trigger",
+      "kind": "input",
+      "refersTo": "select-trigger",
+      "description": "The standard settings selector and responsive section switcher.",
+      "html": "<button class=\"ds-select-trigger\" aria-haspopup=\"listbox\"><span>Canvas</span><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></button>",
+      "css": ".ds-select-trigger { display: flex; width: 100%; height: 2.5rem; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.5rem 0.75rem; border: 1px solid var(--input); border-radius: 0.5rem; background: var(--background); color: var(--foreground); font: 400 0.875rem/1.25 'Instrument Sans', ui-sans-serif, system-ui, sans-serif; box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); transition: background-color 150ms, box-shadow 150ms, border-color 150ms; } .ds-select-trigger svg { width: 1rem; height: 1rem; color: var(--muted-foreground); opacity: 0.5; } .ds-select-trigger:hover { background: color-mix(in oklab, var(--muted) 55%, var(--background)); } .ds-select-trigger:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent); }"
+    },
+    {
+      "name": "Settings Navigation Item",
+      "kind": "nav",
+      "description": "Compact desktop wayfinding inside System Settings.",
+      "html": "<a class=\"ds-settings-nav\" href=\"#\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16M4 12h16M4 18h10\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg><span>Layout themes</span></a>",
+      "css": ".ds-settings-nav { display: flex; min-height: 2.5rem; align-items: center; gap: 0.625rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; color: var(--muted-foreground); text-decoration: none; font: 500 0.875rem/1.25 'Instrument Sans', ui-sans-serif, system-ui, sans-serif; transition: color 150ms, background-color 150ms; } .ds-settings-nav svg { width: 1rem; height: 1rem; } .ds-settings-nav:hover { background: var(--muted); color: var(--foreground); } .ds-settings-nav[aria-current='page'] { background: var(--accent); color: var(--accent-foreground); } .ds-settings-nav:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }"
+    },
+    {
+      "name": "Layout Theme Choice",
+      "kind": "card",
+      "description": "A preview-led, non-live radio choice with explicit selected and current states.",
+      "html": "<label class=\"ds-layout-choice\"><span class=\"ds-layout-preview\" aria-hidden=\"true\"><i></i><b></b></span><span class=\"ds-layout-meta\"><span class=\"ds-layout-radio\">✓</span><span><strong>Canvas</strong><em>Current</em><small>Inset sidebar · Soft workspace · Balanced density</small></span></span></label>",
+      "css": ".ds-layout-choice { display: grid; gap: 1rem; padding: 0.875rem; border: 1px solid var(--primary); border-radius: 0.75rem; background: var(--background); color: var(--foreground); box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 15%, transparent); font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif; } .ds-layout-preview { display: grid; grid-template-columns: 25% 1fr; aspect-ratio: 16/10; gap: 0.5rem; padding: 0.5rem; overflow: hidden; border: 1px solid var(--border); border-radius: 0.75rem; background: var(--muted); } .ds-layout-preview i { border-radius: 0.5rem; background: var(--sidebar); } .ds-layout-preview b { border: 1px solid var(--border); border-radius: 0.625rem; background: var(--card); } .ds-layout-meta { display: flex; gap: 0.75rem; } .ds-layout-radio { display: grid; width: 1.25rem; height: 1.25rem; place-items: center; flex: none; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); font-size: 0.75rem; } .ds-layout-meta strong { font-size: 0.875rem; } .ds-layout-meta em { margin-left: 0.5rem; padding: 0.125rem 0.5rem; border-radius: 0.5rem; background: var(--muted); color: var(--muted-foreground); font-size: 0.75rem; font-style: normal; } .ds-layout-meta small { display: block; margin-top: 0.5rem; color: var(--muted-foreground); font-size: 0.75rem; } .ds-layout-choice:hover { border-color: color-mix(in oklab, var(--ring) 55%, var(--border)); } .ds-layout-choice:focus-within { box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 35%, transparent); }"
+    },
+    {
+      "name": "Mobile Navigation Row",
+      "kind": "nav",
+      "description": "A 44px grouped destination row in the shared Atlas, Rail, and Navigator mobile Sheet.",
+      "html": "<a class=\"ds-mobile-nav\" href=\"#\" aria-current=\"page\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 5h16v14H4zM8 9h8M8 13h5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span>System settings</span><b>›</b></a>",
+      "css": ".ds-mobile-nav { display: flex; min-height: 2.75rem; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; color: var(--sidebar-foreground); text-decoration: none; font: 500 0.875rem/1.25 'Instrument Sans', ui-sans-serif, system-ui, sans-serif; transition: background-color 150ms, color 150ms; } .ds-mobile-nav svg { width: 1rem; height: 1rem; } .ds-mobile-nav b { margin-left: auto; font-size: 1.125rem; font-weight: 400; } .ds-mobile-nav:hover, .ds-mobile-nav[aria-current='page'] { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); } .ds-mobile-nav:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }"
+    },
+    {
+      "name": "Settings Workspace",
+      "kind": "card",
+      "refersTo": "settings-workspace",
+      "description": "One divided, shell-responsive content plane for a related settings workflow.",
+      "html": "<section class=\"ds-settings-workspace\"><header><strong>Regional defaults</strong><span>Choose the defaults used across operational records.</span></header><div class=\"ds-settings-section\">Settings fields</div><footer>Save actions</footer></section>",
+      "css": ".ds-settings-workspace { overflow: hidden; border: 1px solid var(--border); border-radius: var(--platform-panel-radius); background: var(--card); color: var(--card-foreground); box-shadow: var(--platform-panel-shadow); font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif; } .ds-settings-workspace header, .ds-settings-section { padding: var(--platform-section-padding); border-bottom: 1px solid var(--border); } .ds-settings-workspace header { display: grid; gap: 0.25rem; } .ds-settings-workspace header strong { font-size: 1rem; } .ds-settings-workspace header span, .ds-settings-section, .ds-settings-workspace footer { color: var(--muted-foreground); font-size: 0.875rem; } .ds-settings-workspace footer { padding: 1rem var(--platform-section-padding); text-align: right; background: color-mix(in oklab, var(--muted) 35%, transparent); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Operations Workbench",
+    "overview": "FieldOps is an Operate interface: calm, compact, and built for repeated administrative work. Structure, scanability, and predictable state changes outrank decoration. Brand character comes from restrained indigo accents, exact alignment, useful metadata, and well-resolved fallbacks—not from ornamental dashboards or novelty effects.\n\nThe authenticated application is one product expressed through five materially distinct shells. Canvas, Atlas, Rail, Navigator, and Horizon change the navigation frame, density, content width, radius, elevation, and active-state treatment while preserving the same permission-aware destinations and page content. System Settings is the reference surface: one low-chrome content plane, clear dividers, a compact section rail on desktop, and a labeled selector at smaller widths.",
+    "keyCharacteristics": [
+      "Quiet cool-neutral surfaces with sparse indigo emphasis.",
+      "Five recognizable shell topologies over one shared navigation and content contract.",
+      "Workhorse typography, short labels, and explanatory copy at a readable rhythm.",
+      "Fine borders, restrained depth, and shell-specific density rather than decorative chrome.",
+      "Built-in fallback states that remain complete and trustworthy."
+    ],
+    "rules": [
+      { "name": "The Semantic Role Rule", "body": "Use a role for its meaning, never a raw hex, RGB, OKLCH value, or generic neutral utility inside a component.", "section": "colors" },
+      { "name": "The Restrained Accent Rule", "body": "Primary is for decisive actions and selected controls; accent is for active navigation and icon wells; brand is for identity. Do not flood ordinary settings surfaces with any of them.", "section": "colors" },
+      { "name": "The Workhorse Type Rule", "body": "Do not introduce a decorative display face, oversized dashboard typography, or pervasive all-caps chrome into the application shell. Hierarchy comes from weight, spacing, and restrained size changes.", "section": "typography" },
+      { "name": "The Shared Content Rule", "body": "Shells may change topology and density, never page markup, destinations, permissions, or business behavior.", "section": "layout" },
+      { "name": "The One Workspace Rule", "body": "A related settings flow is one content plane with divided sections, not a dashboard of unrelated cards.", "section": "layout" },
+      { "name": "The Low-Chrome Rule", "body": "If a border and a tonal surface communicate grouping, do not add another shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use semantic tokens and verify every surface in Light, Dark, and System appearance under Canvas, Atlas, Rail, Navigator, and Horizon.",
+      "Do source every shell's destinations from the shared permission-aware navigation manifest and render the same page content inside each shell.",
+      "Do keep settings responsive at mobile, tablet, and desktop widths with labels, actions, and fallbacks visible.",
+      "Do treat Current, selected, disabled, error, and active states as non-color information as well as visual styling.",
+      "Do use built-in branding and manual-coordinate fallbacks as first-class states.",
+      "Do reuse the typed MapboxMap and ImageGalleryPicker contracts instead of creating page-specific substitutes.",
+      "Do write calm, specific operational copy that explains scope, consequence, and recovery."
+    ],
+    "donts": [
+      "Don't add a sixth shell, duplicate shell-specific page content, or branch authorization by layout.",
+      "Don't live-switch the authenticated shell from the Layout Themes cards; require the explicit Apply layout action.",
+      "Don't place the layout chooser back in General System Settings or combine it with personal appearance.",
+      "Don't reproduce legacy screenshots as a visual identity; they are capability references only.",
+      "Don't introduce raw colors, gradients, glass effects, decorative illustration, isolated dark-mode patches, fixed-width forms, or horizontal overflow.",
+      "Don't add card-heavy dashboards, ornamental animation, global media browsing, crop/edit tools, or geocoding to these workflows.",
+      "Don't hide authorization, validation, upload, camera, map, empty, loading, or failure states."
+    ]
+  }
+}

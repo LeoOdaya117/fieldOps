@@ -1,0 +1,5 @@
+Use case: ui-mockup
+Asset type: high-fidelity desktop web admin theme comparison board for the FieldOps Laravel/React starter kit
+Primary request: Create one polished 16:9 comparison board showing five distinct FieldOps authenticated admin-panel shell designs side by side as equal, clearly separated mini desktop browser frames: Canvas (inset sidebar), Atlas (enterprise masthead and docked sidebar), Rail (compact icon navigation), Navigator (global rail plus contextual navigation), and Horizon (dual-row horizontal navigation).
+Style: premium production UI, calm operational SaaS, restrained indigo and cool-neutral semantic palette, precise typography.
+Constraints: preserve FieldOps branding, make the structural differences obvious, and avoid third-party branding, charts, gradients, glassmorphism, decorative illustration, and excessive cards.

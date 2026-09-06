@@ -24,8 +24,10 @@ async function loginAsAdmin(page: Page) {
 }
 
 async function confirmAdminPassword(page: Page) {
-    await page.goto('/password/confirm');
-    await page.getByLabel('Password').fill(e2eAdmin.password);
+    await page.goto('/user/confirm-password');
+    await page
+        .getByRole('textbox', { name: 'Password' })
+        .fill(e2eAdmin.password);
     await page.getByRole('button', { name: 'Confirm password' }).click();
     await expect(page).toHaveURL(/\/dashboard$/, { timeout: 60_000 });
 }
@@ -97,10 +99,12 @@ test('an administrator can manage reference data across themes, responsive layou
     await expect(page.getByText('Asia/Manila').first()).toBeVisible();
 
     await page.goto('/settings/system');
-    await expect(page.getByLabel('Time zone')).toHaveValue('UTC');
+    await expect(page.getByLabel('Time zone')).toContainText('UTC');
+    await page.getByLabel('Time zone').click();
     await expect(
         page.getByRole('option', { name: 'Asia/Manila' }),
-    ).toBeAttached();
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
 
     await page.goto('/system/countries');
     row = page
