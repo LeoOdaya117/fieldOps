@@ -1,4 +1,5 @@
 import type { Auth } from '@/types/auth';
+import type { PlatformBranding, PlatformTheme } from '@/types/system';
 
 declare module 'react' {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -12,6 +13,13 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
+            system: {
+                name: string;
+                timezone: string;
+                theme: PlatformTheme;
+                idleTimeoutSeconds: number;
+                branding: PlatformBranding;
+            };
             sidebarOpen: boolean;
             flash?: {
                 success?: string | string[] | null;

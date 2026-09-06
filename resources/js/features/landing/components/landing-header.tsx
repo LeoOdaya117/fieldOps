@@ -1,7 +1,7 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import AppLogoIcon from '@/components/app-logo-icon';
+import { PlatformLogo } from '@/components/platform-logo';
 import { cn } from '@/lib/utils';
 import { dashboard, login } from '@/routes';
 import { landingJourneyNavigation } from '../data';
@@ -11,6 +11,8 @@ type LandingHeaderProps = {
 };
 
 export function LandingHeader({ isAuthenticated }: LandingHeaderProps) {
+    const { system } = usePage().props;
+    const platformName = system?.name ?? 'FieldOps';
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     useEffect(() => {
@@ -32,16 +34,15 @@ export function LandingHeader({ isAuthenticated }: LandingHeaderProps) {
             <div className="mx-auto flex min-h-16 w-full max-w-7xl items-center justify-between gap-5 px-5 sm:px-6 lg:px-8">
                 <a
                     href="#top"
-                    aria-label="FieldOps home"
+                    aria-label={`${platformName} home`}
                     className="flex shrink-0 items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
                     onClick={closeMenu}
                 >
-                    <span className="flex size-9 items-center justify-center text-brand">
-                        <AppLogoIcon className="size-8" aria-hidden="true" />
-                    </span>
-                    <span className="text-base font-extrabold tracking-[-0.04em] text-foreground sm:text-lg">
-                        FIELDOPS
-                    </span>
+                    <PlatformLogo
+                        variant="wordmark"
+                        className="h-9 max-w-52 text-brand"
+                        markClassName="size-8"
+                    />
                 </a>
 
                 <nav

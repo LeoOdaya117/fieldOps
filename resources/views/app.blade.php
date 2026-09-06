@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @class(['dark' => ($appearance ?? 'system') == 'dark'])>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-platform-theme="{{ \App\Support\SystemSettings::theme() }}" data-platform-name="{{ \App\Support\SystemSettings::name() }}" @class(['dark' => ($appearance ?? 'system') == 'dark'])>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -20,14 +20,14 @@
             })();
         </script>
 
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+        <link rel="icon" href="{{ \App\Support\PlatformBranding::url('favicon') }}">
 
         @fonts
 
         @viteReactRefresh
         @vite(['resources/css/app.css', 'resources/js/app.tsx', "resources/js/pages/{$page['component']}.tsx"])
         <x-inertia::head>
-            <title>{{ config('app.name', 'FieldOps') }}</title>
+            <title>{{ \App\Support\SystemSettings::name() }}</title>
         </x-inertia::head>
     </head>
     <body class="font-sans antialiased">

@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { ArrowRight, CheckCircle2, ShieldCheck } from 'lucide-react';
-import AppLogoIcon from '@/components/app-logo-icon';
+import { PlatformLogo } from '@/components/platform-logo';
 import { landingAssets } from '@/features/landing/data';
 import { home } from '@/routes';
 import type { AuthLayoutProps } from '@/types';
@@ -26,10 +26,11 @@ export default function AuthSplitLayout({
                 />
                 <div className="absolute inset-0 bg-brand/70" />
                 <div className="relative z-10 flex items-center gap-3 text-lg font-bold">
-                    <span className="flex size-10 items-center justify-center text-brand-foreground">
-                        <AppLogoIcon className="size-9" aria-hidden="true" />
-                    </span>
-                    FieldOps
+                    <PlatformLogo
+                        variant="wordmark-on-dark"
+                        className="h-10 max-w-52 text-brand-foreground"
+                        markClassName="size-9"
+                    />
                 </div>
                 <div className="relative z-10 max-w-lg">
                     <p className="inline-flex items-center gap-2 rounded-full bg-brand-foreground/10 px-3 py-1.5 text-sm font-semibold">
@@ -68,13 +69,11 @@ export default function AuthSplitLayout({
                         href={home()}
                         className="flex items-center gap-3 self-start font-bold lg:hidden"
                     >
-                        <span className="flex size-10 items-center justify-center text-brand">
-                            <AppLogoIcon
-                                className="size-9"
-                                aria-hidden="true"
-                            />
-                        </span>
-                        <span>FieldOps</span>
+                        <PlatformLogo
+                            variant="wordmark"
+                            className="h-10 max-w-52 text-brand"
+                            markClassName="size-9"
+                        />
                     </Link>
                     <div className="flex flex-col items-start gap-2 text-left sm:items-center sm:text-center">
                         <h1 className="text-2xl font-bold tracking-tight">
