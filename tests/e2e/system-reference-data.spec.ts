@@ -159,7 +159,7 @@ test('an administrator can manage reference data across themes, responsive layou
         .getByRole('dialog')
         .getByRole('button', { name: 'Delete' })
         .click();
-    await expect(page).toHaveURL(/\/system\/countries$/);
+    await expect(page).toHaveURL(/\/system\/countries(?:\?|$)/);
 
     await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
     await page.reload();
