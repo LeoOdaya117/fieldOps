@@ -70,7 +70,7 @@ export function TablePagination({
 
     return (
         <nav
-            aria-label="Table pagination"
+            aria-label={`${position === 'top' ? 'Top' : 'Bottom'} table pagination`}
             className={cn(
                 'flex flex-col gap-3 bg-muted/10 px-4 py-4 text-sm lg:flex-row lg:items-center lg:justify-between',
             )}
