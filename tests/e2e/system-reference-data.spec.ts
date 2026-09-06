@@ -7,12 +7,6 @@ const e2eAdmin = {
     password: process.env.E2E_ADMIN_PASSWORD ?? 'password',
 };
 
-const countryCodes = {
-    mobile: 'XQ',
-    tablet: 'XR',
-    desktop: 'XS',
-} as const;
-
 async function loginAsAdmin(page: Page) {
     await page.goto('/login');
     await page.getByLabel('Email address').fill(e2eAdmin.email);
@@ -58,8 +52,8 @@ test('an administrator can manage reference data across themes, responsive layou
     ).toHaveCount(0);
 
     const table = page.getByRole('table', { name: 'Country directory' });
-    const code =
-        countryCodes[testInfo.project.name as keyof typeof countryCodes];
+    const projectOffset = ['mobile', 'tablet', 'desktop'].indexOf(testInfo.project.name);
+    const code = `${String.fromCharCode(65 + ((Date.now() + projectOffset) % 26))}${String.fromCharCode(65 + (Math.floor(Date.now() / 26) % 26))}`;
     const countryName = `Playwright ${testInfo.project.name}`;
     const updatedName = `${countryName} updated`;
 
