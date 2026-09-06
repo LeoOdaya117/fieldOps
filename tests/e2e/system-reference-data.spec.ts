@@ -162,6 +162,9 @@ test('an administrator can manage reference data across themes, responsive layou
     await expect(page).toHaveURL(/\/system\/countries(?:\?|$)/);
 
     await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+    await page.evaluate(() =>
+        window.localStorage.setItem('appearance', 'dark'),
+    );
     await page.reload();
     await expect(page.locator('html')).toHaveClass(/dark/);
     await expect(
