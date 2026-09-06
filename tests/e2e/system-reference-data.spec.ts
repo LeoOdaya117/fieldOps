@@ -48,7 +48,7 @@ test('an administrator can manage reference data across themes, responsive layou
         page.getByRole('button', { name: 'Manage columns' }),
     ).toBeVisible();
     await expect(
-        page.getByRole('columnheader', { name: 'Created' }),
+        page.getByRole('columnheader', { name: 'Created', exact: true }),
     ).toBeVisible();
     await expect(
         page.getByRole('columnheader', { name: 'Record status' }),
