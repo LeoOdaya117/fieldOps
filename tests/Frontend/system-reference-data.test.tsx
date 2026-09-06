@@ -332,7 +332,7 @@ describe('system reference data UI', () => {
         );
 
         expect(
-            screen.getByRole('heading', { name: 'Countries', level: 2 }),
+            screen.getByRole('heading', { name: 'Countries', level: 1 }),
         ).toBeInTheDocument();
         expect(
             screen.queryByRole('heading', {
@@ -346,7 +346,7 @@ describe('system reference data UI', () => {
         render(<TimezonesPage timezones={timezonePageData} />);
 
         expect(
-            screen.getByRole('heading', { name: 'Timezones', level: 2 }),
+            screen.getByRole('heading', { name: 'Timezones', level: 1 }),
         ).toBeInTheDocument();
         expect(
             screen.queryByRole('heading', {

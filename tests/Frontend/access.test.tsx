@@ -318,7 +318,7 @@ describe('access administration pages', () => {
             screen.getByRole('checkbox', { name: 'Select Alex' }),
         ).not.toBeChecked();
         expect(
-            screen.getAllByRole('navigation', { name: 'Table pagination' }),
+            screen.getAllByRole('navigation', { name: /table pagination/i }),
         ).toHaveLength(2);
         expect(screen.getByText('new@example.com')).toBeInTheDocument();
         await user.click(
@@ -790,7 +790,7 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
         expect(screen.getByRole('table')).toBeInTheDocument();
         expect(
-            screen.getAllByRole('navigation', { name: 'Table pagination' }),
+            screen.getAllByRole('navigation', { name: /table pagination/i }),
         ).toHaveLength(2);
         expect(screen.getAllByText('user.role_changed').length).toBeGreaterThan(
             0,
