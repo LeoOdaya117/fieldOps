@@ -127,7 +127,7 @@ test('an administrator can manage reference data across themes, responsive layou
         page.getByRole('heading', { name: 'Timezones' }),
     ).toBeVisible();
     await expect(
-        page.getByRole('columnheader', { name: 'Created' }),
+        page.getByRole('columnheader', { name: 'Created', exact: true }),
     ).toBeVisible();
     await expect(page.getByText('Asia/Manila').first()).toBeVisible();
 
