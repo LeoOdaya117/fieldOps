@@ -52,17 +52,50 @@ test('an administrator can manage reference data across themes, responsive layou
     ).toHaveCount(0);
 
     const table = page.getByRole('table', { name: 'Country directory' });
-    const projectOffset = ['mobile', 'tablet', 'desktop'].indexOf(testInfo.project.name);
-    const code = `${String.fromCharCode(65 + ((Date.now() + projectOffset) % 26))}${String.fromCharCode(65 + (Math.floor(Date.now() / 26) % 26))}`;
-    const countryName = `Playwright ${testInfo.project.name}`;
+    const projectOffset = ['mobile', 'tablet', 'desktop'].indexOf(
+        testInfo.project.name,
+    );
+    const start = (Date.now() + projectOffset) % (26 * 26);
+    const codes = Array.from({ length: 26 * 26 }, (_, index) => {
+        const candidate = (start + index) % (26 * 26);
+
+        return `${String.fromCharCode(65 + Math.floor(candidate / 26))}${String.fromCharCode(65 + (candidate % 26))}`;
+    });
+    const countryName = `Playwright ${testInfo.project.name} ${Date.now()}`;
     const updatedName = `${countryName} updated`;
 
     await page.getByRole('link', { name: 'Create country' }).click();
     await expect(page.getByLabel('Status', { exact: true })).toHaveCount(0);
-    await page.locator('form').getByLabel('Country code').fill(code);
-    await page.locator('form').getByLabel('Name', { exact: true }).fill(countryName);
-    await page.getByRole('button', { name: 'Create country' }).click();
-    await expect(page).toHaveURL(/\/system\/countries$/);
+    let created = false;
+    for (const code of codes) {
+        await page.locator('form').getByLabel('Country code').fill(code);
+        await page
+            .locator('form')
+            .getByLabel('Name', { exact: true })
+            .fill(countryName);
+        await page.getByRole('button', { name: 'Create country' }).click();
+
+        try {
+            await expect(page).toHaveURL(/\/system\/countries$/, {
+                timeout: 3000,
+            });
+            created = true;
+            break;
+        } catch {
+            await expect(page).toHaveURL(/\/system\/countries\/create$/);
+            await expect(
+                page
+                    .locator('form')
+                    .getByText('The code has already been taken.', {
+                        exact: true,
+                    }),
+            ).toBeVisible();
+        }
+    }
+    expect(created).toBe(true);
+    await page.goto(
+        `/system/countries?search=${encodeURIComponent(countryName)}`,
+    );
 
     let row = table.getByRole('row').filter({ hasText: countryName });
     await expect(row).toHaveCount(1);
@@ -71,17 +104,23 @@ test('an administrator can manage reference data across themes, responsive layou
         .getByRole('button', { name: `Actions for ${countryName}` })
         .click();
     await page.getByRole('menuitem', { name: 'Edit' }).click();
-    await page.locator('form').getByLabel('Name', { exact: true }).fill(updatedName);
+    await page
+        .locator('form')
+        .getByLabel('Name', { exact: true })
+        .fill(updatedName);
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page).toHaveURL(/\/system\/countries$/);
+    await page.goto(
+        `/system/countries?search=${encodeURIComponent(updatedName)}`,
+    );
 
     row = table.getByRole('row').filter({ hasText: updatedName });
     await expect(row).toHaveCount(1);
-    await row
-        .getByRole('switch', {
+    await expect(
+        row.getByRole('switch', {
             name: `Active record for ${updatedName}`,
-        })
-        .toHaveAttribute('aria-checked', 'true');
+        }),
+    ).toHaveAttribute('aria-checked', 'true');
 
     await page.goto('/system/timezones');
     await expect(
