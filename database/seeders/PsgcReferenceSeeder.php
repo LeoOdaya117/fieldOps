@@ -13,7 +13,13 @@ class PsgcReferenceSeeder extends Seeder
         $path = database_path('data/psgc-q2-2026.json');
         $checksumPath = database_path('data/psgc-q2-2026.sha256');
         $expectedChecksum = strtok(trim((string) file_get_contents($checksumPath)), " \t");
-        $actualChecksum = hash_file('sha256', $path);
+        $payload = file_get_contents($path);
+        $canonicalPayload = is_string($payload)
+            ? str_replace(["\r\n", "\r"], "\n", $payload)
+            : false;
+        $actualChecksum = is_string($canonicalPayload)
+            ? hash('sha256', $canonicalPayload)
+            : false;
 
         if (! is_string($actualChecksum) || ! hash_equals((string) $expectedChecksum, $actualChecksum)) {
             throw new RuntimeException('The bundled PSGC reference payload failed checksum verification.');
