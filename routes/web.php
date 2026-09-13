@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\SessionActivityController;
 use App\Http\Controllers\Media\MediaAssetContentController;
 use App\Http\Controllers\Media\MediaAssetController;
 use App\Http\Controllers\Media\PlatformAssetContentController;
+use App\Http\Controllers\Notifications\NotificationController;
 use App\Http\Controllers\System\CountryController;
 use App\Http\Controllers\System\TimezoneController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -32,6 +33,11 @@ Route::post('invitations/{token}', [InvitationController::class, 'accept'])
     ->name('invitation.store');
 
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('notifications/summary', [NotificationController::class, 'summary'])->name('notifications.summary');
+    Route::patch('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::patch('notifications/{notification}', [NotificationController::class, 'update'])->whereUuid('notification')->name('notifications.update');
+
     Route::post('session/activity', SessionActivityController::class)->name('session.activity');
     Route::get('media-assets', [MediaAssetController::class, 'index'])->name('media-assets.index');
     Route::post('media-assets', [MediaAssetController::class, 'store'])

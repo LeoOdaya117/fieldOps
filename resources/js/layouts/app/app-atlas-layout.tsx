@@ -1,4 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
+import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { cn } from '@/lib/utils';
 import { getNavigationGroups } from '@/lib/navigation';
 import { useCurrentUrl } from '@/hooks/use-current-url';
@@ -35,7 +36,10 @@ export default function AppAtlasLayout({
                 <span className="ml-4 hidden border-l border-background/20 pl-4 text-xs font-medium text-background/70 sm:block">
                     Operations workspace
                 </span>
-                <PlatformUserButton className="ml-auto text-background hover:bg-background/10 hover:text-background" />
+                <div className="mr-2 ml-auto">
+                    <NotificationBell className="text-background hover:bg-background/10 hover:text-background" />
+                </div>
+                <PlatformUserButton className="text-background hover:bg-background/10 hover:text-background" />
             </header>
             <div className="flex min-h-[calc(100vh-3.5rem)]">
                 <aside className="hidden w-60 shrink-0 border-r border-border bg-sidebar lg:flex lg:flex-col">

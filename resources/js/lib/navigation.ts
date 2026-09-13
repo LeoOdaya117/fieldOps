@@ -1,4 +1,5 @@
 import {
+    Bell,
     Clock3,
     Globe2,
     LayoutGrid,
@@ -7,6 +8,7 @@ import {
     ShieldCheck,
     Users,
 } from 'lucide-react';
+import { index as notificationsIndex } from '@/routes/notifications';
 import type { Auth, NavItem } from '@/types';
 
 export type NavigationGroup = {
@@ -15,7 +17,7 @@ export type NavigationGroup = {
 };
 
 type NavigationDefinition = NavItem & {
-    permission: string;
+    permission: string | null;
 };
 
 const navigationDefinitions: Array<{
@@ -25,6 +27,12 @@ const navigationDefinitions: Array<{
     {
         label: 'Platform',
         items: [
+            {
+                title: 'Notifications',
+                href: notificationsIndex().url,
+                icon: Bell,
+                permission: null,
+            },
             {
                 title: 'Dashboard',
                 href: '/dashboard',
@@ -102,7 +110,9 @@ export function getNavigationGroups(auth: Auth): NavigationGroup[] {
         .map((group) => ({
             label: group.label,
             items: group.items
-                .filter((item) => can(item.permission))
+                .filter(
+                    (item) => item.permission === null || can(item.permission),
+                )
                 .map((item): NavItem => ({
                     title: item.title,
                     href: item.href,

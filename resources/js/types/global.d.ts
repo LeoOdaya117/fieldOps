@@ -1,3 +1,4 @@
+import type { NotificationSummary } from '@/features/notifications/types';
 import type { Auth } from '@/types/auth';
 import type { PlatformBranding, PlatformTheme } from '@/types/system';
 
@@ -20,6 +21,7 @@ declare module '@inertiajs/core' {
                 idleTimeoutSeconds: number;
                 branding: PlatformBranding;
             };
+            notifications?: NotificationSummary;
             sidebarOpen: boolean;
             flash?: {
                 success?: string | string[] | null;

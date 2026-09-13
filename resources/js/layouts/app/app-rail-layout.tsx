@@ -1,4 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
+import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { cn } from '@/lib/utils';
 import { getNavigationGroups } from '@/lib/navigation';
 import { useCurrentUrl } from '@/hooks/use-current-url';
@@ -84,7 +85,10 @@ export default function AppRailLayout({
                         breadcrumbs={breadcrumbs}
                         className="hidden lg:block"
                     />
-                    <PlatformUserButton className="ml-auto" />
+                    <div className="mr-2 ml-auto">
+                        <NotificationBell />
+                    </div>
+                    <PlatformUserButton className="" />
                 </header>
                 <ShellMain>{children}</ShellMain>
             </div>

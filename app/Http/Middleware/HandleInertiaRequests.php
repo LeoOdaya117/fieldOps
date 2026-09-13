@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Actions\Notifications\ReadNotificationInbox;
 use App\Support\PlatformBranding;
 use App\Support\SystemSettings;
 use Illuminate\Http\Request;
@@ -82,6 +83,9 @@ class HandleInertiaRequests extends Middleware
                 'info' => fn (): mixed => $request->session()->get('info'),
                 'message' => fn (): mixed => $request->session()->get('message'),
             ],
+            'notifications' => fn (): array => $user !== null && $user->isActive() && $user->email_verified_at !== null
+                ? app(ReadNotificationInbox::class)->summary($user)
+                : ['total' => 0, 'unread' => 0, 'items' => []],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

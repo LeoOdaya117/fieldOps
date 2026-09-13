@@ -14,7 +14,7 @@ describe('navigation manifest', () => {
 
         const destinations = getNavigationGroups(auth).flatMap((group) => group.items.map((item) => item.title));
 
-        expect(destinations).toEqual(['Dashboard', 'Users', 'System settings']);
+        expect(destinations).toEqual(['Notifications', 'Dashboard', 'Users', 'System settings']);
         expect(destinations).not.toContain('Repository');
         expect(destinations).not.toContain('Documentation');
     });
