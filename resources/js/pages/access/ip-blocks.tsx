@@ -98,10 +98,7 @@ export default function IpBlocksPage({
                 </>
             }
         >
-            <IndexPageSection
-                title="IP address directory"
-                description="Addresses are recorded during authentication with the latest user observed from each address. Open an address to review its history and change its access status."
-            >
+            <IndexPageSection>
                 {blockedIpAddresses.data.length === 0 ? (
                     <p className="px-6 py-12 text-center text-sm text-muted-foreground">
                         No IP addresses match the current filters.

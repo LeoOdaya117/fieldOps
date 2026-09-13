@@ -6,6 +6,7 @@ use App\Enums\RoleName;
 use App\Enums\UserStatus;
 use App\Models\Role;
 use App\Models\User;
+use App\Notifications\AccessNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -47,6 +48,9 @@ class AssignRoleToUser
             }
 
             $target->syncRoles([$role]);
+            if ($current !== null) {
+                $target->notify(new AccessNotification('user.role_changed', 'Your role has changed', 'Your role changed from '.$current->display_name.' to '.$role->display_name.'.'));
+            }
 
             $this->audit->record(
                 'user.role_changed',

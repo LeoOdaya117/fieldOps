@@ -4,10 +4,15 @@ import { cn } from '@/lib/utils';
 export default function InputError({
     message,
     className = '',
+    role = 'alert',
     ...props
 }: HTMLAttributes<HTMLParagraphElement> & { message?: string }) {
     return message ? (
-        <p {...props} className={cn('text-sm text-destructive', className)}>
+        <p
+            {...props}
+            role={role}
+            className={cn('text-sm text-destructive', className)}
+        >
             {message}
         </p>
     ) : null;

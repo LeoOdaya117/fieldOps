@@ -56,6 +56,10 @@ return [
                 PermissionKey::IpBlocksManage->value,
                 PermissionKey::VisitLogsView->value,
                 PermissionKey::SettingsManageSystem->value,
+                PermissionKey::CountriesView->value,
+                PermissionKey::CountriesManage->value,
+                PermissionKey::TimezonesView->value,
+                PermissionKey::TimezonesManage->value,
             ],
         ],
         RoleName::SuperAdmin->value => [
@@ -93,6 +97,10 @@ return [
                 PermissionKey::IpBlocksManage->value,
                 PermissionKey::VisitLogsView->value,
                 PermissionKey::SettingsManageSystem->value,
+                PermissionKey::CountriesView->value,
+                PermissionKey::CountriesManage->value,
+                PermissionKey::TimezonesView->value,
+                PermissionKey::TimezonesManage->value,
             ],
         ],
         RoleName::Dispatcher->value => [

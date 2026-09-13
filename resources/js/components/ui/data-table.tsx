@@ -26,6 +26,7 @@ type DataTableProps<T = unknown> = ComponentProps<'table'> & {
     caption?: ReactNode;
     data?: readonly T[];
     addDefaultColumns?: boolean;
+    excludeDefaultColumns?: readonly string[];
     containerClassName?: string;
     scrollContainerClassName?: string;
     tableColumns?:
@@ -47,6 +48,7 @@ function DataTable<T>({
     children,
     data,
     addDefaultColumns = false,
+    excludeDefaultColumns = [],
     containerClassName,
     scrollContainerClassName,
     tableColumns,
@@ -61,9 +63,9 @@ function DataTable<T>({
         typeof tableColumns === 'function' ? tableColumns() : tableColumns;
     const columns =
         configuredColumns === undefined && children !== undefined
-            ? undefined
+              ? undefined
             : addDefaultColumns
-              ? mergeDefaultColumns(configuredColumns ?? [])
+              ? mergeDefaultColumns(configuredColumns ?? [], excludeDefaultColumns)
               : configuredColumns;
     const hideableColumns =
         columns?.filter((column) => column.hideable !== false) ?? [];
@@ -333,11 +335,30 @@ function defaultTableColumns(): DataTableColumn<unknown>[] {
     ];
 }
 
-function mergeDefaultColumns<T>(columns: readonly DataTableColumn<T>[]) {
+function mergeDefaultColumns<T>(
+    columns: readonly DataTableColumn<T>[],
+    excludeDefaultColumns: readonly string[],
+) {
     const keys = new Set(columns.map((column) => column.key));
-    const defaults = defaultTableColumns().filter((column) => !keys.has(column.key));
+    const excludedKeys = new Set(excludeDefaultColumns);
+    const defaults = defaultTableColumns().filter(
+        (column) => !keys.has(column.key) && !excludedKeys.has(column.key),
+    );
 
-    return [...columns, ...(defaults as DataTableColumn<T>[])];
+    let trailingNonHideableStart = columns.length;
+
+    while (
+        trailingNonHideableStart > 0 &&
+        columns[trailingNonHideableStart - 1].hideable === false
+    ) {
+        trailingNonHideableStart -= 1;
+    }
+
+    return [
+        ...columns.slice(0, trailingNonHideableStart),
+        ...(defaults as DataTableColumn<T>[]),
+        ...columns.slice(trailingNonHideableStart),
+    ];
 }
 
 function DataTableHeader({ className, ...props }: ComponentProps<'thead'>) {

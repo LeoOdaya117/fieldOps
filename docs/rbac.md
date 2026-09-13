@@ -41,6 +41,14 @@ The bootstrap command refuses missing, unverified, suspended, or ambiguous owner
 
 Access changes generate append-only `access_audit_events` records with actor, subject, event, redacted before/after values, and request metadata. Credentials and invitation tokens are never recorded.
 
+## Country and timezone catalogs
+
+Administrators with `countries.view` or `timezones.view` can open the reference catalogs at `/system/countries` and `/system/timezones`. The matching `*.manage` permission is required for create, edit, and soft-delete operations; mutations also require recent password confirmation. Country records contain an English name and normalized ISO alpha-2-style code. Timezone records contain canonical PHP/IANA identifiers.
+
+`CountrySeeder` loads the checked-in `database/data/countries.php` catalog, while `TimezoneSeeder` loads `DateTimeZone::listIdentifiers()`. Both seeders are additive and idempotent: existing names, soft-delete state, and audit actors are preserved. Non-deleted timezone records supply the System Settings timezone selector; if the catalog has no records, the PHP timezone list remains the safe fallback. The current system timezone cannot be renamed or deleted, and at least one timezone must remain available.
+
+These two catalogs intentionally do not have a separate business `status` field. Their lifecycle is represented by `record_status`, so the tables show the standard record-state indicator while soft-delete operations retain the audit history.
+
 ## Record audit columns and soft deletion
 
 Auditable application tables use `created_by`, `updated_by`, `status`, `record_status`, `created_at`, and `updated_at` where those fields apply. New migrations can opt into the shared `App\Support\Database\DefinesAuditColumns` trait:

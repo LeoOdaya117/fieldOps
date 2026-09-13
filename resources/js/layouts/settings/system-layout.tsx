@@ -1,107 +1,107 @@
-import { Link } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { Image, LayoutTemplate, Map, MapPin, Settings2 } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
-import { Image, Map, MapPin, Settings2 } from 'lucide-react';
-import Heading from '@/components/heading';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { useCurrentUrl } from '@/hooks/use-current-url';
-import { cn, toUrl } from '@/lib/utils';
-import { edit as editSystemSettings } from '@/routes/system-settings';
-import type { NavItem } from '@/types';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
-type SystemSettingsNavItem = NavItem & {
-    disabled?: boolean;
-};
-
-const systemSettingsNavItems: SystemSettingsNavItem[] = [
+const sections = [
+    { title: 'General', href: '/settings/system', icon: Settings2 },
     {
-        title: 'System',
-        href: editSystemSettings(),
-        icon: Settings2,
+        title: 'Layout themes',
+        href: '/settings/system/layout',
+        icon: LayoutTemplate,
     },
-    {
-        title: 'Address',
-        href: '#address',
-        icon: MapPin,
-        disabled: true,
-    },
-    {
-        title: 'Map',
-        href: '#map',
-        icon: Map,
-        disabled: true,
-    },
+    { title: 'Address', href: '/settings/system/address', icon: MapPin },
+    { title: 'Map', href: '/settings/system/map', icon: Map },
     {
         title: 'Platform images',
-        href: '#platform-images',
+        href: '/settings/system/platform-images',
         icon: Image,
-        disabled: true,
     },
 ];
 
 export default function SystemSettingsLayout({ children }: PropsWithChildren) {
-    const { isCurrentOrParentUrl } = useCurrentUrl();
+    const { url } = usePage();
+    const currentPath = url.split('?')[0];
+    const currentSection =
+        sections.find((section) => section.href === currentPath) ?? sections[0];
 
     return (
-        <div className="px-4 py-6">
-            <Heading
-                title="System settings"
-                description="Manage organization-wide configuration for FieldOps"
-            />
-
-            <div className="flex flex-col lg:flex-row lg:space-x-12">
-                <aside className="w-full max-w-xl lg:w-48">
-                    <nav
-                        className="space-y-1"
-                        aria-label="System settings navigation"
+        <div className="platform-content mx-auto w-full px-4 py-7 sm:px-6 sm:py-9">
+            <div className="mb-7 max-w-2xl">
+                <h1 className="text-2xl font-semibold tracking-[-0.025em] sm:text-3xl">
+                    System settings
+                </h1>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    Manage identity, layout, security, and location defaults.
+                </p>
+            </div>
+            <div className="mb-6 lg:hidden">
+                <label
+                    id="system-settings-section-label"
+                    className="mb-2 block text-sm font-medium"
+                >
+                    Settings section
+                </label>
+                <Select
+                    value={currentSection.href}
+                    onValueChange={(value) => router.visit(value)}
+                >
+                    <SelectTrigger
+                        className="min-h-11 w-full bg-background"
+                        aria-labelledby="system-settings-section-label"
                     >
-                        <p className="px-3 pb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            System settings
-                        </p>
-                        {systemSettingsNavItems.map((item) =>
-                            item.disabled ? (
-                                <Button
-                                    key={item.title}
-                                    size="sm"
-                                    variant="ghost"
-                                    disabled
-                                    className="w-full justify-start"
-                                    title={`${item.title} settings coming soon`}
-                                >
-                                    {item.icon && (
-                                        <item.icon className="h-4 w-4" />
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper" align="start">
+                        {sections.map((section) => (
+                            <SelectItem key={section.href} value={section.href}>
+                                <section.icon className="size-4" />
+                                {section.title}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="grid items-start gap-8 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-12">
+                <aside className="sticky top-6 hidden lg:block">
+                    <nav
+                        aria-label="System settings navigation"
+                        className="space-y-1"
+                    >
+                        {sections.map((section) => {
+                            const active = currentPath === section.href;
+
+                            return (
+                                <Link
+                                    key={section.href}
+                                    href={section.href}
+                                    aria-current={active ? 'page' : undefined}
+                                    className={cn(
+                                        'flex min-h-10 items-center gap-2.5 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground motion-reduce:transition-none',
+                                        active &&
+                                            'bg-accent text-accent-foreground',
                                     )}
-                                    {item.title}
-                                </Button>
-                            ) : (
-                                <Button
-                                    key={`${toUrl(item.href)}`}
-                                    size="sm"
-                                    variant="ghost"
-                                    asChild
-                                    className={cn('w-full justify-start', {
-                                        'bg-muted': isCurrentOrParentUrl(
-                                            item.href,
-                                        ),
-                                    })}
                                 >
-                                    <Link href={item.href}>
-                                        {item.icon && (
-                                            <item.icon className="h-4 w-4" />
-                                        )}
-                                        {item.title}
-                                    </Link>
-                                </Button>
-                            ),
-                        )}
+                                    <section.icon className="size-4" />
+                                    {section.title}
+                                </Link>
+                            );
+                        })}
                     </nav>
                 </aside>
-
-                <Separator className="my-6 lg:hidden" />
-
-                <div className="min-w-0 flex-1">
-                    <section className="w-full space-y-12">{children}</section>
-                </div>
+                <section
+                    className="min-w-0"
+                    aria-label={`${currentSection.title} settings`}
+                >
+                    {children}
+                </section>
             </div>
         </div>
     );

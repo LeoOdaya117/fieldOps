@@ -9,6 +9,7 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Enums\UserStatus;
 use App\Models\User;
+use App\Support\SystemSettings;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -113,9 +114,12 @@ class FortifyServiceProvider extends ServiceProvider
         /* @end-chisel-2fa */
 
         RateLimiter::for('login', function (Request $request) {
+            $attempts = SystemSettings::loginMaxAttempts();
+            $decayMinutes = SystemSettings::loginDecayMinutes();
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
 
-            return Limit::perMinute(5)->by($throttleKey);
+            return Limit::perMinutes($decayMinutes, $attempts)
+                ->by("{$attempts}:{$decayMinutes}|{$throttleKey}");
         });
 
         /* @chisel-passkeys */

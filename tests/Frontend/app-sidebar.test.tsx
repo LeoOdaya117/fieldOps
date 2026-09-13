@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const usePageMock = vi.hoisted(() => vi.fn());
@@ -28,29 +28,6 @@ vi.mock('@inertiajs/react', () => ({
 
 vi.mock('@/components/app-logo', () => ({
     default: () => <span>FieldOps</span>,
-}));
-
-vi.mock('@/components/nav-footer', () => ({
-    NavFooter: ({
-        items,
-    }: {
-        items: { title: string; href: string | { url: string } }[];
-    }) => (
-        <nav data-testid="sidebar-footer-nav">
-            {items.map((item) => (
-                <a
-                    key={item.title}
-                    href={
-                        typeof item.href === 'string'
-                            ? item.href
-                            : item.href.url
-                    }
-                >
-                    {item.title}
-                </a>
-            ))}
-        </nav>
-    ),
 }));
 
 vi.mock('@/components/nav-user', () => ({
@@ -120,10 +97,8 @@ describe('app sidebar navigation', () => {
 
         render(<AppSidebar />);
 
-        const footer = within(screen.getByTestId('sidebar-footer-nav'));
-
         expect(
-            footer.getByRole('link', { name: 'System settings' }),
+            screen.getByRole('link', { name: 'System settings' }),
         ).toHaveAttribute('href', '/settings/system');
         expect(screen.queryByText('Repository')).not.toBeInTheDocument();
         expect(screen.queryByText('Documentation')).not.toBeInTheDocument();
@@ -168,13 +143,38 @@ describe('app sidebar navigation', () => {
 
         render(<AppSidebar />);
 
-        expect(screen.getByRole('link', { name: 'Blocked IPs' })).toHaveAttribute(
+        expect(
+            screen.getByRole('link', { name: 'Blocked IPs' }),
+        ).toHaveAttribute('href', '/access/ip-blocks');
+        expect(
+            screen.getByRole('link', { name: 'Visit logs' }),
+        ).toHaveAttribute('href', '/access/visit-logs');
+    });
+
+    it('shows country and timezone navigation to users with catalog permissions', () => {
+        usePageMock.mockReturnValue({
+            url: '/system/countries',
+            props: {
+                name: 'FieldOps',
+                auth: {
+                    user: { name: 'Administrator' },
+                    authorization: {
+                        permissions: ['countries.view', 'timezones.view'],
+                        isOwner: false,
+                    },
+                },
+            },
+        });
+
+        render(<AppSidebar />);
+
+        expect(screen.getByRole('link', { name: 'Countries' })).toHaveAttribute(
             'href',
-            '/access/ip-blocks',
+            '/system/countries',
         );
-        expect(screen.getByRole('link', { name: 'Visit logs' })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: 'Timezones' })).toHaveAttribute(
             'href',
-            '/access/visit-logs',
+            '/system/timezones',
         );
     });
 });

@@ -2,8 +2,11 @@
 
 namespace App\Actions\Rbac;
 
+use App\Enums\UserStatus;
 use App\Models\User;
 use App\Models\UserRegistration;
+use App\Notifications\AccessNotification;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -26,10 +29,21 @@ class SubmitRegistration
             ]);
         }
 
-        return UserRegistration::query()->create([
-            'name' => trim((string) $data['name']),
-            'email' => $email,
-            'password' => Hash::make((string) $data['password']),
-        ]);
+        return DB::transaction(function () use ($data, $email): UserRegistration {
+            $registration = UserRegistration::query()->create([
+                'name' => trim((string) $data['name']),
+                'email' => $email,
+                'password' => Hash::make((string) $data['password']),
+            ]);
+            User::query()->where('status', UserStatus::Active)->whereNotNull('email_verified_at')->with('roles.permissions')->chunkById(100, function ($users) use ($registration): void {
+                foreach ($users as $user) {
+                    if ($user->can('users.review_registrations')) {
+                        $user->notify(new AccessNotification('registration.submitted', 'Registration awaiting review', $registration->name.' submitted a registration for review.', $registration->id));
+                    }
+                }
+            });
+
+            return $registration;
+        });
     }
 }
