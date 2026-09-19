@@ -10,6 +10,7 @@ use App\Models\Timezone;
 use App\Models\User;
 use App\Support\Pagination\PageSize;
 use App\Support\SystemSettings;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -22,6 +23,8 @@ class TimezoneController extends Controller
         $this->authorize('viewAny', Timezone::class);
 
         $search = trim((string) $request->input('search', ''));
+        $from = $this->parseDate($request->input('from'));
+        $to = $this->parseDate($request->input('to'));
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
@@ -34,6 +37,8 @@ class TimezoneController extends Controller
         $timezones = Timezone::query()
             ->with(['createdBy:id,name,email', 'updatedBy:id,name,email'])
             ->when($search !== '', static fn ($query) => $query->where('name', 'like', "%{$search}%"))
+            ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
+            ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
             ->when(
                 isset($sortColumns[$sort]),
                 static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
@@ -49,6 +54,8 @@ class TimezoneController extends Controller
             'canCreate' => $request->user()?->can('timezones.manage') === true,
             'filters' => [
                 'search' => $search,
+                'from' => $from?->format('Y-m-d') ?? '',
+                'to' => $to?->format('Y-m-d') ?? '',
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
@@ -133,5 +140,20 @@ class TimezoneController extends Controller
             'name' => (string) $actor->name,
             'email' => (string) $actor->email,
         ];
+    }
+
+    private function parseDate(mixed $value): ?CarbonImmutable
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::createFromFormat('Y-m-d', $value);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

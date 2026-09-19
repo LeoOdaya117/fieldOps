@@ -46,6 +46,8 @@ export type BlockedIpAddress = {
 export type BlockedIpTableFilters = {
     search: string;
     status: string;
+    from?: string;
+    to?: string;
     perPage?: number;
     sort?: string;
     direction?: 'asc' | 'desc';
@@ -78,7 +80,12 @@ export function blockedIpTableColumns({
 }: BlockedIpTableOptions): DataTableColumn<BlockedIpAddress>[] {
     const sort = filters.sort ?? '';
     const direction = filters.direction ?? 'asc';
-    const hidden = { search: filters.search, status: filters.status };
+    const hidden = {
+        search: filters.search,
+        status: filters.status,
+        from: filters.from,
+        to: filters.to,
+    };
 
     return [
         {

@@ -4,6 +4,7 @@ import { ActionLink } from '@/components/action-link';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { FormSelect } from '@/components/ui/form-select';
 import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/ui/data-table';
@@ -103,6 +104,8 @@ export default function RolesPage({
                         filters.type,
                         filters.assigned,
                         filters.permissionsMin,
+                        filters.from,
+                        filters.to,
                     ].filter(Boolean).length
                 }
                 pageSize={pageSize}
@@ -120,6 +123,22 @@ export default function RolesPage({
                         defaultValue={filters.search}
                         placeholder="Name, key, or description"
                         autoFocus
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="role-date-range"
+                        className="text-sm font-medium"
+                    >
+                        Date range
+                    </label>
+                    <DateRangePicker
+                        id="role-date-range"
+                        from={filters.from}
+                        to={filters.to}
+                        fromName="from"
+                        toName="to"
+                        label="Role date range"
                     />
                 </div>
                 <div className="grid gap-2">

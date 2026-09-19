@@ -25,6 +25,8 @@ export type RoleTableFilters = {
     type: string;
     assigned: string;
     permissionsMin: string;
+    from?: string;
+    to?: string;
     perPage?: number;
     sort?: string;
     direction?: 'asc' | 'desc';
@@ -112,6 +114,8 @@ export function roleTableColumns({
                         type: filters.type,
                         assigned: filters.assigned,
                         permissions_min: filters.permissionsMin,
+                        from: filters.from,
+                        to: filters.to,
                     }}
                 />
             ),
@@ -156,6 +160,8 @@ export function roleTableColumns({
                         type: filters.type,
                         assigned: filters.assigned,
                         permissions_min: filters.permissionsMin,
+                        from: filters.from,
+                        to: filters.to,
                     }}
                 />
             ),
@@ -192,6 +198,8 @@ export function roleTableColumns({
                         type: filters.type,
                         assigned: filters.assigned,
                         permissions_min: filters.permissionsMin,
+                        from: filters.from,
+                        to: filters.to,
                     }}
                 />
             ),
@@ -226,6 +234,8 @@ export function roleTableColumns({
                         type: filters.type,
                         assigned: filters.assigned,
                         permissions_min: filters.permissionsMin,
+                        from: filters.from,
+                        to: filters.to,
                     }}
                 />
             ),

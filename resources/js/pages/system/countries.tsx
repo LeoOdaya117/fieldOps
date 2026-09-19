@@ -3,6 +3,7 @@ import { IndexPage, IndexPageSection } from '@/components/index-page';
 import { ActionLink } from '@/components/action-link';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { DataTable } from '@/components/ui/data-table';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
@@ -44,7 +45,10 @@ export default function CountriesPage({
                 resetHref={countriesIndex.url()}
                 title="Search and filter countries"
                 description="Find a country by code or name."
-                activeFilterCount={filters.search ? 1 : 0}
+                activeFilterCount={
+                    [filters.search, filters.from, filters.to].filter(Boolean)
+                        .length
+                }
                 pageSize={pageSize}
             >
                 <div className="grid gap-2">
@@ -55,6 +59,17 @@ export default function CountriesPage({
                         defaultValue={filters.search}
                         placeholder="Code or country name"
                         autoFocus
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="country-date-range">Date range</Label>
+                    <DateRangePicker
+                        id="country-date-range"
+                        from={filters.from}
+                        to={filters.to}
+                        fromName="from"
+                        toName="to"
+                        label="Country date range"
                     />
                 </div>
             </SearchFilterSheet>

@@ -1,43 +1,113 @@
-import { CalendarDays } from 'lucide-react';
-import type { ChangeEvent, ComponentProps } from 'react';
-import { Input } from '@/components/ui/input';
+import { CalendarDays, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+    Calendar,
+    formatDateLabel,
+} from '@/components/ui/calendar';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
-type DatePickerProps = Omit<
-    ComponentProps<typeof Input>,
-    'type' | 'value' | 'defaultValue' | 'onChange'
-> & {
+type DatePickerProps = {
+    id?: string;
+    name?: string;
     value?: string;
     defaultValue?: string;
+    placeholder?: string;
+    className?: string;
+    disabled?: boolean;
+    'aria-label'?: string;
     onValueChange?: (value: string) => void;
 };
 
 function DatePicker({
+    id,
+    name,
     value,
     defaultValue = '',
-    onValueChange,
+    placeholder = 'Select date',
     className,
-    ...props
+    disabled = false,
+    'aria-label': ariaLabel,
+    onValueChange,
 }: DatePickerProps) {
-    const dateInputProps = {
-        onChange: (event: ChangeEvent<HTMLInputElement>) =>
-            onValueChange?.(event.target.value),
-        ...(value !== undefined ? { value } : { defaultValue }),
+    const [selectedDate, setSelectedDate] = useState(value ?? defaultValue);
+    const [month, setMonth] = useState(() => getMonth(value ?? defaultValue));
+    const [open, setOpen] = useState(false);
+    const currentValue = value ?? selectedDate;
+
+    const handleSelect = (nextValue: string) => {
+        if (value === undefined) {
+            setSelectedDate(nextValue);
+        }
+
+        onValueChange?.(nextValue);
+        setOpen(false);
     };
 
     return (
-        <div className="relative">
-            <CalendarDays
-                aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-                {...props}
-                type="date"
-                {...dateInputProps}
-                className={`pl-9 ${className ?? ''}`}
-            />
-        </div>
+        <>
+            {name ? (
+                <input type="hidden" name={name} value={currentValue} />
+            ) : null}
+            <DropdownMenu open={open} onOpenChange={setOpen}>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        id={id}
+                        type="button"
+                        variant="outline"
+                        disabled={disabled}
+                        aria-label={ariaLabel}
+                        className={cn(
+                            'w-full justify-between bg-background font-normal',
+                            !currentValue && 'text-muted-foreground',
+                            className,
+                        )}
+                    >
+                        <span className="flex min-w-0 items-center gap-2 truncate">
+                            <CalendarDays
+                                aria-hidden="true"
+                                className="size-4 shrink-0 text-muted-foreground"
+                            />
+                            <span className="truncate">
+                                {currentValue
+                                    ? formatDateLabel(currentValue)
+                                    : placeholder}
+                            </span>
+                        </span>
+                        <ChevronDown
+                            aria-hidden="true"
+                            className="size-4 shrink-0 text-muted-foreground"
+                        />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="p-0">
+                    <Calendar
+                        month={month}
+                        selected={currentValue}
+                        onSelect={handleSelect}
+                        onMonthChange={setMonth}
+                    />
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </>
     );
 }
 
-export { DatePicker, type DatePickerProps };
+function getMonth(value: string) {
+    if (!value) {
+        const today = new Date();
+
+        return new Date(today.getFullYear(), today.getMonth(), 1);
+    }
+
+    const [year, month] = value.split('-').map(Number);
+
+    return new Date(year, month - 1, 1);
+}
+
+export { DatePicker, formatDateLabel, type DatePickerProps };

@@ -28,6 +28,7 @@ use App\Models\User;
 use App\Models\UserInvitation;
 use App\Models\UserRegistration;
 use App\Support\Pagination\PageSize;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -134,6 +135,8 @@ class UserController extends Controller
 
         $search = trim((string) $request->input('search', ''));
         $status = (string) $request->input('status', '');
+        $from = $this->parseDate($request->input('from'));
+        $to = $this->parseDate($request->input('to'));
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
@@ -151,6 +154,8 @@ class UserController extends Controller
                         ->orWhere('email', 'like', "%{$search}%");
                 }))
                 ->when(in_array($status, ['active', 'suspended'], true), static fn ($query) => $query->where('status', $status))
+                ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
+                ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
                 ->when(
                     isset($sortColumns[$sort]),
                     static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
@@ -217,6 +222,8 @@ class UserController extends Controller
             'filters' => [
                 'search' => $search,
                 'status' => $status,
+                'from' => $from?->format('Y-m-d') ?? '',
+                'to' => $to?->format('Y-m-d') ?? '',
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
@@ -382,5 +389,20 @@ class UserController extends Controller
             static fn (mixed $id): int => (int) $id,
             (array) $request->validated('ids'),
         );
+    }
+
+    private function parseDate(mixed $value): ?CarbonImmutable
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::createFromFormat('Y-m-d', $value);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

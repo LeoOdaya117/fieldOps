@@ -11,6 +11,7 @@ use App\Http\Requests\Access\StoreBlockedIpAddressRequest;
 use App\Http\Requests\Access\UpdateBlockedIpAddressRequest;
 use App\Models\BlockedIpAddress;
 use App\Support\Pagination\PageSize;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -24,6 +25,8 @@ class BlockedIpAddressController extends Controller
 
         $search = trim((string) $request->input('search', ''));
         $status = (string) $request->input('status', '');
+        $from = $this->parseDate($request->input('from'));
+        $to = $this->parseDate($request->input('to'));
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
@@ -44,6 +47,8 @@ class BlockedIpAddressController extends Controller
                         ->orWhere('email', 'like', "%{$search}%"));
             }))
             ->when(in_array($status, ['active', 'inactive'], true), static fn ($query) => $query->where('is_active', $status === 'active'))
+            ->when($from !== null, static fn ($query) => $query->where('blocked_at', '>=', $from->startOfDay()))
+            ->when($to !== null, static fn ($query) => $query->where('blocked_at', '<=', $to->endOfDay()))
             ->when(
                 isset($sortColumns[$sort]),
                 static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
@@ -82,6 +87,8 @@ class BlockedIpAddressController extends Controller
             'filters' => [
                 'search' => $search,
                 'status' => $status,
+                'from' => $from?->format('Y-m-d') ?? '',
+                'to' => $to?->format('Y-m-d') ?? '',
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
@@ -217,5 +224,20 @@ class BlockedIpAddressController extends Controller
                 'email' => $rule->unblockedBy->email,
             ],
         ];
+    }
+
+    private function parseDate(mixed $value): ?CarbonImmutable
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::createFromFormat('Y-m-d', $value);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

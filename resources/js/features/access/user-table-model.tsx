@@ -67,6 +67,8 @@ export type Registration = {
 export type UserTableFilters = {
     search: string;
     status: string;
+    from?: string;
+    to?: string;
     perPage?: number;
     sort?: string;
     direction?: 'asc' | 'desc';
@@ -327,6 +329,8 @@ export function userTableColumns({
                     hidden={{
                         search: filters.search,
                         status: filters.status,
+                        from: filters.from,
+                        to: filters.to,
                     }}
                 />
             ),
@@ -365,6 +369,8 @@ export function userTableColumns({
                     hidden={{
                         search: filters.search,
                         status: filters.status,
+                        from: filters.from,
+                        to: filters.to,
                     }}
                 />
             ),
@@ -393,6 +399,8 @@ export function userTableColumns({
                     hidden={{
                         search: filters.search,
                         status: filters.status,
+                        from: filters.from,
+                        to: filters.to,
                     }}
                 />
             ),

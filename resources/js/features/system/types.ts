@@ -25,6 +25,8 @@ export type Timezone = ReferenceDataAudit & {
 
 export type ReferenceDataFilters = {
     search: string;
+    from?: string;
+    to?: string;
     perPage?: number;
     sort?: string;
     direction?: 'asc' | 'desc';

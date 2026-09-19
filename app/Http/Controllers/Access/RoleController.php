@@ -10,6 +10,7 @@ use App\Http\Requests\Access\BulkRoleDeleteRequest;
 use App\Http\Requests\Access\SaveRoleRequest;
 use App\Models\Role;
 use App\Support\Pagination\PageSize;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,8 @@ class RoleController extends Controller
         $type = (string) $request->input('type', '');
         $assigned = (string) $request->input('assigned', '');
         $permissionsMin = trim((string) $request->input('permissions_min', ''));
+        $from = $this->parseDate($request->input('from'));
+        $to = $this->parseDate($request->input('to'));
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
@@ -51,6 +54,8 @@ class RoleController extends Controller
             ->when($assigned === 'assigned', static fn ($query) => $query->has('users'))
             ->when($assigned === 'unassigned', static fn ($query) => $query->doesntHave('users'))
             ->when(ctype_digit($permissionsMin), static fn ($query) => $query->has('permissions', '>=', (int) $permissionsMin))
+            ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
+            ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
             ->when(
                 isset($sortColumns[$sort]),
                 static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
@@ -77,6 +82,8 @@ class RoleController extends Controller
                 'type' => $type,
                 'assigned' => $assigned,
                 'permissionsMin' => $permissionsMin,
+                'from' => $from?->format('Y-m-d') ?? '',
+                'to' => $to?->format('Y-m-d') ?? '',
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
@@ -217,5 +224,20 @@ class RoleController extends Controller
             static fn (mixed $id): int => (int) $id,
             (array) $request->validated('ids'),
         );
+    }
+
+    private function parseDate(mixed $value): ?CarbonImmutable
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::createFromFormat('Y-m-d', $value);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }

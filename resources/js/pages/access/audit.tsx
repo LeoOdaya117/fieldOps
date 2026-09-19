@@ -76,18 +76,6 @@ export default function AuditPage({ events, eventTypes, filters }: Props) {
                 />
             </div>
             <div className="grid gap-2">
-                <label htmlFor="audit-subject" className="text-sm font-medium">
-                    Subject
-                </label>
-                <input
-                    id="audit-subject"
-                    name="subject"
-                    defaultValue={filters.subject}
-                    placeholder="Type or ID"
-                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                />
-            </div>
-            <div className="grid gap-2">
                 <label
                     htmlFor="audit-date-range"
                     className="text-sm font-medium"
@@ -101,6 +89,18 @@ export default function AuditPage({ events, eventTypes, filters }: Props) {
                     fromName="from"
                     toName="to"
                     label="Audit date range"
+                />
+            </div>
+            <div className="grid gap-2">
+                <label htmlFor="audit-subject" className="text-sm font-medium">
+                    Subject
+                </label>
+                <input
+                    id="audit-subject"
+                    name="subject"
+                    defaultValue={filters.subject}
+                    placeholder="Type or ID"
+                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
                 />
             </div>
             <div className="grid gap-2">

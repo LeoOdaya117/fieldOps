@@ -13,6 +13,7 @@ import SearchFilterSheet from '@/components/search-filter-sheet';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { FormSelect } from '@/components/ui/form-select';
 import { Input } from '@/components/ui/input';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
@@ -172,7 +173,8 @@ export default function UsersPage({
                 title="Search and filter users"
                 description="Find users by name or email and narrow the list by account status."
                 activeFilterCount={
-                    [filters.search, filters.status].filter(Boolean).length
+                    [filters.search, filters.status].filter(Boolean).length +
+                    [filters.from, filters.to].filter(Boolean).length
                 }
                 pageSize={pageSize}
             >
@@ -189,6 +191,22 @@ export default function UsersPage({
                         defaultValue={filters.search}
                         placeholder="Name or email"
                         autoFocus
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="user-date-range"
+                        className="text-sm font-medium"
+                    >
+                        Date range
+                    </label>
+                    <DateRangePicker
+                        id="user-date-range"
+                        from={filters.from}
+                        to={filters.to}
+                        fromName="from"
+                        toName="to"
+                        label="User date range"
                     />
                 </div>
                 <div className="grid gap-2">

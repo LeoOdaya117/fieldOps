@@ -85,6 +85,22 @@ export default function VisitLogsPage({
                 />
             </div>
             <div className="grid gap-2">
+                <label
+                    htmlFor="visit-date-range"
+                    className="text-sm font-medium"
+                >
+                    Date range
+                </label>
+                <DateRangePicker
+                    id="visit-date-range"
+                    from={filters.from}
+                    to={filters.to}
+                    fromName="from"
+                    toName="to"
+                    label="Visit date range"
+                />
+            </div>
+            <div className="grid gap-2">
                 <label htmlFor="visit-location" className="text-sm font-medium">
                     Location
                 </label>
@@ -158,22 +174,6 @@ export default function VisitLogsPage({
                     inputMode="numeric"
                     defaultValue={filters.statusCode}
                     placeholder="403"
-                />
-            </div>
-            <div className="grid gap-2">
-                <label
-                    htmlFor="visit-date-range"
-                    className="text-sm font-medium"
-                >
-                    Date range
-                </label>
-                <DateRangePicker
-                    id="visit-date-range"
-                    from={filters.from}
-                    to={filters.to}
-                    fromName="from"
-                    toName="to"
-                    label="Visit date range"
                 />
             </div>
         </SearchFilterSheet>

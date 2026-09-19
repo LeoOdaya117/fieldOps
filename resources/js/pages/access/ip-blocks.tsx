@@ -3,6 +3,7 @@ import { IndexPage, IndexPageSection } from '@/components/index-page';
 import { ActionLink } from '@/components/action-link';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { DataTable } from '@/components/ui/data-table';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { FormSelect } from '@/components/ui/form-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,7 +60,12 @@ export default function IpBlocksPage({
                 title="Search and filter IP addresses"
                 description="Find an address, user, or reason and narrow the list by access status."
                 activeFilterCount={
-                    [filters.search, filters.status].filter(Boolean).length
+                    [
+                        filters.search,
+                        filters.status,
+                        filters.from,
+                        filters.to,
+                    ].filter(Boolean).length
                 }
                 pageSize={pageSize}
             >
@@ -71,6 +77,17 @@ export default function IpBlocksPage({
                         defaultValue={filters.search}
                         placeholder="IP, user, or reason"
                         autoFocus
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="ip-block-date-range">Date range</Label>
+                    <DateRangePicker
+                        id="ip-block-date-range"
+                        from={filters.from}
+                        to={filters.to}
+                        fromName="from"
+                        toName="to"
+                        label="IP address date range"
                     />
                 </div>
                 <div className="grid gap-2">
