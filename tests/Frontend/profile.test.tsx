@@ -46,6 +46,12 @@ vi.mock('@inertiajs/react', () => ({
     }),
 }));
 
+vi.mock('@/components/image-gallery-picker', () => ({
+    ImageGalleryPicker: ({ title }: { title?: string }) => (
+        <div data-testid="image-gallery-picker">{title}</div>
+    ),
+}));
+
 import Profile from '@/pages/settings/profile';
 
 describe('profile settings page', () => {
@@ -64,7 +70,12 @@ describe('profile settings page', () => {
         expect(
             screen.getByRole('heading', { name: 'Profile photo' }),
         ).toBeInTheDocument();
-        expect(screen.getByLabelText('Upload photo')).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Choose from gallery' }),
+        ).toBeInTheDocument();
+        expect(screen.getByTestId('image-gallery-picker')).toHaveTextContent(
+            'Choose profile photo',
+        );
         expect(
             screen.getByRole('button', { name: 'Remove current photo' }),
         ).toBeInTheDocument();

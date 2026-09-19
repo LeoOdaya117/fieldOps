@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Settings;
 
+use App\Models\MediaAsset;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -118,5 +119,78 @@ class ProfileUpdateTest extends TestCase
 
         $this->assertNull($user->refresh()->avatar_path);
         Storage::disk('public')->assertMissing('users/1/profile.png');
+    }
+
+    public function test_profile_photo_can_use_an_owned_media_asset(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $user = User::factory()->create(['avatar_path' => 'users/1/old.png']);
+        $asset = $this->mediaAsset($user, 'media-assets/1/avatar.jpg');
+        Storage::disk('local')->put($asset->path, 'profile-image');
+        Storage::disk('public')->put($user->avatar_path, 'old-profile-image');
+
+        $response = $this
+            ->actingAs($user)
+            ->patch(route('profile.update'), [
+                'name' => $user->name,
+                'email' => $user->email,
+                'position' => $user->position,
+                'department' => $user->department,
+                'avatar_media_asset_id' => $asset->id,
+            ]);
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('profile.edit'));
+
+        $user->refresh();
+
+        $this->assertNotNull($user->avatar_path);
+        $this->assertStringStartsWith("users/{$user->id}/avatar-{$asset->id}-", $user->avatar_path);
+        Storage::disk('public')->assertExists($user->avatar_path);
+        Storage::disk('public')->assertMissing('users/1/old.png');
+    }
+
+    public function test_profile_photo_cannot_use_another_users_media_asset(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $asset = $this->mediaAsset($other, 'media-assets/2/avatar.jpg');
+        Storage::disk('local')->put($asset->path, 'profile-image');
+
+        $this
+            ->actingAs($user)
+            ->patch(route('profile.update'), [
+                'name' => $user->name,
+                'email' => $user->email,
+                'position' => $user->position,
+                'department' => $user->department,
+                'avatar_media_asset_id' => $asset->id,
+            ])
+            ->assertSessionHasErrors('avatar_media_asset_id');
+
+        $this->assertNull($user->refresh()->avatar_path);
+    }
+
+    private function mediaAsset(User $user, string $path): MediaAsset
+    {
+        return MediaAsset::query()->create([
+            'uploader_id' => $user->id,
+            'disk' => 'local',
+            'path' => $path,
+            'thumbnail_path' => str_replace('.jpg', '-thumb.webp', $path),
+            'original_name' => 'avatar.jpg',
+            'mime_type' => 'image/jpeg',
+            'extension' => 'jpg',
+            'size_bytes' => 13,
+            'width' => 100,
+            'height' => 100,
+            'source' => 'upload',
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
     }
 }
