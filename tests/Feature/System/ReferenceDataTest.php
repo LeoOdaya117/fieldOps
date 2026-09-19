@@ -42,6 +42,7 @@ class ReferenceDataTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('system/countries')
                 ->where('canManage', true)
+                ->where('canCreate', true)
                 ->has('filters')
                 ->missing('filters.status')
                 ->has('countries.data', 1, fn (Assert $data) => $data
@@ -83,6 +84,7 @@ class ReferenceDataTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('system/timezones')
                 ->where('canManage', true)
+                ->where('canCreate', true)
                 ->has('timezones.data', 1, fn (Assert $data) => $data
                     ->where('id', $timezone->id)
                     ->where('name', 'Asia/Manila')

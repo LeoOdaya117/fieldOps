@@ -197,7 +197,7 @@ describe('access administration pages', () => {
             screen.getByRole('heading', { name: 'Users' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: /Search & filter/ }),
+            screen.getByRole('button', { name: /Filter/ }),
         ).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Add user' })).toHaveAttribute(
             'href',
@@ -235,6 +235,22 @@ describe('access administration pages', () => {
         const userTableContainer = userTable.closest(
             '[data-slot="data-table-container"]',
         ) as HTMLElement;
+
+        expect(
+            within(userTableContainer).getByRole('button', {
+                name: /Filter/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(userTableContainer).getByRole('link', {
+                name: 'Add user',
+            }),
+        ).toHaveAttribute('href', '/access/users/create');
+        expect(
+            within(userTableContainer).getByRole('link', {
+                name: 'Manage roles',
+            }),
+        ).toHaveAttribute('href', '/access/roles');
 
         await user.click(
             within(userTableContainer).getByRole('button', {
@@ -344,6 +360,79 @@ describe('access administration pages', () => {
         );
     });
 
+    it('hides create and invite actions without the corresponding permissions', () => {
+        const { unmount } = render(
+            <RolesPage
+                roles={[]}
+                canCreate={false}
+                filters={{
+                    search: '',
+                    type: '',
+                    assigned: '',
+                    permissionsMin: '',
+                }}
+            />,
+        );
+
+        const roleTable = screen.getByRole('table', {
+            name: 'FieldOps role catalog',
+        });
+        const roleTableContainer = roleTable.closest(
+            '[data-slot="data-table-container"]',
+        ) as HTMLElement;
+
+        expect(
+            within(roleTableContainer).getByRole('button', {
+                name: /Filter/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: 'Create role' }),
+        ).not.toBeInTheDocument();
+
+        unmount();
+
+        render(
+            <UsersPage
+                users={{
+                    data: [],
+                    current_page: 1,
+                    last_page: 1,
+                    total: 0,
+                    from: null,
+                    to: null,
+                }}
+                invitations={[]}
+                roles={[]}
+                canCreate={false}
+                canInvite={false}
+                canEdit={false}
+                canSuspend={false}
+                canReactivate={false}
+                filters={{ search: '', status: '' }}
+            />,
+        );
+
+        const userTable = screen.getByRole('table', {
+            name: 'FieldOps user accounts',
+        });
+        const userTableContainer = userTable.closest(
+            '[data-slot="data-table-container"]',
+        ) as HTMLElement;
+
+        expect(
+            within(userTableContainer).getByRole('button', {
+                name: /Filter/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: 'Add user' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: 'Invite user' }),
+        ).not.toBeInTheDocument();
+    });
+
     it('renders a role catalog table with actions for custom roles', async () => {
         const user = userEvent.setup();
         render(
@@ -373,7 +462,7 @@ describe('access administration pages', () => {
 
         expect(screen.getAllByText('Protected').length).toBeGreaterThan(0);
         expect(
-            screen.getByRole('button', { name: /Search & filter/ }),
+            screen.getByRole('button', { name: /Filter/ }),
         ).toBeInTheDocument();
         expect(screen.getByRole('table')).toBeInTheDocument();
         await user.click(
@@ -786,7 +875,7 @@ describe('access administration pages', () => {
             screen.getByRole('heading', { name: 'Access audit' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: /Search & filter/ }),
+            screen.getByRole('button', { name: /Filter/ }),
         ).toBeInTheDocument();
         expect(screen.getByRole('table')).toBeInTheDocument();
         expect(
@@ -996,7 +1085,7 @@ describe('access administration pages', () => {
             'text-destructive',
         );
         expect(
-            screen.getByRole('button', { name: /Search & filter/ }),
+            screen.getByRole('button', { name: /Filter/ }),
         ).toBeInTheDocument();
         await user.click(
             screen.getByRole('button', { name: 'Actions for visit log 1' }),

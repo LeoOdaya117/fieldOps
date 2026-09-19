@@ -87,6 +87,7 @@ class BlockedIpAddressController extends Controller
                 'perPage' => $pageSize,
             ],
             'canManage' => $request->user()?->can('ip_blocks.manage') === true,
+            'canCreate' => $request->user()?->can('ip_blocks.manage') === true,
         ]);
     }
 

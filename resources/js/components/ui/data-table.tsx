@@ -34,6 +34,8 @@ type DataTableProps<T = unknown> = ComponentProps<'table'> & {
         | (() => readonly DataTableColumn<T>[]);
     columnVisibility?: DataTableColumnVisibilityOptions;
     toolbar?: ReactNode;
+    actions?: ReactNode;
+    emptyState?: ReactNode;
     pagination?: TablePaginationProps | null;
     getRowKey?: (row: T, index: number) => Key;
     getRowProps?: (
@@ -54,6 +56,8 @@ function DataTable<T>({
     tableColumns,
     columnVisibility,
     toolbar,
+    actions,
+    emptyState,
     pagination,
     getRowKey,
     getRowProps,
@@ -89,7 +93,10 @@ function DataTable<T>({
     const isDeclarative = columns !== undefined;
     const hasToolbarContent =
         toolbar !== undefined && toolbar !== null && toolbar !== false;
-    const hasDataTableToolbar = hasToolbarContent || canManageColumns;
+    const hasActionsContent =
+        actions !== undefined && actions !== null && actions !== false;
+    const hasDataTableToolbar =
+        hasToolbarContent || hasActionsContent || canManageColumns;
 
     return (
         <div
@@ -110,24 +117,27 @@ function DataTable<T>({
                     {hasToolbarContent ? (
                         <div className="min-w-0 flex-1">{toolbar}</div>
                     ) : null}
-                    {canManageColumns ? (
-                        <div className="shrink-0">
-                            <DataTableColumnVisibility
-                                columns={hideableColumns.map((column) => ({
-                                    key: column.key,
-                                    label: getColumnLabel(column),
-                                }))}
-                                visibleKeys={
-                                    columnVisibilityState.visibleKeys
-                                }
-                                defaultVisibleKeys={
-                                    columnVisibilityState.defaultVisibleKeys
-                                }
-                                onVisibleKeysChange={
-                                    columnVisibilityState.setVisibleKeys
-                                }
-                                onReset={columnVisibilityState.reset}
-                            />
+                    {hasActionsContent || canManageColumns ? (
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                            {actions}
+                            {canManageColumns ? (
+                                <DataTableColumnVisibility
+                                    columns={hideableColumns.map((column) => ({
+                                        key: column.key,
+                                        label: getColumnLabel(column),
+                                    }))}
+                                    visibleKeys={
+                                        columnVisibilityState.visibleKeys
+                                    }
+                                    defaultVisibleKeys={
+                                        columnVisibilityState.defaultVisibleKeys
+                                    }
+                                    onVisibleKeysChange={
+                                        columnVisibilityState.setVisibleKeys
+                                    }
+                                    onReset={columnVisibilityState.reset}
+                                />
+                            ) : null}
                         </div>
                     ) : null}
                 </DataTableToolbar>
@@ -164,45 +174,78 @@ function DataTable<T>({
                                 </DataTableRow>
                             </DataTableHeader>
                             <DataTableBody>
-                                {(data ?? []).map((row, index) => {
-                                    const rowProps = getRowProps?.(row, index);
+                                {(data ?? []).length > 0
+                                    ? (data ?? []).map((row, index) => {
+                                          const rowProps = getRowProps?.(
+                                              row,
+                                              index,
+                                          );
 
-                                    return (
-                                        <DataTableRow
-                                            key={getRowKey?.(row, index) ?? index}
-                                            {...rowProps}
-                                        >
-                                            {renderedColumns?.map((column) => (
-                                                <DataTableCell
-                                                    key={column.key}
-                                                    className={column.cellClassName}
-                                                >
-                                                    {column.cell
-                                                        ? column.cell(row, index)
-                                                        : typeof column.accessor ===
-                                                            'function'
-                                                          ? column.accessor(
-                                                                row,
-                                                                index,
-                                                            )
-                                                        : column.accessor
-                                                          ? (() => {
-                                                                const value =
-                                                                    row[
-                                                                        column
-                                                                            .accessor
-                                                                    ];
+                                          return (
+                                              <DataTableRow
+                                                  key={
+                                                      getRowKey?.(row, index) ??
+                                                      index
+                                                  }
+                                                  {...rowProps}
+                                              >
+                                                  {renderedColumns?.map(
+                                                      (column) => (
+                                                          <DataTableCell
+                                                              key={column.key}
+                                                              className={
+                                                                  column.cellClassName
+                                                              }
+                                                          >
+                                                              {column.cell
+                                                                  ? column.cell(
+                                                                        row,
+                                                                        index,
+                                                                    )
+                                                                  : typeof column.accessor ===
+                                                                      'function'
+                                                                    ? column.accessor(
+                                                                          row,
+                                                                          index,
+                                                                      )
+                                                                    : column.accessor
+                                                                      ? (() => {
+                                                                            const value =
+                                                                                row[
+                                                                                    column
+                                                                                        .accessor
+                                                                                ];
 
-                                                                return value == null
-                                                                    ? null
-                                                                    : String(value);
-                                                            })()
-                                                          : null}
-                                                </DataTableCell>
-                                            ))}
-                                        </DataTableRow>
-                                    );
-                                })}
+                                                                            return value ==
+                                                                                null
+                                                                                ? null
+                                                                                : String(
+                                                                                      value,
+                                                                                  );
+                                                                        })()
+                                                                      : null}
+                                                          </DataTableCell>
+                                                      ),
+                                                  )}
+                                              </DataTableRow>
+                                          );
+                                      })
+                                    : emptyState !== undefined && (
+                                          <DataTableRow>
+                                              <DataTableCell
+                                                  colSpan={
+                                                      Math.max(
+                                                          renderedColumns?.length ??
+                                                              1,
+                                                          1,
+                                                      )
+                                                  }
+                                                  className="px-6 py-12 text-center"
+                                              >
+                                                  {emptyState}
+                                              </DataTableCell>
+                                          </DataTableRow>
+                                      )}
                             </DataTableBody>
                         </>
                     ) : (

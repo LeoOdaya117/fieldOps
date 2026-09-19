@@ -49,6 +49,19 @@ export function TablePagination({
         return null;
     }
 
+    if (position === 'bottom') {
+        return (
+            <nav
+                aria-label="Bottom table pagination"
+                className="flex items-center justify-end bg-muted/10 px-4 py-3 text-sm"
+            >
+                <span className="text-muted-foreground">
+                    Page {currentPage} of {lastPage}
+                </span>
+            </nav>
+        );
+    }
+
     const pageSizeSelectId = `table-page-size-${position}`;
 
     const handlePageSizeChange = (

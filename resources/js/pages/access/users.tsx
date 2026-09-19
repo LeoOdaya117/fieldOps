@@ -163,74 +163,74 @@ export default function UsersPage({
             toggleAllUsers,
         });
 
+    const tableActions = (
+        <>
+            <SearchFilterSheet
+                action="/access/users"
+                resetHref="/access/users"
+                title="Search and filter users"
+                description="Find users by name or email and narrow the list by account status."
+                activeFilterCount={
+                    [filters.search, filters.status].filter(Boolean).length
+                }
+                pageSize={pageSize}
+            >
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="user-search"
+                        className="text-sm font-medium"
+                    >
+                        Search users
+                    </label>
+                    <Input
+                        id="user-search"
+                        name="search"
+                        defaultValue={filters.search}
+                        placeholder="Name or email"
+                        autoFocus
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="user-status"
+                        className="text-sm font-medium"
+                    >
+                        Account status
+                    </label>
+                    <select
+                        id="user-status"
+                        name="status"
+                        defaultValue={filters.status}
+                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                        <option value="">All statuses</option>
+                        <option value="active">Active</option>
+                        <option value="suspended">Blocked</option>
+                    </select>
+                </div>
+            </SearchFilterSheet>
+            {canCreate && (
+                <ActionLink href="/access/users/create">
+                    <Plus />
+                    Add user
+                </ActionLink>
+            )}
+            {canInvite && (
+                <ActionLink href="/access/users/invite" variant="outline">
+                    <Send />
+                    Invite user
+                </ActionLink>
+            )}
+            <ActionLink href="/access/roles" variant="outline">
+                Manage roles
+            </ActionLink>
+        </>
+    );
+
     return (
         <IndexPage
             title="Users"
             description="Invite people, assign one role, and control account access."
-            actions={
-                <>
-                    <SearchFilterSheet
-                        action="/access/users"
-                        resetHref="/access/users"
-                        title="Search and filter users"
-                        description="Find users by name or email and narrow the list by account status."
-                        activeFilterCount={
-                            [filters.search, filters.status].filter(Boolean)
-                                .length
-                        }
-                        pageSize={pageSize}
-                    >
-                        <div className="grid gap-2">
-                            <label
-                                htmlFor="user-search"
-                                className="text-sm font-medium"
-                            >
-                                Search users
-                            </label>
-                            <Input
-                                id="user-search"
-                                name="search"
-                                defaultValue={filters.search}
-                                placeholder="Name or email"
-                                autoFocus
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <label
-                                htmlFor="user-status"
-                                className="text-sm font-medium"
-                            >
-                                Account status
-                            </label>
-                            <select
-                                id="user-status"
-                                name="status"
-                                defaultValue={filters.status}
-                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">All statuses</option>
-                                <option value="active">Active</option>
-                                <option value="suspended">Blocked</option>
-                            </select>
-                        </div>
-                    </SearchFilterSheet>
-                    {canCreate && (
-                        <ActionLink href="/access/users/create">
-                            <Plus />
-                            Add user
-                        </ActionLink>
-                    )}
-                    {canInvite && (
-                        <ActionLink
-                            href="/access/users/invite"
-                            variant="outline"
-                        >
-                            <Send />
-                            Invite user
-                        </ActionLink>
-                    )}
-                </>
-            }
         >
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 <StatCard
@@ -292,108 +292,98 @@ export default function UsersPage({
             <IndexPageSection
                 title="User accounts"
                 description="Every account has exactly one role."
-                actions={
-                    <ActionLink
-                        href="/access/roles"
-                        variant="link"
-                        size="sm"
-                        className="px-0"
-                    >
-                        Manage roles
-                    </ActionLink>
-                }
             >
-                {users.data.length === 0 ? (
-                    <p className="px-6 py-12 text-center text-sm text-muted-foreground">
-                        No users found.
-                    </p>
-                ) : (
-                    <DataTable
-                        caption="FieldOps user accounts"
-                        className="min-w-max"
-                        containerClassName="rounded-none border-0 shadow-none ring-0"
-                        scrollContainerClassName="px-4"
-                        data={users.data}
-                        tableColumns={userTableColumns}
-                        toolbar={
-                            (canSuspend || canReactivate) &&
-                            selectedUserIds.length > 0 ? (
-                                <div
-                                    data-slot="bulk-actions-row"
-                                    className="min-w-0"
+                <DataTable
+                    caption="FieldOps user accounts"
+                    className="min-w-max"
+                    containerClassName="rounded-none border-0 shadow-none ring-0"
+                    scrollContainerClassName="px-4"
+                    data={users.data}
+                    tableColumns={userTableColumns}
+                    actions={tableActions}
+                    emptyState={
+                        <p className="text-sm text-muted-foreground">
+                            No users found.
+                        </p>
+                    }
+                    toolbar={
+                        (canSuspend || canReactivate) &&
+                        selectedUserIds.length > 0 ? (
+                            <div
+                                data-slot="bulk-actions-row"
+                                className="min-w-0"
+                            >
+                                <BulkActions
+                                    selectedIds={selectedUserIds}
+                                    onClear={() => setSelectedUserIds([])}
+                                    className="justify-start"
                                 >
-                                    <BulkActions
-                                        selectedIds={selectedUserIds}
-                                        onClear={() => setSelectedUserIds([])}
-                                        className="justify-start"
-                                    >
-                                        {canSuspend && (
-                                            <BulkActionForm
-                                                action="/access/users/bulk/suspend"
-                                                method="patch"
-                                                ids={selectedUserIds}
-                                                destructive
-                                                confirmation={{
-                                                    title: `Block ${selectedUserIds.length} selected user(s)?`,
-                                                    description:
-                                                        'These accounts will lose access immediately. You can unblock them later.',
-                                                    confirmLabel: 'Block',
-                                                }}
-                                                onSuccess={() =>
-                                                    setSelectedUserIds([])
-                                                }
-                                            >
-                                                <ShieldCheck />
-                                                Block selected
-                                            </BulkActionForm>
-                                        )}
-                                        {canReactivate && (
-                                            <BulkActionForm
-                                                action="/access/users/bulk/reactivate"
-                                                method="patch"
-                                                ids={selectedUserIds}
-                                                confirmation={{
-                                                    title: `Unblock ${selectedUserIds.length} selected user(s)?`,
-                                                    description:
-                                                        'These accounts will regain access immediately.',
-                                                    confirmLabel: 'Unblock',
-                                                }}
-                                                onSuccess={() =>
-                                                    setSelectedUserIds([])
-                                                }
-                                            >
-                                                <ShieldCheck />
-                                                Unblock selected
-                                            </BulkActionForm>
-                                        )}
-                                    </BulkActions>
-                                </div>
-                            ) : null
-                        }
-                        columnVisibility={{
-                            storageKey: 'access.users',
-                            defaultVisibleKeys: [
-                                'user',
-                                'status',
-                                'role',
-                                'created',
-                            ],
-                        }}
-                        getRowKey={(user) => user.id}
-                        pagination={{
-                            currentPage: users.current_page,
-                            lastPage: users.last_page,
-                            total: users.total,
-                            from: users.from,
-                            to: users.to,
-                            pageSize,
-                            links: users.links,
-                            itemLabel: 'users',
-                            previousUrl,
-                            nextUrl,
-                        }}
-                    />
-                )}
+                                    {canSuspend && (
+                                        <BulkActionForm
+                                            action="/access/users/bulk/suspend"
+                                            method="patch"
+                                            ids={selectedUserIds}
+                                            destructive
+                                            confirmation={{
+                                                title: `Block ${selectedUserIds.length} selected user(s)?`,
+                                                description:
+                                                    'These accounts will lose access immediately. You can unblock them later.',
+                                                confirmLabel: 'Block',
+                                            }}
+                                            onSuccess={() =>
+                                                setSelectedUserIds([])
+                                            }
+                                        >
+                                            <ShieldCheck />
+                                            Block selected
+                                        </BulkActionForm>
+                                    )}
+                                    {canReactivate && (
+                                        <BulkActionForm
+                                            action="/access/users/bulk/reactivate"
+                                            method="patch"
+                                            ids={selectedUserIds}
+                                            confirmation={{
+                                                title: `Unblock ${selectedUserIds.length} selected user(s)?`,
+                                                description:
+                                                    'These accounts will regain access immediately.',
+                                                confirmLabel: 'Unblock',
+                                            }}
+                                            onSuccess={() =>
+                                                setSelectedUserIds([])
+                                            }
+                                        >
+                                            <ShieldCheck />
+                                            Unblock selected
+                                        </BulkActionForm>
+                                    )}
+                                </BulkActions>
+                            </div>
+                        ) : null
+                    }
+                    columnVisibility={{
+                        storageKey: 'access.users',
+                        defaultVisibleKeys: [
+                            'user',
+                            'status',
+                            'role',
+                            'created',
+                        ],
+                    }}
+                    getRowKey={(user) => user.id}
+                    pagination={{
+                        currentPage: users.current_page,
+                        lastPage: users.last_page,
+                        total: users.total,
+                        from: users.from,
+                        to: users.to,
+                        pageSize,
+                        links: users.links,
+                        itemLabel: 'users',
+                        previousUrl,
+                        nextUrl,
+                    }}
+                />
             </IndexPageSection>
         </IndexPage>
     );

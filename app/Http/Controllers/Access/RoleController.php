@@ -70,6 +70,7 @@ class RoleController extends Controller
                 'permissionsCount' => $role->permissions_count,
             ]),
             'canManageSystemRoles' => $request->user()->isOwner(),
+            'canCreate' => $request->user()->can('roles.create'),
             'canDeleteRoles' => $request->user()->can('roles.delete'),
             'filters' => [
                 'search' => $search,

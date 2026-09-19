@@ -32,12 +32,14 @@ type Props = {
     blockedIpAddresses: PaginatedBlockedIps;
     filters: BlockedIpTableFilters;
     canManage?: boolean;
+    canCreate?: boolean;
 };
 
 export default function IpBlocksPage({
     blockedIpAddresses,
     filters,
     canManage = false,
+    canCreate = false,
 }: Props) {
     const pageSize =
         blockedIpAddresses.per_page ?? filters.perPage ?? DEFAULT_PAGE_SIZE;
@@ -48,100 +50,100 @@ export default function IpBlocksPage({
         link.label.includes('Next'),
     )?.url;
 
+    const tableActions = (
+        <>
+            <SearchFilterSheet
+                action={ipBlocksIndex.url()}
+                resetHref={ipBlocksIndex.url()}
+                title="Search and filter IP addresses"
+                description="Find an address, user, or reason and narrow the list by access status."
+                activeFilterCount={
+                    [filters.search, filters.status].filter(Boolean).length
+                }
+                pageSize={pageSize}
+            >
+                <div className="grid gap-2">
+                    <Label htmlFor="ip-block-search">Search</Label>
+                    <Input
+                        id="ip-block-search"
+                        name="search"
+                        defaultValue={filters.search}
+                        placeholder="IP, user, or reason"
+                        autoFocus
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="ip-block-status">Status</Label>
+                    <select
+                        id="ip-block-status"
+                        name="status"
+                        defaultValue={filters.status}
+                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                        <option value="">All addresses</option>
+                        <option value="active">Blocked</option>
+                        <option value="inactive">Allowed</option>
+                    </select>
+                </div>
+            </SearchFilterSheet>
+            {canCreate && (
+                <ActionLink href={createIpBlock.url()}>
+                    <Plus />
+                    Add IP address
+                </ActionLink>
+            )}
+        </>
+    );
+
     return (
         <IndexPage
             title="Blocked IP addresses"
             description="Control which network addresses can reach FieldOps and keep a reversible history of each rule."
-            actions={
-                <>
-                    <SearchFilterSheet
-                        action={ipBlocksIndex.url()}
-                        resetHref={ipBlocksIndex.url()}
-                        title="Search and filter IP addresses"
-                        description="Find an address, user, or reason and narrow the list by access status."
-                        activeFilterCount={
-                            [filters.search, filters.status].filter(Boolean)
-                                .length
-                        }
-                        pageSize={pageSize}
-                    >
-                        <div className="grid gap-2">
-                            <Label htmlFor="ip-block-search">Search</Label>
-                            <Input
-                                id="ip-block-search"
-                                name="search"
-                                defaultValue={filters.search}
-                                placeholder="IP, user, or reason"
-                                autoFocus
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="ip-block-status">Status</Label>
-                            <select
-                                id="ip-block-status"
-                                name="status"
-                                defaultValue={filters.status}
-                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">All addresses</option>
-                                <option value="active">Blocked</option>
-                                <option value="inactive">Allowed</option>
-                            </select>
-                        </div>
-                    </SearchFilterSheet>
-                    {canManage && (
-                        <ActionLink href={createIpBlock.url()}>
-                            <Plus />
-                            Add IP address
-                        </ActionLink>
-                    )}
-                </>
-            }
         >
             <IndexPageSection>
-                {blockedIpAddresses.data.length === 0 ? (
-                    <p className="px-6 py-12 text-center text-sm text-muted-foreground">
-                        No IP addresses match the current filters.
-                    </p>
-                ) : (
-                    <DataTable
-                        caption="IP address access records"
-                        className="min-w-max"
-                        containerClassName="rounded-none border-0 shadow-none ring-0"
-                        scrollContainerClassName="px-4"
-                        data={blockedIpAddresses.data}
-                        tableColumns={() =>
-                            blockedIpTableColumns({
-                                filters,
-                                canManage,
-                                firstRowNumber: blockedIpAddresses.from ?? 1,
-                            })
-                        }
-                        columnVisibility={{
-                            storageKey: 'access.ip-blocks',
-                            defaultVisibleKeys: [
-                                'ip_address',
-                                'status',
-                                'user',
-                                'reason',
-                                'last_seen_at',
-                            ],
-                        }}
-                        getRowKey={(rule) => rule.id}
-                        pagination={{
-                            currentPage: blockedIpAddresses.current_page,
-                            lastPage: blockedIpAddresses.last_page,
-                            total: blockedIpAddresses.total,
-                            from: blockedIpAddresses.from,
-                            to: blockedIpAddresses.to,
-                            pageSize,
-                            links: blockedIpAddresses.links,
-                            itemLabel: 'IP addresses',
-                            previousUrl,
-                            nextUrl,
-                        }}
-                    />
-                )}
+                <DataTable
+                    caption="IP address access records"
+                    className="min-w-max"
+                    containerClassName="rounded-none border-0 shadow-none ring-0"
+                    scrollContainerClassName="px-4"
+                    data={blockedIpAddresses.data}
+                    tableColumns={() =>
+                        blockedIpTableColumns({
+                            filters,
+                            canManage,
+                            firstRowNumber: blockedIpAddresses.from ?? 1,
+                        })
+                    }
+                    actions={tableActions}
+                    emptyState={
+                        <p className="text-sm text-muted-foreground">
+                            No IP addresses match the current filters.
+                        </p>
+                    }
+                    columnVisibility={{
+                        storageKey: 'access.ip-blocks',
+                        defaultVisibleKeys: [
+                            'ip_address',
+                            'status',
+                            'user',
+                            'reason',
+                            'last_seen_at',
+                        ],
+                    }}
+                    getRowKey={(rule) => rule.id}
+                    pagination={{
+                        currentPage: blockedIpAddresses.current_page,
+                        lastPage: blockedIpAddresses.last_page,
+                        total: blockedIpAddresses.total,
+                        from: blockedIpAddresses.from,
+                        to: blockedIpAddresses.to,
+                        pageSize,
+                        links: blockedIpAddresses.links,
+                        itemLabel: 'IP addresses',
+                        previousUrl,
+                        nextUrl,
+                    }}
+                />
             </IndexPageSection>
         </IndexPage>
     );

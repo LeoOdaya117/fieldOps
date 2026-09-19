@@ -255,6 +255,28 @@ describe('reusable data table components', () => {
         ).toBeInTheDocument();
     });
 
+    it('renders table-level actions and empty states inside the table container', () => {
+        render(
+            <DataTable
+                caption="Empty records"
+                data={[]}
+                tableColumns={[{ key: 'name', header: 'Name' }]}
+                actions={<button type="button">Filter</button>}
+                emptyState={<p>No records found.</p>}
+            />,
+        );
+
+        const table = screen.getByRole('table', { name: 'Empty records' });
+        const container = table.closest('[data-slot="data-table-container"]');
+
+        expect(container).toBeInTheDocument();
+        expect(container).toContainElement(
+            screen.getByRole('button', { name: 'Filter' }),
+        );
+        expect(screen.getByText('No records found.')).toBeInTheDocument();
+        expect(screen.getByRole('cell')).toHaveAttribute('colspan', '1');
+    });
+
     it('opens a confirmation dialog before a destructive row action', async () => {
         const user = userEvent.setup();
         const submitSpy = vi
@@ -342,7 +364,14 @@ describe('reusable data table components', () => {
         render(
             <DataTable
                 caption="Visible records"
-                data={[{ id: 7, name: 'Regional manager', email: 'manager@example.com', status: 'Active' }]}
+                data={[
+                    {
+                        id: 7,
+                        name: 'Regional manager',
+                        email: 'manager@example.com',
+                        status: 'Active',
+                    },
+                ]}
                 tableColumns={[
                     {
                         key: 'selection',
@@ -381,14 +410,28 @@ describe('reusable data table components', () => {
             />,
         );
 
-        expect(screen.getByRole('columnheader', { name: 'Select' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
-        expect(screen.queryByText('manager@example.com')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Select' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Name' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Status' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Actions' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Email' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('manager@example.com'),
+        ).not.toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
+        await user.click(
+            screen.getByRole('button', { name: 'Manage columns' }),
+        );
 
         const checkAll = screen.getByRole('menuitemcheckbox', {
             name: 'Check all columns',
@@ -398,16 +441,22 @@ describe('reusable data table components', () => {
             screen.queryByRole('menuitemcheckbox', { name: 'Select' }),
         ).not.toBeInTheDocument();
 
-        await user.click(screen.getByRole('menuitemcheckbox', { name: 'Name' }));
+        await user.click(
+            screen.getByRole('menuitemcheckbox', { name: 'Name' }),
+        );
 
         expect(checkAll).toHaveAttribute('aria-checked', 'mixed');
 
         await user.keyboard('{Escape}');
 
-        expect(screen.queryByRole('columnheader', { name: 'Name' })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Name' }),
+        ).not.toBeInTheDocument();
         expect(screen.queryByText('Regional manager')).not.toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
+        await user.click(
+            screen.getByRole('button', { name: 'Manage columns' }),
+        );
         const reopenedCheckAll = screen.getByRole('menuitemcheckbox', {
             name: 'Check all columns',
         });
@@ -415,11 +464,19 @@ describe('reusable data table components', () => {
 
         await user.keyboard('{Escape}');
 
-        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Email' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Name' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Email' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Status' }),
+        ).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
+        await user.click(
+            screen.getByRole('button', { name: 'Manage columns' }),
+        );
         await user.click(
             screen.getByRole('menuitemcheckbox', {
                 name: 'Check all columns',
@@ -428,20 +485,40 @@ describe('reusable data table components', () => {
 
         await user.keyboard('{Escape}');
 
-        expect(screen.queryByRole('columnheader', { name: 'Name' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Status' })).not.toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Select' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Name' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Email' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Status' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Select' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Actions' }),
+        ).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
-        await user.click(screen.getByRole('menuitem', { name: 'Reset to defaults' }));
+        await user.click(
+            screen.getByRole('button', { name: 'Manage columns' }),
+        );
+        await user.click(
+            screen.getByRole('menuitem', { name: 'Reset to defaults' }),
+        );
 
         await user.keyboard('{Escape}');
 
-        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Name' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Status' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Email' }),
+        ).not.toBeInTheDocument();
     });
 
     it('persists and safely restores column visibility per table key', async () => {
@@ -449,7 +526,9 @@ describe('reusable data table components', () => {
         const table = (
             <DataTable
                 caption="Persistent records"
-                data={[{ id: 1, name: 'Example', email: 'example@example.com' }]}
+                data={[
+                    { id: 1, name: 'Example', email: 'example@example.com' },
+                ]}
                 tableColumns={[
                     { key: 'name', header: 'Name', accessor: 'name' },
                     { key: 'email', header: 'Email', accessor: 'email' },
@@ -464,18 +543,28 @@ describe('reusable data table components', () => {
 
         const firstRender = render(table);
 
-        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
-        await user.click(screen.getByRole('menuitemcheckbox', { name: 'Name' }));
-
-        expect(localStorage.getItem('fieldops:data-table-columns:tests.persistence')).toBe(
-            JSON.stringify({ visibleKeys: ['email'] }),
+        await user.click(
+            screen.getByRole('button', { name: 'Manage columns' }),
         );
+        await user.click(
+            screen.getByRole('menuitemcheckbox', { name: 'Name' }),
+        );
+
+        expect(
+            localStorage.getItem(
+                'fieldops:data-table-columns:tests.persistence',
+            ),
+        ).toBe(JSON.stringify({ visibleKeys: ['email'] }));
 
         firstRender.unmount();
         render(table);
 
-        expect(screen.queryByRole('columnheader', { name: 'Name' })).not.toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Email' })).toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Name' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Email' }),
+        ).toBeInTheDocument();
     });
 
     it('falls back to defaults for malformed or entirely stale visibility data', () => {
@@ -485,7 +574,9 @@ describe('reusable data table components', () => {
         const table = (
             <DataTable
                 caption="Safe records"
-                data={[{ id: 1, name: 'Example', email: 'example@example.com' }]}
+                data={[
+                    { id: 1, name: 'Example', email: 'example@example.com' },
+                ]}
                 tableColumns={[
                     { key: 'name', header: 'Name', accessor: 'name' },
                     { key: 'email', header: 'Email', accessor: 'email' },
@@ -500,15 +591,26 @@ describe('reusable data table components', () => {
 
         const firstRender = render(table);
 
-        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Name' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Email' }),
+        ).not.toBeInTheDocument();
 
         firstRender.unmount();
-        localStorage.setItem(storageKey, JSON.stringify({ visibleKeys: ['removed'] }));
+        localStorage.setItem(
+            storageKey,
+            JSON.stringify({ visibleKeys: ['removed'] }),
+        );
         render(table);
 
-        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Name' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Email' }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders pagination inside the data table container when configured', () => {
@@ -563,6 +665,10 @@ describe('reusable data table components', () => {
         expect(navigations[0]).toHaveClass('lg:flex-row');
         expect(navigations[0]).not.toHaveClass('border-b');
         expect(navigations[1]).not.toHaveClass('border-t');
+        expect(navigations[1]).toHaveTextContent('Page 2 of 3');
+        expect(navigations[1]).not.toContainElement(
+            screen.getByRole('link', { name: 'Next page' }),
+        );
     });
 
     it('adds optional default audit columns to declarative tables', () => {
@@ -610,6 +716,7 @@ describe('reusable data table components', () => {
                 from={11}
                 to={20}
                 pageSize={50}
+                position="top"
                 itemLabel="roles"
                 previousUrl="/access/roles?page=1"
                 nextUrl="/access/roles?page=3"
@@ -685,6 +792,7 @@ describe('reusable data table components', () => {
                 total={200}
                 from={1}
                 to={10}
+                position="top"
                 nextUrl="/records?page=2"
                 links={[
                     {

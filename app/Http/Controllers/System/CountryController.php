@@ -49,6 +49,7 @@ class CountryController extends Controller
         return Inertia::render('system/countries', [
             'countries' => $countries,
             'canManage' => $request->user()?->can('countries.manage') === true,
+            'canCreate' => $request->user()?->can('countries.manage') === true,
             'filters' => [
                 'search' => $search,
                 'sort' => $sort,

@@ -33,6 +33,12 @@ test('an administrator can manage user-table columns across themes and reloads',
     const userTableContainer = userTable.locator(
         'xpath=ancestor::*[@data-slot="data-table-container"]',
     );
+    await expect(
+        userTableContainer.getByRole('button', { name: /Filter/ }),
+    ).toBeVisible();
+    await expect(
+        userTableContainer.getByRole('link', { name: 'Add user' }),
+    ).toHaveAttribute('href', '/access/users/create');
     const manageColumns = userTableContainer.getByRole('button', {
         name: 'Manage columns',
     });

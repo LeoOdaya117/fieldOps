@@ -1,6 +1,6 @@
 import { forwardRef } from 'react';
 import type { FormEventHandler, FormHTMLAttributes, ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -130,6 +130,62 @@ describe('system reference data UI', () => {
         formState.errors = {};
     });
 
+    it('places reference-data list actions inside their table containers', () => {
+        const { unmount } = render(
+            <CountriesPage
+                countries={countryPageData}
+                canManage
+                canCreate
+                filters={{ search: '' }}
+            />,
+        );
+
+        const countryTable = screen.getByRole('table', {
+            name: 'Country directory',
+        });
+        const countryTableContainer = countryTable.closest(
+            '[data-slot="data-table-container"]',
+        ) as HTMLElement;
+
+        expect(
+            within(countryTableContainer).getByRole('button', {
+                name: /Filter/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(countryTableContainer).getByRole('link', {
+                name: 'Create country',
+            }),
+        ).toHaveAttribute('href', '/system/countries/create');
+
+        unmount();
+
+        render(
+            <TimezonesPage
+                timezones={timezonePageData}
+                canManage={false}
+                canCreate={false}
+                filters={{ search: '' }}
+            />,
+        );
+
+        const timezoneTable = screen.getByRole('table', {
+            name: 'Timezone directory',
+        });
+        const timezoneTableContainer = timezoneTable.closest(
+            '[data-slot="data-table-container"]',
+        ) as HTMLElement;
+
+        expect(
+            within(timezoneTableContainer).getByRole('button', {
+                name: /Filter/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: 'Create timezone' }),
+        ).not.toBeInTheDocument();
+    });
+
     it('renders country columns, record status, row actions, and pagination', async () => {
         const user = userEvent.setup();
 
@@ -212,7 +268,7 @@ describe('system reference data UI', () => {
             }),
         ).toBeInTheDocument();
         expect(screen.getAllByText(/Showing 1–1 of 1 countries/)).toHaveLength(
-            2,
+            1,
         );
 
         expect(

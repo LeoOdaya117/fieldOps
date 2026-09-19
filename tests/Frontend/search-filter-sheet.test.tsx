@@ -35,12 +35,10 @@ describe('SearchFilterSheet', () => {
         );
 
         expect(
-            screen.getByRole('button', { name: /Search & filter 2/ }),
+            screen.getByRole('button', { name: /Filter 2/ }),
         ).toBeInTheDocument();
 
-        fireEvent.click(
-            screen.getByRole('button', { name: /Search & filter 2/ }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: /Filter 2/ }));
 
         expect(
             screen.getByRole('heading', {

@@ -46,6 +46,7 @@ class TimezoneController extends Controller
         return Inertia::render('system/timezones', [
             'timezones' => $timezones,
             'canManage' => $request->user()?->can('timezones.manage') === true,
+            'canCreate' => $request->user()?->can('timezones.manage') === true,
             'filters' => [
                 'search' => $search,
                 'sort' => $sort,

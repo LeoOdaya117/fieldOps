@@ -133,6 +133,7 @@ class RbacTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('access/roles')
+                ->where('canCreate', true)
                 ->has('roles'));
 
         $this->actingAs($admin)
@@ -198,7 +199,8 @@ class RbacTest extends TestCase
             ->get(route('access.roles.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('canManageSystemRoles', true));
+                ->where('canManageSystemRoles', true)
+                ->where('canCreate', true));
 
         $this->actingAs($superAdmin)
             ->withSession(['auth.password_confirmed_at' => time()])
