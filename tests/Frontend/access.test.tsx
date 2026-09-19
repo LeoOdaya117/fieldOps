@@ -226,9 +226,9 @@ describe('access administration pages', () => {
             screen.getByRole('link', { name: 'Review all' }),
         ).toHaveAttribute('href', '/access/users/registrations');
         expect(screen.getAllByRole('table')).toHaveLength(2);
-        expect(
-            screen.getAllByRole('button', { name: 'Manage columns' }),
-        ).toHaveLength(2);
+        expect(screen.getAllByRole('button', { name: 'Columns' })).toHaveLength(
+            2,
+        );
         const userTable = screen.getByRole('table', {
             name: 'FieldOps user accounts',
         });
@@ -254,7 +254,7 @@ describe('access administration pages', () => {
 
         await user.click(
             within(userTableContainer).getByRole('button', {
-                name: 'Manage columns',
+                name: 'Columns',
             }),
         );
         await user.click(
@@ -283,7 +283,7 @@ describe('access administration pages', () => {
 
         await user.click(
             within(invitationTableContainer).getByRole('button', {
-                name: 'Manage columns',
+                name: 'Columns',
             }),
         );
         expect(
@@ -303,7 +303,7 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
         const userManageColumns = within(userTableContainer).getByRole(
             'button',
-            { name: 'Manage columns' },
+            { name: 'Columns' },
         );
         const userBulkActions = within(userTableContainer).getByRole('button', {
             name: 'Bulk actions',
@@ -477,7 +477,7 @@ describe('access administration pages', () => {
         ) as HTMLElement;
         expect(
             within(roleTableContainer)
-                .getByRole('button', { name: 'Manage columns' })
+                .getByRole('button', { name: 'Columns' })
                 .closest('[data-slot="data-table-toolbar"]'),
         ).toContainElement(
             within(roleTableContainer).getByRole('button', {
@@ -704,7 +704,12 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
         expect(screen.getByLabelText('Position')).toHaveValue('Supervisor');
         expect(screen.getByLabelText('Department')).toHaveValue('Operations');
-        expect(screen.getByLabelText('Role')).toHaveValue('1');
+        expect(
+            screen.getByRole('combobox', { name: 'Role' }),
+        ).toHaveTextContent('Technician');
+        expect(document.querySelector('input[name="role_id"]')).toHaveValue(
+            '1',
+        );
         expect(
             screen.getByRole('heading', { name: 'Basic information' }),
         ).toBeInTheDocument();

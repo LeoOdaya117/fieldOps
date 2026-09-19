@@ -4,6 +4,7 @@ import { ActionLink } from '@/components/action-link';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
+import { FormSelect } from '@/components/ui/form-select';
 import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/ui/data-table';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
@@ -125,16 +126,16 @@ export default function RolesPage({
                     <label htmlFor="role-type" className="text-sm font-medium">
                         Role type
                     </label>
-                    <select
+                    <FormSelect
                         id="role-type"
                         name="type"
                         defaultValue={filters.type}
-                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                        <option value="">All roles</option>
-                        <option value="system">System roles</option>
-                        <option value="custom">Custom roles</option>
-                    </select>
+                        options={[
+                            { value: '', label: 'All roles' },
+                            { value: 'system', label: 'System roles' },
+                            { value: 'custom', label: 'Custom roles' },
+                        ]}
+                    />
                 </div>
                 <div className="grid gap-2">
                     <label
@@ -143,16 +144,19 @@ export default function RolesPage({
                     >
                         Assignment
                     </label>
-                    <select
+                    <FormSelect
                         id="role-assigned"
                         name="assigned"
                         defaultValue={filters.assigned}
-                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                        <option value="">Any assignment</option>
-                        <option value="assigned">Assigned to users</option>
-                        <option value="unassigned">Unassigned</option>
-                    </select>
+                        options={[
+                            { value: '', label: 'Any assignment' },
+                            {
+                                value: 'assigned',
+                                label: 'Assigned to users',
+                            },
+                            { value: 'unassigned', label: 'Unassigned' },
+                        ]}
+                    />
                 </div>
                 <div className="grid gap-2">
                     <label

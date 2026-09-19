@@ -1,6 +1,5 @@
 import { router } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { ChangeEvent } from 'react';
 import { ActionLink } from '@/components/action-link';
 import {
     DEFAULT_PAGE_SIZE,
@@ -49,27 +48,12 @@ export function TablePagination({
         return null;
     }
 
-    if (position === 'bottom') {
-        return (
-            <nav
-                aria-label="Bottom table pagination"
-                className="flex items-center justify-end bg-muted/10 px-4 py-3 text-sm"
-            >
-                <span className="text-muted-foreground">
-                    Page {currentPage} of {lastPage}
-                </span>
-            </nav>
-        );
-    }
-
     const pageSizeSelectId = `table-page-size-${position}`;
 
-    const handlePageSizeChange = (
-        event: ChangeEvent<HTMLSelectElement>,
-    ) => {
+    const handlePageSizeChange = (value: string) => {
         const url = new URL(window.location.href);
 
-        url.searchParams.set('per_page', event.target.value);
+        url.searchParams.set('per_page', value);
         url.searchParams.delete('page');
 
         router.get(`${url.pathname}${url.search}`, {}, { preserveScroll: true });
@@ -80,6 +64,24 @@ export function TablePagination({
         lastPage,
         links,
     });
+
+    if (position === 'bottom') {
+        return (
+            <nav
+                aria-label="Bottom table pagination"
+                className="flex flex-wrap items-center justify-between gap-3 bg-muted/10 px-4 py-3 text-sm"
+            >
+                <span className="text-muted-foreground">
+                    Page {currentPage} of {lastPage}
+                </span>
+                <TablePageControls
+                    pageItems={pageItems}
+                    previousUrl={previousUrl}
+                    nextUrl={nextUrl}
+                />
+            </nav>
+        );
+    }
 
     return (
         <nav
@@ -98,10 +100,11 @@ export function TablePagination({
                     Rows per page
                 </label>
                 <PageSizeSelect
+                    key={pageSize}
                     id={pageSizeSelectId}
                     aria-label="Rows per page"
                     pageSize={pageSize}
-                    onChange={handlePageSizeChange}
+                    onValueChange={handlePageSizeChange}
                 />
                 <span aria-hidden="true">·</span>
                 <span>
@@ -183,6 +186,91 @@ export function TablePagination({
                 )}
             </div>
         </nav>
+    );
+}
+
+function TablePageControls({
+    pageItems,
+    previousUrl,
+    nextUrl,
+}: {
+    pageItems: PageItem[];
+    previousUrl?: string | null;
+    nextUrl?: string | null;
+}) {
+    return (
+        <div className="flex items-center justify-end gap-1">
+            {previousUrl ? (
+                <ActionLink
+                    href={previousUrl}
+                    variant="outline"
+                    size="icon"
+                    className="size-8 rounded-md"
+                    aria-label="Previous page"
+                >
+                    <ChevronLeft aria-hidden="true" />
+                </ActionLink>
+            ) : (
+                <span
+                    role="button"
+                    aria-disabled="true"
+                    aria-label="Previous page"
+                    className="inline-flex size-8 items-center justify-center rounded-md border border-input text-muted-foreground opacity-50"
+                >
+                    <ChevronLeft aria-hidden="true" />
+                </span>
+            )}
+
+            <div
+                data-slot="table-page-links"
+                className="flex items-center gap-1"
+            >
+                {pageItems.map((item) =>
+                    item.type === 'ellipsis' ? (
+                        <span
+                            key={item.key}
+                            aria-hidden="true"
+                            className="inline-flex size-8 items-center justify-center text-sm text-muted-foreground"
+                        >
+                            …
+                        </span>
+                    ) : (
+                        <ActionLink
+                            key={item.page}
+                            href={item.url}
+                            variant={item.active ? 'default' : 'ghost'}
+                            size="icon"
+                            className="size-8 rounded-md tabular-nums"
+                            aria-current={item.active ? 'page' : undefined}
+                            aria-label={`Page ${item.page}`}
+                        >
+                            {item.page}
+                        </ActionLink>
+                    ),
+                )}
+            </div>
+
+            {nextUrl ? (
+                <ActionLink
+                    href={nextUrl}
+                    variant="outline"
+                    size="icon"
+                    className="size-8 rounded-md"
+                    aria-label="Next page"
+                >
+                    <ChevronRight aria-hidden="true" />
+                </ActionLink>
+            ) : (
+                <span
+                    role="button"
+                    aria-disabled="true"
+                    aria-label="Next page"
+                    className="inline-flex size-8 items-center justify-center rounded-md border border-input text-muted-foreground opacity-50"
+                >
+                    <ChevronRight aria-hidden="true" />
+                </span>
+            )}
+        </div>
     );
 }
 

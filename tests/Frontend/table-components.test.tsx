@@ -243,7 +243,7 @@ describe('reusable data table components', () => {
             screen.getByRole('cell', { name: /Regional manager/ }),
         ).toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: 'Manage columns' }),
+            screen.queryByRole('button', { name: 'Columns' }),
         ).not.toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'Row actions' }));
         expect(screen.getByRole('menuitem', { name: 'Edit' })).toHaveAttribute(
@@ -429,9 +429,7 @@ describe('reusable data table components', () => {
             screen.queryByText('manager@example.com'),
         ).not.toBeInTheDocument();
 
-        await user.click(
-            screen.getByRole('button', { name: 'Manage columns' }),
-        );
+        await user.click(screen.getByRole('button', { name: 'Columns' }));
 
         const checkAll = screen.getByRole('menuitemcheckbox', {
             name: 'Check all columns',
@@ -454,9 +452,7 @@ describe('reusable data table components', () => {
         ).not.toBeInTheDocument();
         expect(screen.queryByText('Regional manager')).not.toBeInTheDocument();
 
-        await user.click(
-            screen.getByRole('button', { name: 'Manage columns' }),
-        );
+        await user.click(screen.getByRole('button', { name: 'Columns' }));
         const reopenedCheckAll = screen.getByRole('menuitemcheckbox', {
             name: 'Check all columns',
         });
@@ -474,9 +470,7 @@ describe('reusable data table components', () => {
             screen.getByRole('columnheader', { name: 'Status' }),
         ).toBeInTheDocument();
 
-        await user.click(
-            screen.getByRole('button', { name: 'Manage columns' }),
-        );
+        await user.click(screen.getByRole('button', { name: 'Columns' }));
         await user.click(
             screen.getByRole('menuitemcheckbox', {
                 name: 'Check all columns',
@@ -501,9 +495,7 @@ describe('reusable data table components', () => {
             screen.getByRole('columnheader', { name: 'Actions' }),
         ).toBeInTheDocument();
 
-        await user.click(
-            screen.getByRole('button', { name: 'Manage columns' }),
-        );
+        await user.click(screen.getByRole('button', { name: 'Columns' }));
         await user.click(
             screen.getByRole('menuitem', { name: 'Reset to defaults' }),
         );
@@ -543,9 +535,7 @@ describe('reusable data table components', () => {
 
         const firstRender = render(table);
 
-        await user.click(
-            screen.getByRole('button', { name: 'Manage columns' }),
-        );
+        await user.click(screen.getByRole('button', { name: 'Columns' }));
         await user.click(
             screen.getByRole('menuitemcheckbox', { name: 'Name' }),
         );
@@ -665,10 +655,16 @@ describe('reusable data table components', () => {
         expect(navigations[0]).toHaveClass('lg:flex-row');
         expect(navigations[0]).not.toHaveClass('border-b');
         expect(navigations[1]).not.toHaveClass('border-t');
+        expect(navigations[1]).toHaveClass('justify-between');
         expect(navigations[1]).toHaveTextContent('Page 2 of 3');
+        expect(navigations[1]).not.toHaveTextContent('Showing');
         expect(navigations[1]).not.toContainElement(
-            screen.getByRole('link', { name: 'Next page' }),
+            screen.getByLabelText('Rows per page'),
         );
+        const nextPageLinks = screen.getAllByRole('link', {
+            name: 'Next page',
+        });
+        expect(navigations[1]).toContainElement(nextPageLinks[1]);
     });
 
     it('adds optional default audit columns to declarative tables', () => {
@@ -705,7 +701,8 @@ describe('reusable data table components', () => {
         expect(screen.getByText('Active')).toBeInTheDocument();
     });
 
-    it('renders reusable numbered pagination controls with arrow navigation', () => {
+    it('renders reusable numbered pagination controls with arrow navigation', async () => {
+        const user = userEvent.setup();
         inertiaRouter.get.mockClear();
 
         render(
@@ -767,15 +764,13 @@ describe('reusable data table components', () => {
         );
         expect(screen.queryByText('Previous')).not.toBeInTheDocument();
         expect(screen.queryByText('Next')).not.toBeInTheDocument();
-        expect(
-            screen.getByRole('combobox', { name: 'Rows per page' }),
-        ).toHaveValue('50');
-        expect(screen.getByRole('option', { name: '100' })).toBeInTheDocument();
+        const pageSizeSelect = screen.getByRole('combobox', {
+            name: 'Rows per page',
+        });
 
-        fireEvent.change(
-            screen.getByRole('combobox', { name: 'Rows per page' }),
-            { target: { value: '100' } },
-        );
+        expect(pageSizeSelect).toHaveTextContent('50');
+        await user.click(pageSizeSelect);
+        await user.click(screen.getByRole('option', { name: '100' }));
 
         expect(inertiaRouter.get).toHaveBeenCalledWith(
             expect.stringContaining('per_page=100'),

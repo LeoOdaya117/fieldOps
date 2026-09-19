@@ -13,6 +13,7 @@ import SearchFilterSheet from '@/components/search-filter-sheet';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
+import { FormSelect } from '@/components/ui/form-select';
 import { Input } from '@/components/ui/input';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
 import {
@@ -197,16 +198,16 @@ export default function UsersPage({
                     >
                         Account status
                     </label>
-                    <select
+                    <FormSelect
                         id="user-status"
                         name="status"
                         defaultValue={filters.status}
-                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                        <option value="">All statuses</option>
-                        <option value="active">Active</option>
-                        <option value="suspended">Blocked</option>
-                    </select>
+                        options={[
+                            { value: '', label: 'All statuses' },
+                            { value: 'active', label: 'Active' },
+                            { value: 'suspended', label: 'Blocked' },
+                        ]}
+                    />
                 </div>
             </SearchFilterSheet>
             {canCreate && (

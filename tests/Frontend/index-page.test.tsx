@@ -27,6 +27,9 @@ describe('IndexPage', () => {
         expect(
             screen.getByRole('heading', { name: 'Roles' }),
         ).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', { name: 'Roles' }).closest('header'),
+        ).toHaveClass('mb-0');
         expect(screen.getByText('Manage roles')).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'Create role' }),

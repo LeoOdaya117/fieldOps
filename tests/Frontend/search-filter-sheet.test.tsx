@@ -1,5 +1,6 @@
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@inertiajs/react', () => ({
@@ -20,7 +21,8 @@ vi.mock('@inertiajs/react', () => ({
 import SearchFilterSheet from '@/components/search-filter-sheet';
 
 describe('SearchFilterSheet', () => {
-    it('opens a right-side filter panel with apply and reset actions', () => {
+    it('opens a right-side filter panel with apply and reset actions', async () => {
+        const user = userEvent.setup();
         render(
             <SearchFilterSheet
                 action="/access/roles"
@@ -38,7 +40,7 @@ describe('SearchFilterSheet', () => {
             screen.getByRole('button', { name: /Filter 2/ }),
         ).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: /Filter 2/ }));
+        await user.click(screen.getByRole('button', { name: /Filter 2/ }));
 
         expect(
             screen.getByRole('heading', {
@@ -52,7 +54,12 @@ describe('SearchFilterSheet', () => {
             'href',
             '/access/roles',
         );
-        expect(screen.getByLabelText('Rows per page')).toHaveValue('50');
+        const pageSizeSelect = screen.getByRole('combobox', {
+            name: 'Rows per page',
+        });
+
+        expect(pageSizeSelect).toHaveTextContent('50');
+        await user.click(pageSizeSelect);
         expect(screen.getByRole('option', { name: '100' })).toBeInTheDocument();
     });
 });

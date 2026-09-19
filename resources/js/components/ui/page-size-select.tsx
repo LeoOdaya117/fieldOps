@@ -1,33 +1,35 @@
-import type { ComponentProps } from 'react';
+import { FormSelect } from '@/components/ui/form-select';
 import { cn } from '@/lib/utils';
 
 const PAGE_SIZE_OPTIONS = [25, 50, 75, 100] as const;
 const DEFAULT_PAGE_SIZE = 50;
 
-type PageSizeSelectProps = Omit<ComponentProps<'select'>, 'children'> & {
+type PageSizeSelectProps = {
+    id?: string;
+    name?: string;
+    className?: string;
+    'aria-label'?: string;
     pageSize?: number;
+    onValueChange?: (value: string) => void;
 };
 
 function PageSizeSelect({
     pageSize = DEFAULT_PAGE_SIZE,
-    className,
+    onValueChange,
     ...props
 }: PageSizeSelectProps) {
     return (
-        <select
+        <FormSelect
             {...props}
-            defaultValue={pageSize}
-            className={cn(
-                'h-8 rounded-md border border-input bg-background px-2 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                className,
-            )}
-        >
-            {PAGE_SIZE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                    {option}
-                </option>
-            ))}
-        </select>
+            defaultValue={String(pageSize)}
+            options={PAGE_SIZE_OPTIONS.map((option) => ({
+                value: String(option),
+                label: option,
+            }))}
+            onValueChange={onValueChange}
+            size="sm"
+            className={cn('w-fit min-w-16', props.className)}
+        />
     );
 }
 

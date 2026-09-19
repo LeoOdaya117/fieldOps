@@ -3,6 +3,7 @@ import { IndexPage, IndexPageSection } from '@/components/index-page';
 import { ActionLink } from '@/components/action-link';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { DataTable } from '@/components/ui/data-table';
+import { FormSelect } from '@/components/ui/form-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
@@ -74,16 +75,16 @@ export default function IpBlocksPage({
                 </div>
                 <div className="grid gap-2">
                     <Label htmlFor="ip-block-status">Status</Label>
-                    <select
+                    <FormSelect
                         id="ip-block-status"
                         name="status"
                         defaultValue={filters.status}
-                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                        <option value="">All addresses</option>
-                        <option value="active">Blocked</option>
-                        <option value="inactive">Allowed</option>
-                    </select>
+                        options={[
+                            { value: '', label: 'All addresses' },
+                            { value: 'active', label: 'Blocked' },
+                            { value: 'inactive', label: 'Allowed' },
+                        ]}
+                    />
                 </div>
             </SearchFilterSheet>
             {canCreate && (

@@ -265,10 +265,10 @@ export function DataTableColumnVisibility({
                 <Button
                     type="button"
                     variant="outline"
-                    aria-label="Manage columns"
+                    aria-label="Columns"
                 >
                     <Columns3 aria-hidden="true" />
-                    <span>Manage columns</span>
+                    <span>Columns</span>
                     <ChevronDown aria-hidden="true" className="size-3.5" />
                 </Button>
             </DropdownMenuTrigger>

@@ -35,8 +35,12 @@ function IndexPage({
                 data-slot="index-page"
                 className={cn('space-y-6 p-4 sm:p-6 lg:p-8', className)}
             >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <Heading title={title} description={description} />
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <Heading
+                        title={title}
+                        description={description}
+                        className="mb-0"
+                    />
                     {actions ? (
                         <div className="flex flex-wrap gap-2">{actions}</div>
                     ) : null}
@@ -63,7 +67,7 @@ function IndexPageSection({
             {hasSectionHeader || hasSectionActions ? (
                 <div
                     className={cn(
-                        'flex flex-col gap-3 px-1 sm:flex-row sm:items-start sm:justify-between',
+                        'flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between',
                         !hasSectionHeader && 'sm:justify-end',
                     )}
                 >

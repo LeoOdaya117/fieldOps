@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { FormSelect } from '@/components/ui/form-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -201,27 +202,27 @@ export default function UserForm({
                                             <Label htmlFor="user-role">
                                                 Role
                                             </Label>
-                                            <select
+                                            <FormSelect
                                                 id="user-role"
                                                 name="role_id"
                                                 required
                                                 defaultValue={
-                                                    user?.roleId ?? ''
+                                                    user?.roleId
+                                                        ? String(user.roleId)
+                                                        : ''
                                                 }
-                                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                                            >
-                                                <option value="">
-                                                    Choose a role
-                                                </option>
-                                                {roles.map((role) => (
-                                                    <option
-                                                        key={role.id}
-                                                        value={role.id}
-                                                    >
-                                                        {role.display_name}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                options={[
+                                                    {
+                                                        value: '',
+                                                        label: 'Choose a role',
+                                                    },
+                                                    ...roles.map((role) => ({
+                                                        value: String(role.id),
+                                                        label: role.display_name,
+                                                    })),
+                                                ]}
+                                                className="w-full"
+                                            />
                                             <InputError
                                                 message={errors.role_id}
                                             />

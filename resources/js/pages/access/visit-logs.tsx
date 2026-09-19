@@ -2,6 +2,8 @@ import { Activity } from 'lucide-react';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { DataTable } from '@/components/ui/data-table';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { FormSelect } from '@/components/ui/form-select';
 import { Input } from '@/components/ui/input';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
 import { visitLogTableColumns } from '@/features/access/visit-log-table-model';
@@ -112,19 +114,18 @@ export default function VisitLogsPage({
                     >
                         Event
                     </label>
-                    <select
+                    <FormSelect
                         id="visit-event"
                         name="event"
                         defaultValue={filters.event}
-                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                        <option value="">All events</option>
-                        {eventTypes.map((event) => (
-                            <option key={event} value={event}>
-                                {optionLabel(event)}
-                            </option>
-                        ))}
-                    </select>
+                        options={[
+                            { value: '', label: 'All events' },
+                            ...eventTypes.map((event) => ({
+                                value: event,
+                                label: optionLabel(event),
+                            })),
+                        ]}
+                    />
                 </div>
                 <div className="grid gap-2">
                     <label
@@ -133,19 +134,18 @@ export default function VisitLogsPage({
                     >
                         Outcome
                     </label>
-                    <select
+                    <FormSelect
                         id="visit-outcome"
                         name="outcome"
                         defaultValue={filters.outcome}
-                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                        <option value="">All outcomes</option>
-                        {outcomes.map((outcome) => (
-                            <option key={outcome} value={outcome}>
-                                {optionLabel(outcome)}
-                            </option>
-                        ))}
-                    </select>
+                        options={[
+                            { value: '', label: 'All outcomes' },
+                            ...outcomes.map((outcome) => ({
+                                value: outcome,
+                                label: optionLabel(outcome),
+                            })),
+                        ]}
+                    />
                 </div>
             </div>
             <div className="grid gap-2">
@@ -160,29 +160,21 @@ export default function VisitLogsPage({
                     placeholder="403"
                 />
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-                <div className="grid gap-2">
-                    <label htmlFor="visit-from" className="text-sm font-medium">
-                        From
-                    </label>
-                    <Input
-                        id="visit-from"
-                        name="from"
-                        type="date"
-                        defaultValue={filters.from}
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <label htmlFor="visit-to" className="text-sm font-medium">
-                        To
-                    </label>
-                    <Input
-                        id="visit-to"
-                        name="to"
-                        type="date"
-                        defaultValue={filters.to}
-                    />
-                </div>
+            <div className="grid gap-2">
+                <label
+                    htmlFor="visit-date-range"
+                    className="text-sm font-medium"
+                >
+                    Date range
+                </label>
+                <DateRangePicker
+                    id="visit-date-range"
+                    from={filters.from}
+                    to={filters.to}
+                    fromName="from"
+                    toName="to"
+                    label="Visit date range"
+                />
             </div>
         </SearchFilterSheet>
     );
