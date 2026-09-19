@@ -1,6 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ChevronRight, Menu } from 'lucide-react';
-import type { ComponentProps } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { PlatformLogo } from '@/components/platform-logo';
 import { UserMenuContent } from '@/components/user-menu-content';
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
     Sheet,
+    SheetClose,
     SheetContent,
     SheetHeader,
     SheetTitle,
@@ -62,9 +63,10 @@ export function MobilePlatformNavigation({
     className?: string;
 }) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
+    const [open, setOpen] = useState(false);
 
     return (
-        <Sheet>
+        <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
                 <Button
                     variant="ghost"
@@ -104,26 +106,28 @@ export function MobilePlatformNavigation({
                                     const Icon = item.icon;
 
                                     return (
-                                        <Link
-                                            key={item.title}
-                                            href={item.href}
-                                            aria-current={
-                                                active ? 'page' : undefined
-                                            }
-                                            className={cn(
-                                                'flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent motion-reduce:transition-none',
-                                                active &&
-                                                    'bg-sidebar-accent text-sidebar-accent-foreground',
-                                            )}
-                                        >
-                                            {Icon && (
-                                                <Icon className="size-4" />
-                                            )}
-                                            <span>{item.title}</span>
-                                            {active && (
-                                                <ChevronRight className="ml-auto size-4" />
-                                            )}
-                                        </Link>
+                                        <SheetClose asChild key={item.title}>
+                                            <Link
+                                                href={item.href}
+                                                onClick={() => setOpen(false)}
+                                                aria-current={
+                                                    active ? 'page' : undefined
+                                                }
+                                                className={cn(
+                                                    'flex min-h-11 items-center gap-3 rounded-md px-3 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent motion-reduce:transition-none',
+                                                    active &&
+                                                        'bg-sidebar-accent text-sidebar-accent-foreground',
+                                                )}
+                                            >
+                                                {Icon && (
+                                                    <Icon className="size-4" />
+                                                )}
+                                                <span>{item.title}</span>
+                                                {active && (
+                                                    <ChevronRight className="ml-auto size-4" />
+                                                )}
+                                            </Link>
+                                        </SheetClose>
                                     );
                                 })}
                             </div>
