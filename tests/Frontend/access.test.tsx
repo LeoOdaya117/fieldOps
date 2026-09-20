@@ -1143,6 +1143,12 @@ describe('access administration pages', () => {
         expect(screen.getAllByRole('heading', { name: 'Alex' })).toHaveLength(
             2,
         );
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            document.querySelectorAll('[data-slot="details-section"]'),
+        ).toHaveLength(2);
         expect(screen.getByText('Operations')).toBeInTheDocument();
         expect(
             document.querySelector('[data-slot="details-toolbar"]'),
@@ -1185,6 +1191,12 @@ describe('access administration pages', () => {
         expect(
             screen.getAllByRole('heading', { name: 'Technician' }),
         ).toHaveLength(2);
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            document.querySelectorAll('[data-slot="details-section"]'),
+        ).toHaveLength(3);
         expect(screen.getByText('dashboard.view')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
             'href',
@@ -1216,6 +1228,12 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('heading', { name: '203.0.113.10' }),
         ).toBeInTheDocument();
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            document.querySelectorAll('[data-slot="details-section"]'),
+        ).toHaveLength(2);
         expect(screen.getByText('Repeated abuse')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
             'href',
@@ -1257,6 +1275,12 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('heading', { name: 'Visit log details' }),
         ).toBeInTheDocument();
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            document.querySelectorAll('[data-slot="details-section"]'),
+        ).toHaveLength(2);
         expect(screen.getByText('/login')).toBeInTheDocument();
 
         cleanup();
@@ -1279,6 +1303,12 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('heading', { name: 'Audit event details' }),
         ).toBeInTheDocument();
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            document.querySelectorAll('[data-slot="details-section"]'),
+        ).toHaveLength(3);
         expect(screen.getByText(/"name": "Old name"/)).toBeInTheDocument();
     });
 });

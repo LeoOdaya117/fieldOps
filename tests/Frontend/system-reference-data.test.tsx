@@ -78,7 +78,9 @@ import type {
 } from '@/features/system/types';
 import { DataTable } from '@/components/ui/data-table';
 import CountriesPage from '@/pages/system/countries';
+import CountryShowPage from '@/pages/system/country-show';
 import TimezonesPage from '@/pages/system/timezones';
+import TimezoneShowPage from '@/pages/system/timezone-show';
 
 const country: Country = {
     id: 1,
@@ -184,6 +186,59 @@ describe('system reference data UI', () => {
         expect(
             screen.queryByRole('link', { name: 'Create timezone' }),
         ).not.toBeInTheDocument();
+    });
+
+    it('renders country and timezone records through the shared detail view', () => {
+        const { unmount } = render(
+            <CountryShowPage country={country} canEdit canDelete />,
+        );
+
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            document.querySelectorAll('[data-slot="details-section"]'),
+        ).toHaveLength(3);
+        expect(
+            within(
+                document.querySelector(
+                    '[data-slot="details-view"]',
+                ) as HTMLElement,
+            ).getByRole('heading', { name: 'Philippines' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('switch', { name: /Active record/ }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+            'href',
+            '/system/countries/1/edit',
+        );
+
+        unmount();
+
+        render(
+            <TimezoneShowPage
+                timezone={timezone}
+                canEdit
+                canDelete
+                isCurrent
+            />,
+        );
+
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            within(
+                document.querySelector(
+                    '[data-slot="details-view"]',
+                ) as HTMLElement,
+            ).getByRole('heading', { name: 'Asia/Manila' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Current system timezone')).toBeInTheDocument();
+        expect(
+            screen.getByRole('switch', { name: /Active record/ }),
+        ).toBeInTheDocument();
     });
 
     it('renders country columns, record status, row actions, and pagination', async () => {

@@ -1,9 +1,6 @@
 import { CalendarClock, Globe2, UserRound } from 'lucide-react';
-import {
-    DetailField,
-    DetailsPage,
-    DetailsSection,
-} from '@/components/details-page';
+import { DetailsPage } from '@/components/details-page';
+import { DetailsView } from '@/components/details-view';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import type { AuditEvent } from '@/features/access/audit-table-model';
@@ -47,98 +44,133 @@ export default function AuditShowPage({ event }: { event: AuditEvent }) {
             backHref={auditIndex.url()}
             backLabel="Back to audit"
         >
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)]">
-                <DetailsSection
-                    title="Event context"
-                    description="Who made the change, what it affected, and when it occurred."
-                >
-                    <div className="space-y-6 p-4 sm:p-6">
-                        <Badge
-                            variant="secondary"
-                            className="font-mono text-[11px]"
-                        >
-                            {event.event}
-                        </Badge>
-                        <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-                            <DetailField label="Actor">
-                                {event.actor ? (
-                                    <div className="flex items-center gap-3">
-                                        <Avatar className="size-8 rounded-lg">
-                                            <AvatarFallback className="rounded-lg bg-link/10 text-[11px] font-semibold text-link">
-                                                {initials(event.actor.name)}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div className="min-w-0">
-                                            <p className="truncate font-medium">
-                                                {event.actor.name}
-                                            </p>
-                                            <p className="truncate text-xs text-muted-foreground">
-                                                {event.actor.email}
-                                            </p>
+            <DetailsView
+                record={event}
+                summary={
+                    <Badge
+                        variant="secondary"
+                        className="font-mono text-[11px]"
+                    >
+                        {event.event}
+                    </Badge>
+                }
+                sections={[
+                    {
+                        key: 'event-context',
+                        title: 'Event context',
+                        description:
+                            'Who made the change, what it affected, and when it occurred.',
+                        columns: [
+                            {
+                                key: 'actor',
+                                label: 'Actor',
+                                cell: (record) =>
+                                    record.actor ? (
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="size-8 rounded-lg">
+                                                <AvatarFallback className="rounded-lg bg-link/10 text-[11px] font-semibold text-link">
+                                                    {initials(
+                                                        record.actor.name,
+                                                    )}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="min-w-0">
+                                                <p className="truncate font-medium">
+                                                    {record.actor.name}
+                                                </p>
+                                                <p className="truncate text-xs text-muted-foreground">
+                                                    {record.actor.email}
+                                                </p>
+                                            </div>
                                         </div>
-                                    </div>
-                                ) : (
+                                    ) : (
+                                        <span className="flex items-center gap-2 text-muted-foreground">
+                                            <UserRound className="size-3.5" />
+                                            System
+                                        </span>
+                                    ),
+                            },
+                            {
+                                key: 'occurredAt',
+                                label: 'Occurred',
+                                cell: (record) => (
                                     <span className="flex items-center gap-2 text-muted-foreground">
-                                        <UserRound className="size-3.5" />
-                                        System
+                                        <CalendarClock className="size-3.5" />
+                                        {new Date(
+                                            record.occurredAt,
+                                        ).toLocaleString()}
                                     </span>
-                                )}
-                            </DetailField>
-                            <DetailField label="Occurred">
-                                <span className="flex items-center gap-2 text-muted-foreground">
-                                    <CalendarClock className="size-3.5" />
-                                    {new Date(
-                                        event.occurredAt,
-                                    ).toLocaleString()}
-                                </span>
-                            </DetailField>
-                            <DetailField label="Subject">
-                                {event.subjectType ? (
-                                    <code className="font-mono text-xs break-all">
-                                        {event.subjectType} #{event.subjectId}
-                                    </code>
-                                ) : (
-                                    'Not recorded'
-                                )}
-                            </DetailField>
-                            <DetailField label="Source IP">
-                                <span className="flex items-center gap-2">
-                                    <Globe2 className="size-3.5 text-muted-foreground" />
-                                    <code className="font-mono text-xs">
-                                        {event.ipAddress ?? 'Not recorded'}
-                                    </code>
-                                </span>
-                            </DetailField>
-                        </dl>
-                    </div>
-                </DetailsSection>
-
-                <DetailsSection
-                    title="Client context"
-                    description="The safe request metadata retained with the audit record."
-                >
-                    <dl className="grid gap-5 p-4 sm:p-6">
-                        <DetailField label="User agent">
-                            <span className="break-words text-muted-foreground">
-                                {event.userAgent ?? 'Not recorded'}
-                            </span>
-                        </DetailField>
-                        <DetailField label="Event identifier">
-                            #{event.id}
-                        </DetailField>
-                    </dl>
-                </DetailsSection>
-            </div>
-
-            <DetailsSection
-                title="Recorded changes"
-                description="The before and after values captured for this event."
-            >
-                <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
-                    <ChangeBlock label="Before" value={event.before} />
-                    <ChangeBlock label="After" value={event.after} />
-                </div>
-            </DetailsSection>
+                                ),
+                            },
+                            {
+                                key: 'subject',
+                                label: 'Subject',
+                                cell: (record) =>
+                                    record.subjectType ? (
+                                        <code className="font-mono text-xs break-all">
+                                            {record.subjectType} #
+                                            {record.subjectId}
+                                        </code>
+                                    ) : (
+                                        'Not recorded'
+                                    ),
+                            },
+                            {
+                                key: 'ipAddress',
+                                label: 'Source IP',
+                                cell: (record) => (
+                                    <span className="flex items-center gap-2">
+                                        <Globe2 className="size-3.5 text-muted-foreground" />
+                                        <code className="font-mono text-xs">
+                                            {record.ipAddress ?? 'Not recorded'}
+                                        </code>
+                                    </span>
+                                ),
+                            },
+                        ],
+                    },
+                    {
+                        key: 'client-context',
+                        title: 'Client context',
+                        description:
+                            'The safe request metadata retained with the audit record.',
+                        columns: [
+                            {
+                                key: 'userAgent',
+                                label: 'User agent',
+                                span: 'full',
+                                valueClassName:
+                                    'break-words text-muted-foreground',
+                                cell: (record) =>
+                                    record.userAgent ?? 'Not recorded',
+                            },
+                            {
+                                key: 'id',
+                                label: 'Event identifier',
+                                cell: (record) => `#${record.id}`,
+                            },
+                        ],
+                    },
+                    {
+                        key: 'recorded-changes',
+                        title: 'Recorded changes',
+                        description:
+                            'The before and after values captured for this event.',
+                        content: (record) => (
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <ChangeBlock
+                                    label="Before"
+                                    value={record.before}
+                                />
+                                <ChangeBlock
+                                    label="After"
+                                    value={record.after}
+                                />
+                            </div>
+                        ),
+                    },
+                ]}
+            />
         </DetailsPage>
     );
 }

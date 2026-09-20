@@ -40,7 +40,7 @@ test('an administrator can manage user-table columns across themes and reloads',
         userTableContainer.getByRole('link', { name: 'Add user' }),
     ).toHaveAttribute('href', '/access/users/create');
     const manageColumns = userTableContainer.getByRole('button', {
-        name: 'Manage columns',
+        name: 'Columns',
     });
 
     await manageColumns.focus();

@@ -8,12 +8,8 @@ import {
     UserRound,
 } from 'lucide-react';
 import { ActionLink } from '@/components/action-link';
-import {
-    DetailField,
-    DetailsActionForm,
-    DetailsPage,
-    DetailsSection,
-} from '@/components/details-page';
+import { DetailsActionForm, DetailsPage } from '@/components/details-page';
+import { DetailsView } from '@/components/details-view';
 import { Badge } from '@/components/ui/badge';
 import type {
     BlockedIpAddress,
@@ -133,88 +129,115 @@ export default function IpBlockShowPage({
                 ) : null
             }
         >
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)]">
-                <DetailsSection
-                    title="Access rule"
-                    description="The exact network address and the current access decision."
-                >
-                    <div className="space-y-6 p-4 sm:p-6">
-                        <div className="flex items-center gap-3">
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-link/10 text-link">
-                                <GlobeLock className="size-5" />
-                            </span>
-                            <div className="min-w-0">
-                                <code className="font-mono text-base font-semibold">
-                                    {blockedIpAddress.ipAddress}
-                                </code>
-                                <div className="mt-1">
-                                    <StatusBadge
-                                        isActive={blockedIpAddress.isActive}
-                                    />
-                                </div>
+            <DetailsView
+                record={blockedIpAddress}
+                summary={
+                    <div className="flex items-center gap-3">
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-link/10 text-link">
+                            <GlobeLock className="size-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <code className="font-mono text-base font-semibold">
+                                {blockedIpAddress.ipAddress}
+                            </code>
+                            <div className="mt-1">
+                                <StatusBadge
+                                    isActive={blockedIpAddress.isActive}
+                                />
                             </div>
                         </div>
-                        <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-                            <DetailField
-                                label="Reason"
-                                className="sm:col-span-2"
-                            >
-                                {blockedIpAddress.reason ??
-                                    'No reason provided.'}
-                            </DetailField>
-                            <DetailField label="Observed user">
-                                {blockedIpAddress.user ? (
-                                    <div>
-                                        <p className="font-medium">
-                                            {blockedIpAddress.user.name}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {blockedIpAddress.user.email}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <span className="flex items-center gap-2 text-muted-foreground">
-                                        <UserRound className="size-3.5" />
-                                        No user recorded
-                                    </span>
-                                )}
-                            </DetailField>
-                            <DetailField label="Last seen">
-                                <span className="flex items-center gap-2 text-muted-foreground">
-                                    <CalendarClock className="size-3.5" />
-                                    {formatDate(
-                                        blockedIpAddress.lastSeenAt ??
-                                            blockedIpAddress.firstSeenAt,
-                                    )}
-                                </span>
-                            </DetailField>
-                        </dl>
                     </div>
-                </DetailsSection>
-
-                <DetailsSection
-                    title="Timeline"
-                    description="When the address was observed and when its state changed."
-                >
-                    <dl className="grid gap-5 p-4 sm:p-6">
-                        <DetailField label="First seen">
-                            {formatDate(blockedIpAddress.firstSeenAt)}
-                        </DetailField>
-                        <DetailField label="Blocked at">
-                            {formatDate(blockedIpAddress.blockedAt)}
-                        </DetailField>
-                        <DetailField label="Blocked by">
-                            <Actor actor={blockedIpAddress.blockedBy} />
-                        </DetailField>
-                        <DetailField label="Unblocked at">
-                            {formatDate(blockedIpAddress.unblockedAt)}
-                        </DetailField>
-                        <DetailField label="Unblocked by">
-                            <Actor actor={blockedIpAddress.unblockedBy} />
-                        </DetailField>
-                    </dl>
-                </DetailsSection>
-            </div>
+                }
+                sections={[
+                    {
+                        key: 'rule',
+                        title: 'Access rule',
+                        description:
+                            'The exact network address and the current access decision.',
+                        columns: [
+                            {
+                                key: 'reason',
+                                label: 'Reason',
+                                cell: (record) =>
+                                    record.reason ?? 'No reason provided.',
+                                span: 'full',
+                            },
+                            {
+                                key: 'user',
+                                label: 'Observed user',
+                                cell: (record) =>
+                                    record.user ? (
+                                        <div>
+                                            <p className="font-medium">
+                                                {record.user.name}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {record.user.email}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <span className="flex items-center gap-2 text-muted-foreground">
+                                            <UserRound className="size-3.5" />
+                                            No user recorded
+                                        </span>
+                                    ),
+                            },
+                            {
+                                key: 'lastSeenAt',
+                                label: 'Last seen',
+                                cell: (record) => (
+                                    <span className="flex items-center gap-2 text-muted-foreground">
+                                        <CalendarClock className="size-3.5" />
+                                        {formatDate(
+                                            record.lastSeenAt ??
+                                                record.firstSeenAt,
+                                        )}
+                                    </span>
+                                ),
+                            },
+                        ],
+                    },
+                    {
+                        key: 'timeline',
+                        title: 'Timeline',
+                        description:
+                            'When the address was observed and when its state changed.',
+                        columns: [
+                            {
+                                key: 'firstSeenAt',
+                                label: 'First seen',
+                                cell: (record) =>
+                                    formatDate(record.firstSeenAt),
+                            },
+                            {
+                                key: 'blockedAt',
+                                label: 'Blocked at',
+                                cell: (record) => formatDate(record.blockedAt),
+                            },
+                            {
+                                key: 'blockedBy',
+                                label: 'Blocked by',
+                                cell: (record) => (
+                                    <Actor actor={record.blockedBy} />
+                                ),
+                            },
+                            {
+                                key: 'unblockedAt',
+                                label: 'Unblocked at',
+                                cell: (record) =>
+                                    formatDate(record.unblockedAt),
+                            },
+                            {
+                                key: 'unblockedBy',
+                                label: 'Unblocked by',
+                                cell: (record) => (
+                                    <Actor actor={record.unblockedBy} />
+                                ),
+                            },
+                        ],
+                    },
+                ]}
+            />
         </DetailsPage>
     );
 }
