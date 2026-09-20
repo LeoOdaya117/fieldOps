@@ -1149,6 +1149,9 @@ describe('access administration pages', () => {
         expect(
             document.querySelectorAll('[data-slot="details-section"]'),
         ).toHaveLength(2);
+        expect(
+            document.querySelector('[data-slot="details-page"]'),
+        ).toHaveClass('pt-0', 'sm:pt-0', 'lg:pt-0');
         expect(screen.getByText('Operations')).toBeInTheDocument();
         expect(
             document.querySelector('[data-slot="details-toolbar"]'),

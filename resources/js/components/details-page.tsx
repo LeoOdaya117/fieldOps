@@ -44,7 +44,10 @@ function DetailsPage({
             <Head title={title} />
             <div
                 data-slot="details-page"
-                className={cn('space-y-6 p-4 sm:p-6 lg:p-8', className)}
+                className={cn(
+                    'space-y-6 px-4 pt-0 pb-4 sm:px-6 sm:pt-0 sm:pb-6 lg:px-8 lg:pt-0 lg:pb-8',
+                    className,
+                )}
             >
                 <div
                     data-slot="details-toolbar"
