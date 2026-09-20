@@ -56,7 +56,7 @@ function AdaptiveSelect({
     options,
     value,
     defaultValue,
-    multiple = false,
+    multiple,
     placeholder = 'Select an option',
     searchPlaceholder = 'Search options',
     emptyMessage = 'No options found.',
@@ -69,17 +69,20 @@ function AdaptiveSelect({
     ...triggerProps
 }: AdaptiveSelectProps) {
     const selectableOptions = options.filter((option) => option.value !== '');
+    const usesCheckboxes = selectableOptions.length <= CHECKBOX_OPTION_LIMIT;
+    const isMultiple =
+        multiple ?? (usesCheckboxes || Array.isArray(value) || Array.isArray(defaultValue));
     const [internalValue, setInternalValue] = useState<AdaptiveSelectValue>(
-        () => normalizeValue(defaultValue, multiple),
+        () => normalizeValue(defaultValue, isMultiple),
     );
     const currentValue =
         value === undefined
             ? internalValue
-            : normalizeValue(value, multiple);
+            : normalizeValue(value, isMultiple);
     const selectedValues = toValues(currentValue);
-    const usesCheckboxes = selectableOptions.length <= CHECKBOX_OPTION_LIMIT;
     const usesSearch = selectableOptions.length > SEARCH_OPTION_LIMIT;
-    const formName = name && multiple && !name.endsWith('[]') ? `${name}[]` : name;
+    const formName =
+        name && isMultiple && !name.endsWith('[]') ? `${name}[]` : name;
 
     const updateValue = (nextValue: AdaptiveSelectValue) => {
         if (value === undefined) {
@@ -90,7 +93,7 @@ function AdaptiveSelect({
     };
 
     const handleOptionToggle = (optionValue: string) => {
-        if (!multiple) {
+        if (!isMultiple) {
             updateValue(optionValue);
 
             return;
@@ -122,7 +125,7 @@ function AdaptiveSelect({
         id,
         options: selectableOptions,
         selectedValues,
-        multiple,
+        multiple: isMultiple,
         disabled,
         ariaLabel,
         placeholder,
@@ -136,7 +139,7 @@ function AdaptiveSelect({
             {hiddenInputs}
             {usesCheckboxes ? (
                 <CheckboxOptions {...sharedProps} />
-            ) : usesSearch || multiple ? (
+            ) : usesSearch || isMultiple ? (
                 <SearchableOptions
                     {...sharedProps}
                     enableSearch={usesSearch}

@@ -27,8 +27,8 @@ class RoleController extends Controller
         $this->authorize('viewAny', Role::class);
 
         $search = trim((string) $request->input('search', ''));
-        $type = (string) $request->input('type', '');
-        $assigned = (string) $request->input('assigned', '');
+        $types = $this->filterValues($request->input('type'), ['system', 'custom']);
+        $assignedValues = $this->filterValues($request->input('assigned'), ['assigned', 'unassigned']);
         $permissionsMin = trim((string) $request->input('permissions_min', ''));
         $from = $this->parseDate($request->input('from'));
         $to = $this->parseDate($request->input('to'));
@@ -49,10 +49,9 @@ class RoleController extends Controller
                     ->orWhere('display_name', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%");
             }))
-            ->when($type === 'system', static fn ($query) => $query->where('is_system', true))
-            ->when($type === 'custom', static fn ($query) => $query->where('is_system', false))
-            ->when($assigned === 'assigned', static fn ($query) => $query->has('users'))
-            ->when($assigned === 'unassigned', static fn ($query) => $query->doesntHave('users'))
+            ->when(count($types) === 1, static fn ($query) => $query->where('is_system', $types[0] === 'system'))
+            ->when(count($assignedValues) === 1 && $assignedValues[0] === 'assigned', static fn ($query) => $query->has('users'))
+            ->when(count($assignedValues) === 1 && $assignedValues[0] === 'unassigned', static fn ($query) => $query->doesntHave('users'))
             ->when(ctype_digit($permissionsMin), static fn ($query) => $query->has('permissions', '>=', (int) $permissionsMin))
             ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
             ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
@@ -79,8 +78,8 @@ class RoleController extends Controller
             'canDeleteRoles' => $request->user()->can('roles.delete'),
             'filters' => [
                 'search' => $search,
-                'type' => $type,
-                'assigned' => $assigned,
+                'type' => $this->filterValue($types),
+                'assigned' => $this->filterValue($assignedValues),
                 'permissionsMin' => $permissionsMin,
                 'from' => $from?->format('Y-m-d') ?? '',
                 'to' => $to?->format('Y-m-d') ?? '',
@@ -239,5 +238,26 @@ class RoleController extends Controller
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /** @param array<int, string> $allowed */
+    private function filterValues(mixed $value, array $allowed): array
+    {
+        $values = is_array($value) ? $value : [$value];
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $item): string => (string) $item, $values),
+            static fn (string $item): bool => in_array($item, $allowed, true),
+        )));
+    }
+
+    /** @param array<int, string> $values */
+    private function filterValue(array $values): string|array
+    {
+        return match (count($values)) {
+            0 => '',
+            1 => $values[0],
+            default => $values,
+        };
     }
 }

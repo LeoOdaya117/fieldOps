@@ -66,7 +66,7 @@ export type Registration = {
 
 export type UserTableFilters = {
     search: string;
-    status: string;
+    status: string | string[];
     from?: string;
     to?: string;
     perPage?: number;

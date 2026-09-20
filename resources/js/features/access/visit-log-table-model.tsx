@@ -41,8 +41,8 @@ export type VisitLogTableFilters = {
     ip: string;
     user: string;
     location: string;
-    event: string;
-    outcome: string;
+    event: string | string[];
+    outcome: string | string[];
     statusCode: string;
     from: string;
     to: string;

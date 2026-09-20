@@ -2,7 +2,7 @@ import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { DataTable } from '@/components/ui/data-table';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { FormSelect } from '@/components/ui/form-select';
+import { AdaptiveSelect } from '@/components/ui/adaptive-select';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
 import { auditTableColumns } from '@/features/access/audit-table-model';
 import type {
@@ -114,10 +114,12 @@ export default function AuditPage({ events, eventTypes, filters }: Props) {
                 <label htmlFor="audit-event" className="text-sm font-medium">
                     Event type
                 </label>
-                <FormSelect
+                <AdaptiveSelect
                     id="audit-event"
                     name="event"
+                    multiple
                     defaultValue={filters.event}
+                    placeholder="All events"
                     options={[
                         { value: '', label: 'All events' },
                         ...eventTypes.map((event) => ({

@@ -14,7 +14,7 @@ import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { FormSelect } from '@/components/ui/form-select';
+import { AdaptiveSelect } from '@/components/ui/adaptive-select';
 import { Input } from '@/components/ui/input';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
 import {
@@ -220,10 +220,12 @@ export default function UsersPage({
                     >
                         Account status
                     </label>
-                    <FormSelect
+                    <AdaptiveSelect
                         id="user-status"
                         name="status"
+                        multiple
                         defaultValue={filters.status}
+                        placeholder="All statuses"
                         options={[
                             { value: '', label: 'All statuses' },
                             { value: 'active', label: 'Active' },

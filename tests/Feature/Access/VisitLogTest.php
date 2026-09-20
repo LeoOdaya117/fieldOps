@@ -59,6 +59,38 @@ class VisitLogTest extends TestCase
                 ->where('logs.data.0.statusCode', 302));
     }
 
+    public function test_authorized_user_can_filter_visit_logs_by_multiple_events(): void
+    {
+        $owner = $this->owner();
+        VisitLog::query()->create([
+            'event_type' => 'login',
+            'outcome' => 'success',
+            'ip_address' => '198.51.100.32',
+            'method' => 'POST',
+            'path' => '/login',
+            'status_code' => 302,
+            'occurred_at' => now(),
+        ]);
+        VisitLog::query()->create([
+            'event_type' => 'logout',
+            'outcome' => 'success',
+            'ip_address' => '198.51.100.33',
+            'method' => 'POST',
+            'path' => '/logout',
+            'status_code' => 302,
+            'occurred_at' => now(),
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('access.visit-logs.index', [
+                'event' => ['login', 'logout'],
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.event', ['login', 'logout'])
+                ->has('logs.data', 2));
+    }
+
     public function test_authorized_user_can_filter_visit_logs_by_location(): void
     {
         $owner = $this->owner();

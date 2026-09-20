@@ -3,6 +3,7 @@ import { ActionLink } from '@/components/action-link';
 import { cn } from '@/lib/utils';
 
 type SortDirection = 'asc' | 'desc';
+type QueryValue = string | readonly string[] | undefined;
 
 type SortableColumnProps = {
     action: string;
@@ -10,19 +11,29 @@ type SortableColumnProps = {
     sortKey: string;
     sort?: string;
     direction?: SortDirection;
-    hidden?: Record<string, string | undefined>;
+    hidden?: Record<string, QueryValue>;
 };
 
-function buildQueryUrl(
-    action: string,
-    values: Record<string, string | undefined>,
-) {
-    const query = new URLSearchParams(
-        Object.entries(values).filter(
-            (entry): entry is [string, string] =>
-                entry[1] !== undefined && entry[1] !== '',
-        ),
-    ).toString();
+function buildQueryUrl(action: string, values: Record<string, QueryValue>) {
+    const params = new URLSearchParams();
+
+    Object.entries(values).forEach(([key, value]) => {
+        if (value !== undefined && typeof value !== 'string') {
+            value.forEach((item) => {
+                if (item !== '') {
+                    params.append(`${key}[]`, item);
+                }
+            });
+
+            return;
+        }
+
+        if (value !== undefined && value !== '') {
+            params.set(key, value);
+        }
+    });
+
+    const query = params.toString();
 
     return query === '' ? action : `${action}?${query}`;
 }

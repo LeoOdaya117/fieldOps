@@ -879,6 +879,24 @@ describe('reusable data table components', () => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
+    it('preserves multiple filter values in sortable links', () => {
+        render(
+            <SortableColumn
+                action="/access/users"
+                label="User"
+                sortKey="name"
+                hidden={{ status: ['active', 'suspended'] }}
+            />,
+        );
+
+        expect(
+            screen.getByRole('link', { name: 'Sort User ascending' }),
+        ).toHaveAttribute(
+            'href',
+            '/access/users?status%5B%5D=active&status%5B%5D=suspended&sort=name&direction=asc',
+        );
+    });
+
     it('toggles a sortable header from ascending to descending', () => {
         render(
             <SortableColumn

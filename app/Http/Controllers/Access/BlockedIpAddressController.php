@@ -24,7 +24,7 @@ class BlockedIpAddressController extends Controller
         $this->authorize('viewAny', BlockedIpAddress::class);
 
         $search = trim((string) $request->input('search', ''));
-        $status = (string) $request->input('status', '');
+        $statuses = $this->filterValues($request->input('status'), ['active', 'inactive']);
         $from = $this->parseDate($request->input('from'));
         $to = $this->parseDate($request->input('to'));
         $sort = (string) $request->input('sort', '');
@@ -46,7 +46,7 @@ class BlockedIpAddressController extends Controller
                         ->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%"));
             }))
-            ->when(in_array($status, ['active', 'inactive'], true), static fn ($query) => $query->where('is_active', $status === 'active'))
+            ->when($statuses !== [], static fn ($query) => $query->whereIn('is_active', array_map(static fn (string $status): bool => $status === 'active', $statuses)))
             ->when($from !== null, static fn ($query) => $query->where('blocked_at', '>=', $from->startOfDay()))
             ->when($to !== null, static fn ($query) => $query->where('blocked_at', '<=', $to->endOfDay()))
             ->when(
@@ -86,7 +86,7 @@ class BlockedIpAddressController extends Controller
             'blockedIpAddresses' => $rules,
             'filters' => [
                 'search' => $search,
-                'status' => $status,
+                'status' => $this->filterValue($statuses),
                 'from' => $from?->format('Y-m-d') ?? '',
                 'to' => $to?->format('Y-m-d') ?? '',
                 'sort' => $sort,
@@ -239,5 +239,26 @@ class BlockedIpAddressController extends Controller
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /** @param array<int, string> $allowed */
+    private function filterValues(mixed $value, array $allowed): array
+    {
+        $values = is_array($value) ? $value : [$value];
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $item): string => (string) $item, $values),
+            static fn (string $item): bool => in_array($item, $allowed, true),
+        )));
+    }
+
+    /** @param array<int, string> $values */
+    private function filterValue(array $values): string|array
+    {
+        return match (count($values)) {
+            0 => '',
+            1 => $values[0],
+            default => $values,
+        };
     }
 }

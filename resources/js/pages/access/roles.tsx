@@ -5,7 +5,7 @@ import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { FormSelect } from '@/components/ui/form-select';
+import { AdaptiveSelect } from '@/components/ui/adaptive-select';
 import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/ui/data-table';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
@@ -149,10 +149,12 @@ export default function RolesPage({
                     <label htmlFor="role-type" className="text-sm font-medium">
                         Role type
                     </label>
-                    <FormSelect
+                    <AdaptiveSelect
                         id="role-type"
                         name="type"
+                        multiple
                         defaultValue={filters.type}
+                        placeholder="All roles"
                         options={[
                             { value: '', label: 'All roles' },
                             { value: 'system', label: 'System roles' },
@@ -167,10 +169,12 @@ export default function RolesPage({
                     >
                         Assignment
                     </label>
-                    <FormSelect
+                    <AdaptiveSelect
                         id="role-assigned"
                         name="assigned"
+                        multiple
                         defaultValue={filters.assigned}
+                        placeholder="Any assignment"
                         options={[
                             { value: '', label: 'Any assignment' },
                             {

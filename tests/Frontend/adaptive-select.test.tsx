@@ -12,7 +12,7 @@ const options: AdaptiveSelectOption[] = [
 ];
 
 describe('AdaptiveSelect', () => {
-    it('uses checkboxes for five or fewer options', async () => {
+    it('uses multiple-selection checkboxes for five or fewer options', async () => {
         const user = userEvent.setup();
         const onValueChange = vi.fn();
 
@@ -30,7 +30,7 @@ describe('AdaptiveSelect', () => {
 
         await user.click(screen.getByText('Two'));
 
-        expect(onValueChange).toHaveBeenCalledWith('two');
+        expect(onValueChange).toHaveBeenCalledWith(['two']);
         expect(screen.getByRole('checkbox', { name: 'Two' })).toBeChecked();
     });
 
@@ -102,5 +102,23 @@ describe('AdaptiveSelect', () => {
                 (input) => input.getAttribute('value'),
             ),
         ).toEqual(['1', '3']);
+    });
+
+    it('infers multiple selection when the initial value is an array', async () => {
+        const user = userEvent.setup();
+        const onValueChange = vi.fn();
+
+        render(
+            <AdaptiveSelect
+                aria-label="Status"
+                defaultValue={['one']}
+                options={options}
+                onValueChange={onValueChange}
+            />,
+        );
+
+        await user.click(screen.getByText('Two'));
+
+        expect(onValueChange).toHaveBeenCalledWith(['one', 'two']);
     });
 });

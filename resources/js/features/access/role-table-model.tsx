@@ -22,8 +22,8 @@ export type Role = {
 
 export type RoleTableFilters = {
     search: string;
-    type: string;
-    assigned: string;
+    type: string | string[];
+    assigned: string | string[];
     permissionsMin: string;
     from?: string;
     to?: string;

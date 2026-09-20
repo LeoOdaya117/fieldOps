@@ -4,7 +4,7 @@ import { ActionLink } from '@/components/action-link';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { DataTable } from '@/components/ui/data-table';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { FormSelect } from '@/components/ui/form-select';
+import { AdaptiveSelect } from '@/components/ui/adaptive-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
@@ -96,10 +96,12 @@ export default function IpBlocksPage({
             >
                 <div className="grid gap-2">
                     <Label htmlFor="ip-block-status">Status</Label>
-                    <FormSelect
+                    <AdaptiveSelect
                         id="ip-block-status"
                         name="status"
+                        multiple
                         defaultValue={filters.status}
+                        placeholder="All addresses"
                         options={[
                             { value: '', label: 'All addresses' },
                             { value: 'active', label: 'Blocked' },

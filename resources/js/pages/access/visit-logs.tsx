@@ -3,7 +3,7 @@ import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { DataTable } from '@/components/ui/data-table';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
-import { FormSelect } from '@/components/ui/form-select';
+import { AdaptiveSelect } from '@/components/ui/adaptive-select';
 import { Input } from '@/components/ui/input';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
 import { visitLogTableColumns } from '@/features/access/visit-log-table-model';
@@ -134,10 +134,12 @@ export default function VisitLogsPage({
                     >
                         Event
                     </label>
-                    <FormSelect
+                    <AdaptiveSelect
                         id="visit-event"
                         name="event"
+                        multiple
                         defaultValue={filters.event}
+                        placeholder="All events"
                         options={[
                             { value: '', label: 'All events' },
                             ...eventTypes.map((event) => ({
@@ -154,10 +156,12 @@ export default function VisitLogsPage({
                     >
                         Outcome
                     </label>
-                    <FormSelect
+                    <AdaptiveSelect
                         id="visit-outcome"
                         name="outcome"
+                        multiple
                         defaultValue={filters.outcome}
+                        placeholder="All outcomes"
                         options={[
                             { value: '', label: 'All outcomes' },
                             ...outcomes.map((outcome) => ({
