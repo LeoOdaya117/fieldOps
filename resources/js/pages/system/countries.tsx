@@ -50,29 +50,32 @@ export default function CountriesPage({
                         .length
                 }
                 pageSize={pageSize}
-            >
-                <div className="grid gap-2">
-                    <Label htmlFor="country-search">Search</Label>
-                    <Input
-                        id="country-search"
-                        name="search"
-                        defaultValue={filters.search}
-                        placeholder="Code or country name"
-                        autoFocus
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="country-date-range">Date range</Label>
-                    <DateRangePicker
-                        id="country-date-range"
-                        from={filters.from}
-                        to={filters.to}
-                        fromName="from"
-                        toName="to"
-                        label="Country date range"
-                    />
-                </div>
-            </SearchFilterSheet>
+                keyword={
+                    <div className="grid gap-2">
+                        <Label htmlFor="country-search">Search</Label>
+                        <Input
+                            id="country-search"
+                            name="search"
+                            defaultValue={filters.search}
+                            placeholder="Code or country name"
+                            autoFocus
+                        />
+                    </div>
+                }
+                dateRange={
+                    <div className="grid gap-2">
+                        <Label htmlFor="country-date-range">Date range</Label>
+                        <DateRangePicker
+                            id="country-date-range"
+                            from={filters.from}
+                            to={filters.to}
+                            fromName="from"
+                            toName="to"
+                            label="Country date range"
+                        />
+                    </div>
+                }
+            ></SearchFilterSheet>
             {canCreate ? (
                 <ActionLink href={createCountry.url()}>
                     <Plus />

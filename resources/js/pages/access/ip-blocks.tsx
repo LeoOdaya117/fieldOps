@@ -68,28 +68,32 @@ export default function IpBlocksPage({
                     ].filter(Boolean).length
                 }
                 pageSize={pageSize}
+                keyword={
+                    <div className="grid gap-2">
+                        <Label htmlFor="ip-block-search">Search</Label>
+                        <Input
+                            id="ip-block-search"
+                            name="search"
+                            defaultValue={filters.search}
+                            placeholder="IP, user, or reason"
+                            autoFocus
+                        />
+                    </div>
+                }
+                dateRange={
+                    <div className="grid gap-2">
+                        <Label htmlFor="ip-block-date-range">Date range</Label>
+                        <DateRangePicker
+                            id="ip-block-date-range"
+                            from={filters.from}
+                            to={filters.to}
+                            fromName="from"
+                            toName="to"
+                            label="IP address date range"
+                        />
+                    </div>
+                }
             >
-                <div className="grid gap-2">
-                    <Label htmlFor="ip-block-search">Search</Label>
-                    <Input
-                        id="ip-block-search"
-                        name="search"
-                        defaultValue={filters.search}
-                        placeholder="IP, user, or reason"
-                        autoFocus
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="ip-block-date-range">Date range</Label>
-                    <DateRangePicker
-                        id="ip-block-date-range"
-                        from={filters.from}
-                        to={filters.to}
-                        fromName="from"
-                        toName="to"
-                        label="IP address date range"
-                    />
-                </div>
                 <div className="grid gap-2">
                     <Label htmlFor="ip-block-status">Status</Label>
                     <FormSelect

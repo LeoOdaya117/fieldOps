@@ -61,36 +61,43 @@ export default function AuditPage({ events, eventTypes, filters }: Props) {
                 ].filter(Boolean).length
             }
             pageSize={pageSize}
+            keyword={
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="audit-actor"
+                        className="text-sm font-medium"
+                    >
+                        Actor
+                    </label>
+                    <input
+                        id="audit-actor"
+                        name="actor"
+                        defaultValue={filters.actor}
+                        placeholder="Name or email"
+                        autoFocus
+                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    />
+                </div>
+            }
+            dateRange={
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="audit-date-range"
+                        className="text-sm font-medium"
+                    >
+                        Date range
+                    </label>
+                    <DateRangePicker
+                        id="audit-date-range"
+                        from={filters.from}
+                        to={filters.to}
+                        fromName="from"
+                        toName="to"
+                        label="Audit date range"
+                    />
+                </div>
+            }
         >
-            <div className="grid gap-2">
-                <label htmlFor="audit-actor" className="text-sm font-medium">
-                    Actor
-                </label>
-                <input
-                    id="audit-actor"
-                    name="actor"
-                    defaultValue={filters.actor}
-                    placeholder="Name or email"
-                    autoFocus
-                    className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                />
-            </div>
-            <div className="grid gap-2">
-                <label
-                    htmlFor="audit-date-range"
-                    className="text-sm font-medium"
-                >
-                    Date range
-                </label>
-                <DateRangePicker
-                    id="audit-date-range"
-                    from={filters.from}
-                    to={filters.to}
-                    fromName="from"
-                    toName="to"
-                    label="Audit date range"
-                />
-            </div>
             <div className="grid gap-2">
                 <label htmlFor="audit-subject" className="text-sm font-medium">
                     Subject

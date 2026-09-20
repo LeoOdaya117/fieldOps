@@ -123,5 +123,8 @@ describe('DateRangePicker', () => {
 
         expect(screen.queryByLabelText('From')).not.toBeInTheDocument();
         expect(screen.queryByLabelText('To')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Custom range' }).parentElement,
+        ).toHaveClass('max-h-64', 'overflow-y-auto');
     });
 });

@@ -50,29 +50,32 @@ export default function TimezonesPage({
                         .length
                 }
                 pageSize={pageSize}
-            >
-                <div className="grid gap-2">
-                    <Label htmlFor="timezone-search">Search</Label>
-                    <Input
-                        id="timezone-search"
-                        name="search"
-                        defaultValue={filters.search}
-                        placeholder="Asia, Pacific, UTC..."
-                        autoFocus
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="timezone-date-range">Date range</Label>
-                    <DateRangePicker
-                        id="timezone-date-range"
-                        from={filters.from}
-                        to={filters.to}
-                        fromName="from"
-                        toName="to"
-                        label="Timezone date range"
-                    />
-                </div>
-            </SearchFilterSheet>
+                keyword={
+                    <div className="grid gap-2">
+                        <Label htmlFor="timezone-search">Search</Label>
+                        <Input
+                            id="timezone-search"
+                            name="search"
+                            defaultValue={filters.search}
+                            placeholder="Asia, Pacific, UTC..."
+                            autoFocus
+                        />
+                    </div>
+                }
+                dateRange={
+                    <div className="grid gap-2">
+                        <Label htmlFor="timezone-date-range">Date range</Label>
+                        <DateRangePicker
+                            id="timezone-date-range"
+                            from={filters.from}
+                            to={filters.to}
+                            fromName="from"
+                            toName="to"
+                            label="Timezone date range"
+                        />
+                    </div>
+                }
+            ></SearchFilterSheet>
             {canCreate ? (
                 <ActionLink href={createTimezone.url()}>
                     <Plus />

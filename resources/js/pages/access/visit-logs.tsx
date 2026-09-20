@@ -71,35 +71,39 @@ export default function VisitLogsPage({
                 ].filter(Boolean).length
             }
             pageSize={pageSize}
+            keyword={
+                <div className="grid gap-2">
+                    <label htmlFor="visit-ip" className="text-sm font-medium">
+                        IP address
+                    </label>
+                    <Input
+                        id="visit-ip"
+                        name="ip"
+                        defaultValue={filters.ip}
+                        placeholder="203.0.113.10"
+                        autoFocus
+                    />
+                </div>
+            }
+            dateRange={
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="visit-date-range"
+                        className="text-sm font-medium"
+                    >
+                        Date range
+                    </label>
+                    <DateRangePicker
+                        id="visit-date-range"
+                        from={filters.from}
+                        to={filters.to}
+                        fromName="from"
+                        toName="to"
+                        label="Visit date range"
+                    />
+                </div>
+            }
         >
-            <div className="grid gap-2">
-                <label htmlFor="visit-ip" className="text-sm font-medium">
-                    IP address
-                </label>
-                <Input
-                    id="visit-ip"
-                    name="ip"
-                    defaultValue={filters.ip}
-                    placeholder="203.0.113.10"
-                    autoFocus
-                />
-            </div>
-            <div className="grid gap-2">
-                <label
-                    htmlFor="visit-date-range"
-                    className="text-sm font-medium"
-                >
-                    Date range
-                </label>
-                <DateRangePicker
-                    id="visit-date-range"
-                    from={filters.from}
-                    to={filters.to}
-                    fromName="from"
-                    toName="to"
-                    label="Visit date range"
-                />
-            </div>
             <div className="grid gap-2">
                 <label htmlFor="visit-location" className="text-sm font-medium">
                     Location

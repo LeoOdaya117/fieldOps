@@ -30,10 +30,14 @@ describe('SearchFilterSheet', () => {
                 title="Search and filter roles"
                 description="Find a role."
                 activeFilterCount={2}
-            >
-                <label htmlFor="role-search">Search roles</label>
-                <input id="role-search" name="search" />
-            </SearchFilterSheet>,
+                keyword={
+                    <>
+                        <label htmlFor="role-search">Search roles</label>
+                        <input id="role-search" name="search" />
+                    </>
+                }
+                dateRange={<label htmlFor="date-range">Date range</label>}
+            />,
         );
 
         expect(
@@ -50,6 +54,15 @@ describe('SearchFilterSheet', () => {
         expect(
             screen.getByRole('button', { name: 'Apply filters' }),
         ).toBeInTheDocument();
+        const form = screen
+            .getByRole('button', { name: 'Apply filters' })
+            .closest('form');
+
+        expect(
+            Array.from(form?.querySelectorAll('label') ?? []).map(
+                (label) => label.textContent,
+            ),
+        ).toEqual(['Search roles', 'Date range', 'Rows per page']);
         expect(screen.getByRole('link', { name: 'Reset' })).toHaveAttribute(
             'href',
             '/access/roles',

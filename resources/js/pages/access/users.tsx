@@ -177,38 +177,42 @@ export default function UsersPage({
                     [filters.from, filters.to].filter(Boolean).length
                 }
                 pageSize={pageSize}
+                keyword={
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="user-search"
+                            className="text-sm font-medium"
+                        >
+                            Search users
+                        </label>
+                        <Input
+                            id="user-search"
+                            name="search"
+                            defaultValue={filters.search}
+                            placeholder="Name or email"
+                            autoFocus
+                        />
+                    </div>
+                }
+                dateRange={
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="user-date-range"
+                            className="text-sm font-medium"
+                        >
+                            Date range
+                        </label>
+                        <DateRangePicker
+                            id="user-date-range"
+                            from={filters.from}
+                            to={filters.to}
+                            fromName="from"
+                            toName="to"
+                            label="User date range"
+                        />
+                    </div>
+                }
             >
-                <div className="grid gap-2">
-                    <label
-                        htmlFor="user-search"
-                        className="text-sm font-medium"
-                    >
-                        Search users
-                    </label>
-                    <Input
-                        id="user-search"
-                        name="search"
-                        defaultValue={filters.search}
-                        placeholder="Name or email"
-                        autoFocus
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <label
-                        htmlFor="user-date-range"
-                        className="text-sm font-medium"
-                    >
-                        Date range
-                    </label>
-                    <DateRangePicker
-                        id="user-date-range"
-                        from={filters.from}
-                        to={filters.to}
-                        fromName="from"
-                        toName="to"
-                        label="User date range"
-                    />
-                </div>
                 <div className="grid gap-2">
                     <label
                         htmlFor="user-status"

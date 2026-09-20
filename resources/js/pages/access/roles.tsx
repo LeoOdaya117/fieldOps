@@ -109,38 +109,42 @@ export default function RolesPage({
                     ].filter(Boolean).length
                 }
                 pageSize={pageSize}
+                keyword={
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="role-search"
+                            className="text-sm font-medium"
+                        >
+                            Search roles
+                        </label>
+                        <Input
+                            id="role-search"
+                            name="search"
+                            defaultValue={filters.search}
+                            placeholder="Name, key, or description"
+                            autoFocus
+                        />
+                    </div>
+                }
+                dateRange={
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="role-date-range"
+                            className="text-sm font-medium"
+                        >
+                            Date range
+                        </label>
+                        <DateRangePicker
+                            id="role-date-range"
+                            from={filters.from}
+                            to={filters.to}
+                            fromName="from"
+                            toName="to"
+                            label="Role date range"
+                        />
+                    </div>
+                }
             >
-                <div className="grid gap-2">
-                    <label
-                        htmlFor="role-search"
-                        className="text-sm font-medium"
-                    >
-                        Search roles
-                    </label>
-                    <Input
-                        id="role-search"
-                        name="search"
-                        defaultValue={filters.search}
-                        placeholder="Name, key, or description"
-                        autoFocus
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <label
-                        htmlFor="role-date-range"
-                        className="text-sm font-medium"
-                    >
-                        Date range
-                    </label>
-                    <DateRangePicker
-                        id="role-date-range"
-                        from={filters.from}
-                        to={filters.to}
-                        fromName="from"
-                        toName="to"
-                        label="Role date range"
-                    />
-                </div>
                 <div className="grid gap-2">
                     <label htmlFor="role-type" className="text-sm font-medium">
                         Role type

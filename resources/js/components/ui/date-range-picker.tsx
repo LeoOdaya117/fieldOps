@@ -141,7 +141,7 @@ function DateRangePicker({
             className={cn(
                 'grid content-start gap-0.5',
                 customEditing &&
-                    'border-t border-border pt-3 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-3',
+                    'max-h-64 overflow-y-auto overscroll-contain pr-1 border-t border-border pt-3 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-3',
             )}
         >
             {presets.map((preset) => (
@@ -236,7 +236,7 @@ function DateRangePicker({
                     className={cn(
                         'max-w-[calc(100vw-2rem)]',
                         customEditing
-                            ? 'max-h-[min(36rem,calc(100vh-2rem))] w-[min(44rem,calc(100vw-2rem))] overflow-y-auto p-0'
+                            ? 'max-h-[min(36rem,calc(100vh-2rem))] w-[min(44rem,calc(100vw-2rem))] overflow-hidden p-0'
                             : 'w-52 p-1',
                     )}
                 >
