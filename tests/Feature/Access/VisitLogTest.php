@@ -15,7 +15,7 @@ class VisitLogTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_authorized_user_can_view_visit_logs_and_filter_by_ip_and_outcome(): void
+    public function test_authorized_user_can_view_visit_logs_and_filter_by_keyword_and_outcome(): void
     {
         $owner = $this->owner();
         $user = User::factory()->create();
@@ -49,10 +49,10 @@ class VisitLogTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get(route('access.visit-logs.index', ['ip' => '198.51.100.31', 'outcome' => 'success']))
+            ->get(route('access.visit-logs.index', ['keyword' => '198.51.100.31', 'outcome' => 'success']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('filters.ip', '198.51.100.31')
+                ->where('filters.keyword', '198.51.100.31')
                 ->where('filters.outcome', 'success')
                 ->has('logs.data', 1)
                 ->where('logs.data.0.ipAddress', '198.51.100.31')
@@ -91,7 +91,7 @@ class VisitLogTest extends TestCase
                 ->has('logs.data', 2));
     }
 
-    public function test_authorized_user_can_filter_visit_logs_by_location(): void
+    public function test_authorized_user_can_filter_visit_logs_by_keyword_location(): void
     {
         $owner = $this->owner();
         VisitLog::query()->create([
@@ -109,12 +109,45 @@ class VisitLogTest extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get(route('access.visit-logs.index', ['location' => 'Mountain']))
+            ->get(route('access.visit-logs.index', ['keyword' => 'Mountain']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('filters.location', 'Mountain')
+                ->where('filters.keyword', 'Mountain')
                 ->has('logs.data', 1)
                 ->where('logs.data.0.locationCity', 'Mountain View'));
+    }
+
+    public function test_authorized_user_can_filter_visit_logs_by_keyword_user(): void
+    {
+        $owner = $this->owner();
+        $user = User::factory()->create();
+        VisitLog::query()->create([
+            'user_id' => $user->id,
+            'event_type' => 'login',
+            'outcome' => 'success',
+            'ip_address' => '198.51.100.40',
+            'method' => 'POST',
+            'path' => '/login',
+            'status_code' => 302,
+            'occurred_at' => now(),
+        ]);
+        VisitLog::query()->create([
+            'event_type' => 'logout',
+            'outcome' => 'success',
+            'ip_address' => '198.51.100.41',
+            'method' => 'POST',
+            'path' => '/logout',
+            'status_code' => 302,
+            'occurred_at' => now(),
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('access.visit-logs.index', ['keyword' => $user->email]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.keyword', $user->email)
+                ->has('logs.data', 1)
+                ->where('logs.data.0.user.email', $user->email));
     }
 
     public function test_refreshing_or_navigating_pages_does_not_create_visit_logs(): void

@@ -1061,11 +1061,8 @@ describe('access administration pages', () => {
                     to: 2,
                 }}
                 eventTypes={['login', 'logout']}
-                outcomes={['success']}
                 filters={{
-                    ip: '',
-                    user: '',
-                    location: '',
+                    keyword: '',
                     event: '',
                     outcome: '',
                     statusCode: '',
@@ -1092,6 +1089,22 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('button', { name: /Filter/ }),
         ).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: /Filter/ }));
+        expect(screen.getByLabelText('Keyword')).toHaveAttribute(
+            'name',
+            'keyword',
+        );
+        const filterDialog = screen.getByRole('dialog');
+        expect(
+            within(filterDialog).getByText('Event', { exact: true }),
+        ).toBeInTheDocument();
+        expect(
+            within(filterDialog).queryByLabelText('Outcome'),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('IP address')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Location')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('User')).not.toBeInTheDocument();
+        await user.keyboard('{Escape}');
         await user.click(
             screen.getByRole('button', { name: 'Actions for visit log 1' }),
         );

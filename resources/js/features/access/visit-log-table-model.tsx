@@ -38,9 +38,7 @@ export type VisitLog = {
 };
 
 export type VisitLogTableFilters = {
-    ip: string;
-    user: string;
-    location: string;
+    keyword: string;
     event: string | string[];
     outcome: string | string[];
     statusCode: string;
@@ -93,9 +91,7 @@ export function visitLogTableColumns({
     const sort = filters.sort ?? '';
     const direction = filters.direction ?? 'desc';
     const hidden = {
-        ip: filters.ip,
-        user: filters.user,
-        location: filters.location,
+        keyword: filters.keyword,
         event: filters.event,
         outcome: filters.outcome,
         status_code: filters.statusCode,

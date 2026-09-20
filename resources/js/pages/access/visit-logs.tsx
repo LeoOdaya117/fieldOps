@@ -28,7 +28,6 @@ type PaginatedVisitLogs = {
 type Props = {
     logs: PaginatedVisitLogs;
     eventTypes: string[];
-    outcomes: string[];
     filters: VisitLogTableFilters;
 };
 
@@ -38,12 +37,7 @@ function optionLabel(value: string): string {
         .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-export default function VisitLogsPage({
-    logs,
-    eventTypes,
-    outcomes,
-    filters,
-}: Props) {
+export default function VisitLogsPage({ logs, eventTypes, filters }: Props) {
     const pageSize = logs.per_page ?? filters.perPage ?? DEFAULT_PAGE_SIZE;
     const previousUrl = logs.links?.find((link) =>
         link.label.includes('Previous'),
@@ -57,14 +51,11 @@ export default function VisitLogsPage({
             action={visitLogsIndex.url()}
             resetHref={visitLogsIndex.url()}
             title="Search and filter visits"
-            description="Narrow activity by network address, user, location, event, outcome, status, or date."
+            description="Narrow activity by keyword, event, status, or date."
             activeFilterCount={
                 [
-                    filters.ip,
-                    filters.user,
-                    filters.location,
+                    filters.keyword,
                     filters.event,
-                    filters.outcome,
                     filters.statusCode,
                     filters.from,
                     filters.to,
@@ -73,14 +64,17 @@ export default function VisitLogsPage({
             pageSize={pageSize}
             keyword={
                 <div className="grid gap-2">
-                    <label htmlFor="visit-ip" className="text-sm font-medium">
-                        IP address
+                    <label
+                        htmlFor="visit-keyword"
+                        className="text-sm font-medium"
+                    >
+                        Keyword
                     </label>
                     <Input
-                        id="visit-ip"
-                        name="ip"
-                        defaultValue={filters.ip}
-                        placeholder="203.0.113.10"
+                        id="visit-keyword"
+                        name="keyword"
+                        defaultValue={filters.keyword}
+                        placeholder="IP address, location, name, or email"
                         autoFocus
                     />
                 </div>
@@ -105,72 +99,23 @@ export default function VisitLogsPage({
             }
         >
             <div className="grid gap-2">
-                <label htmlFor="visit-location" className="text-sm font-medium">
-                    Location
+                <label htmlFor="visit-event" className="text-sm font-medium">
+                    Event
                 </label>
-                <Input
-                    id="visit-location"
-                    name="location"
-                    defaultValue={filters.location}
-                    placeholder="City, region, or country"
+                <AdaptiveSelect
+                    id="visit-event"
+                    name="event"
+                    multiple
+                    defaultValue={filters.event}
+                    placeholder="All events"
+                    options={[
+                        { value: '', label: 'All events' },
+                        ...eventTypes.map((event) => ({
+                            value: event,
+                            label: optionLabel(event),
+                        })),
+                    ]}
                 />
-            </div>
-            <div className="grid gap-2">
-                <label htmlFor="visit-user" className="text-sm font-medium">
-                    User
-                </label>
-                <Input
-                    id="visit-user"
-                    name="user"
-                    defaultValue={filters.user}
-                    placeholder="Name or email"
-                />
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-                <div className="grid gap-2">
-                    <label
-                        htmlFor="visit-event"
-                        className="text-sm font-medium"
-                    >
-                        Event
-                    </label>
-                    <AdaptiveSelect
-                        id="visit-event"
-                        name="event"
-                        multiple
-                        defaultValue={filters.event}
-                        placeholder="All events"
-                        options={[
-                            { value: '', label: 'All events' },
-                            ...eventTypes.map((event) => ({
-                                value: event,
-                                label: optionLabel(event),
-                            })),
-                        ]}
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <label
-                        htmlFor="visit-outcome"
-                        className="text-sm font-medium"
-                    >
-                        Outcome
-                    </label>
-                    <AdaptiveSelect
-                        id="visit-outcome"
-                        name="outcome"
-                        multiple
-                        defaultValue={filters.outcome}
-                        placeholder="All outcomes"
-                        options={[
-                            { value: '', label: 'All outcomes' },
-                            ...outcomes.map((outcome) => ({
-                                value: outcome,
-                                label: optionLabel(outcome),
-                            })),
-                        ]}
-                    />
-                </div>
             </div>
             <div className="grid gap-2">
                 <label htmlFor="visit-status" className="text-sm font-medium">

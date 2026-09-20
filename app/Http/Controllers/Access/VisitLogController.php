@@ -16,9 +16,7 @@ class VisitLogController extends Controller
     {
         $this->authorize('viewAny', VisitLog::class);
 
-        $ip = trim((string) $request->input('ip', ''));
-        $user = trim((string) $request->input('user', ''));
-        $location = trim((string) $request->input('location', ''));
+        $keyword = trim((string) $request->input('keyword', ''));
         $events = $this->filterValues($request->input('event'), VisitLog::EVENT_TYPES);
         $outcomes = $this->filterValues($request->input('outcome'), VisitLog::OUTCOMES);
         $statusCode = $request->integer('status_code');
@@ -40,15 +38,17 @@ class VisitLogController extends Controller
         $logs = VisitLog::query()
             ->whereIn('event_type', VisitLog::EVENT_TYPES)
             ->with('user:id,name,email')
-            ->when($ip !== '', static fn ($query) => $query->where('ip_address', 'like', "%{$ip}%"))
-            ->when($user !== '', static fn ($query) => $query->whereHas('user', static fn ($query) => $query
-                ->where('name', 'like', "%{$user}%")
-                ->orWhere('email', 'like', "%{$user}%")))
-            ->when($location !== '', static fn ($query) => $query->where(static function ($query) use ($location): void {
-                $query->where('location_city', 'like', "%{$location}%")
-                    ->orWhere('location_region', 'like', "%{$location}%")
-                    ->orWhere('location_country_code', 'like', "%{$location}%");
-            }))
+            ->when($keyword !== '', static function ($query) use ($keyword): void {
+                $query->where(static function ($query) use ($keyword): void {
+                    $query->where('ip_address', 'like', "%{$keyword}%")
+                        ->orWhere('location_city', 'like', "%{$keyword}%")
+                        ->orWhere('location_region', 'like', "%{$keyword}%")
+                        ->orWhere('location_country_code', 'like', "%{$keyword}%")
+                        ->orWhereHas('user', static fn ($query) => $query
+                            ->where('name', 'like', "%{$keyword}%")
+                            ->orWhere('email', 'like', "%{$keyword}%"));
+                });
+            })
             ->when($events !== [], static fn ($query) => $query->whereIn('event_type', $events))
             ->when($outcomes !== [], static fn ($query) => $query->whereIn('outcome', $outcomes))
             ->when($statusCode >= 100 && $statusCode <= 599, static fn ($query) => $query->where('status_code', $statusCode))
@@ -68,9 +68,7 @@ class VisitLogController extends Controller
             'eventTypes' => VisitLog::EVENT_TYPES,
             'outcomes' => VisitLog::OUTCOMES,
             'filters' => [
-                'ip' => $ip,
-                'user' => $user,
-                'location' => $location,
+                'keyword' => $keyword,
                 'event' => $this->filterValue($events),
                 'outcome' => $this->filterValue($outcomes),
                 'statusCode' => $statusCode > 0 ? (string) $statusCode : '',
