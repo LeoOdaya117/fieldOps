@@ -1,5 +1,6 @@
 import type { ComponentProps, Key, ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { SortableColumn } from '@/components/sortable-column';
 import {
     DataTableColumnVisibility,
     useDataTableColumnVisibility,
@@ -9,6 +10,7 @@ import type {
 } from '@/components/ui/data-table-column-visibility';
 import { TablePagination } from '@/components/ui/table-pagination';
 import type { TablePaginationProps } from '@/components/ui/table-pagination';
+import { formatDateTime } from '@/lib/format-date';
 import { cn } from '@/lib/utils';
 
 type DataTableColumn<T> = {
@@ -22,11 +24,21 @@ type DataTableColumn<T> = {
     cell?: (row: T, index: number) => ReactNode;
 };
 
+type DefaultColumnSortOptions = {
+    action: string;
+    sort?: string;
+    direction?: 'asc' | 'desc';
+    sortParam?: string;
+    directionParam?: string;
+    hidden?: Record<string, string | readonly string[] | undefined>;
+};
+
 type DataTableProps<T = unknown> = ComponentProps<'table'> & {
     caption?: ReactNode;
     data?: readonly T[];
     addDefaultColumns?: boolean;
     excludeDefaultColumns?: readonly string[];
+    defaultColumnSort?: DefaultColumnSortOptions;
     containerClassName?: string;
     scrollContainerClassName?: string;
     tableColumns?:
@@ -51,6 +63,7 @@ function DataTable<T>({
     data,
     addDefaultColumns = false,
     excludeDefaultColumns = [],
+    defaultColumnSort,
     containerClassName,
     scrollContainerClassName,
     tableColumns,
@@ -69,7 +82,11 @@ function DataTable<T>({
         configuredColumns === undefined && children !== undefined
               ? undefined
             : addDefaultColumns
-              ? mergeDefaultColumns(configuredColumns ?? [], excludeDefaultColumns)
+              ? mergeDefaultColumns(
+                    configuredColumns ?? [],
+                    excludeDefaultColumns,
+                    defaultColumnSort,
+                )
               : configuredColumns;
     const hideableColumns =
         columns?.filter((column) => column.hideable !== false) ?? [];
@@ -288,13 +305,7 @@ function getColumnLabel<T>(column: DataTableColumn<T>): string {
 }
 
 function formatDefaultDate(value: unknown) {
-    if (!value) {
-        return '—';
-    }
-
-    const date = new Date(String(value));
-
-    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
+    return formatDateTime(value);
 }
 
 function formatActor(value: unknown) {
@@ -337,41 +348,63 @@ function formatRecordStatus(value: unknown) {
     );
 }
 
-function defaultTableColumns(): DataTableColumn<unknown>[] {
+function defaultColumnHeader(
+    label: string,
+    sortKey: string,
+    sortOptions?: DefaultColumnSortOptions,
+) {
+    return sortOptions ? (
+        <SortableColumn
+            {...sortOptions}
+            label={label}
+            sortKey={sortKey}
+        />
+    ) : (
+        label
+    );
+}
+
+function defaultTableColumns(
+    sortOptions?: DefaultColumnSortOptions,
+): DataTableColumn<unknown>[] {
     return [
         {
             key: 'created_at',
-            header: 'Created',
+            header: defaultColumnHeader('Created', 'created_at', sortOptions),
             label: 'Created',
             cell: (row) => formatDefaultDate(readDefaultValue(row, 'created_at')),
         },
         {
             key: 'updated_at',
-            header: 'Updated',
+            header: defaultColumnHeader('Updated', 'updated_at', sortOptions),
             label: 'Updated',
             cell: (row) => formatDefaultDate(readDefaultValue(row, 'updated_at')),
         },
         {
             key: 'created_by',
-            header: 'Created by',
+            header: defaultColumnHeader('Created by', 'created_by', sortOptions),
             label: 'Created by',
             cell: (row) => formatActor(readDefaultValue(row, 'created_by')),
         },
         {
             key: 'updated_by',
-            header: 'Updated by',
+            header: defaultColumnHeader('Updated by', 'updated_by', sortOptions),
             label: 'Updated by',
             cell: (row) => formatActor(readDefaultValue(row, 'updated_by')),
         },
         {
             key: 'status',
-            header: 'Status',
+            header: defaultColumnHeader('Status', 'status', sortOptions),
             label: 'Status',
             cell: (row) => formatDefaultValue(readDefaultValue(row, 'status')),
         },
         {
             key: 'record_status',
-            header: 'Record status',
+            header: defaultColumnHeader(
+                'Record status',
+                'record_status',
+                sortOptions,
+            ),
             label: 'Record status',
             cell: (row) => formatRecordStatus(readDefaultValue(row, 'record_status')),
         },
@@ -381,10 +414,11 @@ function defaultTableColumns(): DataTableColumn<unknown>[] {
 function mergeDefaultColumns<T>(
     columns: readonly DataTableColumn<T>[],
     excludeDefaultColumns: readonly string[],
+    sortOptions?: DefaultColumnSortOptions,
 ) {
     const keys = new Set(columns.map((column) => column.key));
     const excludedKeys = new Set(excludeDefaultColumns);
-    const defaults = defaultTableColumns().filter(
+    const defaults = defaultTableColumns(sortOptions).filter(
         (column) => !keys.has(column.key) && !excludedKeys.has(column.key),
     );
 

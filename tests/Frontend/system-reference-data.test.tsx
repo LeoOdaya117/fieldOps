@@ -314,7 +314,9 @@ describe('system reference data UI', () => {
             screen.getByRole('columnheader', { name: 'Updated by' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('columnheader', { name: 'Record status' }),
+            screen.getByRole('columnheader', {
+                name: /^Sort Record status ascending$/,
+            }),
         ).toBeInTheDocument();
         expect(screen.getAllByText('Admin')).toHaveLength(2);
         expect(

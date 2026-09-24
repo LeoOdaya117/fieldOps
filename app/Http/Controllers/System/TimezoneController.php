@@ -13,6 +13,7 @@ use App\Support\SystemSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,6 +26,11 @@ class TimezoneController extends Controller
         $search = trim((string) $request->input('search', ''));
         $from = $this->parseDate($request->input('from'));
         $to = $this->parseDate($request->input('to'));
+        $updatedFrom = $this->parseDate($request->input('updated_from'));
+        $updatedTo = $this->parseDate($request->input('updated_to'));
+        $createdBy = trim((string) $request->input('created_by', ''));
+        $updatedBy = trim((string) $request->input('updated_by', ''));
+        $recordStatuses = $this->filterValues($request->input('record_status'), ['active', 'inactive']);
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
@@ -32,6 +38,7 @@ class TimezoneController extends Controller
             'name' => 'name',
             'created_at' => 'created_at',
             'updated_at' => 'updated_at',
+            'record_status' => 'record_status',
         ];
 
         $timezones = Timezone::query()
@@ -39,10 +46,44 @@ class TimezoneController extends Controller
             ->when($search !== '', static fn ($query) => $query->where('name', 'like', "%{$search}%"))
             ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
             ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
+            ->when(in_array('inactive', $recordStatuses, true), static fn ($query) => $query->withTrashed())
+            ->when($recordStatuses !== [], static fn ($query) => $query->whereIn(
+                'record_status',
+                array_map(static fn (string $status): int => $status === 'active' ? 1 : 0, $recordStatuses),
+            ))
+            ->when($updatedFrom !== null, static fn ($query) => $query->where('updated_at', '>=', $updatedFrom->startOfDay()))
+            ->when($updatedTo !== null, static fn ($query) => $query->where('updated_at', '<=', $updatedTo->endOfDay()))
+            ->when($createdBy !== '', static fn ($query) => $query->whereHas('createdBy', static fn ($actorQuery) => $actorQuery
+                ->where('name', 'like', "%{$createdBy}%")
+                ->orWhere('email', 'like', "%{$createdBy}%")))
+            ->when($updatedBy !== '', static fn ($query) => $query->whereHas('updatedBy', static fn ($actorQuery) => $actorQuery
+                ->where('name', 'like', "%{$updatedBy}%")
+                ->orWhere('email', 'like', "%{$updatedBy}%")))
             ->when(
-                isset($sortColumns[$sort]),
-                static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
-                static fn ($query) => $query->orderBy('name'),
+                $sort === 'created_by',
+                static fn ($query) => $query->orderBy(
+                    DB::table('users as created_actors')
+                        ->select('created_actors.name')
+                        ->whereColumn('created_actors.id', 'timezones.created_by'),
+                    $direction,
+                ),
+            )
+            ->when(
+                $sort === 'updated_by',
+                static fn ($query) => $query->orderBy(
+                    DB::table('users as updated_actors')
+                        ->select('updated_actors.name')
+                        ->whereColumn('updated_actors.id', 'timezones.updated_by'),
+                    $direction,
+                ),
+            )
+            ->when(
+                $sort !== 'created_by' && $sort !== 'updated_by',
+                static fn ($query) => $query->when(
+                    isset($sortColumns[$sort]),
+                    static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
+                    static fn ($query) => $query->orderBy('name'),
+                ),
             )
             ->paginate($pageSize)
             ->appends(PageSize::query($request, $pageSize))
@@ -56,6 +97,11 @@ class TimezoneController extends Controller
                 'search' => $search,
                 'from' => $from?->format('Y-m-d') ?? '',
                 'to' => $to?->format('Y-m-d') ?? '',
+                'updatedFrom' => $updatedFrom?->format('Y-m-d') ?? '',
+                'updatedTo' => $updatedTo?->format('Y-m-d') ?? '',
+                'createdBy' => $createdBy,
+                'updatedBy' => $updatedBy,
+                'recordStatus' => $this->filterValue($recordStatuses),
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
@@ -155,5 +201,30 @@ class TimezoneController extends Controller
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /** @param array<int, string> $allowed
+     * @return array<int, string>
+     */
+    private function filterValues(mixed $value, array $allowed): array
+    {
+        $values = is_array($value) ? $value : [$value];
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $item): string => (string) $item, $values),
+            static fn (string $item): bool => in_array($item, $allowed, true),
+        )));
+    }
+
+    /** @param array<int, string> $values
+     * @return string|array<int, string>
+     */
+    private function filterValue(array $values): string|array
+    {
+        return match (count($values)) {
+            0 => '',
+            1 => $values[0],
+            default => $values,
+        };
     }
 }

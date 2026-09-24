@@ -11,6 +11,8 @@ import { SortableColumn } from '@/components/sortable-column';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import type { DataTableColumn } from '@/components/ui/data-table';
+import { auditFilterQuery } from '@/types/audit';
+import type { AuditTableFilters, StandardAuditFields } from '@/types/audit';
 import {
     TableActionForm,
     TableActionLink,
@@ -29,7 +31,7 @@ export type SecurityActor = {
     email: string;
 };
 
-export type BlockedIpAddress = {
+export type BlockedIpAddress = StandardAuditFields & {
     id: number;
     ipAddress: string;
     user: SecurityActor | null;
@@ -43,11 +45,9 @@ export type BlockedIpAddress = {
     unblockedBy: SecurityActor | null;
 };
 
-export type BlockedIpTableFilters = {
+export type BlockedIpTableFilters = AuditTableFilters & {
     search: string;
     status: string | string[];
-    from?: string;
-    to?: string;
     perPage?: number;
     sort?: string;
     direction?: 'asc' | 'desc';
@@ -83,8 +83,7 @@ export function blockedIpTableColumns({
     const hidden = {
         search: filters.search,
         status: filters.status,
-        from: filters.from,
-        to: filters.to,
+        ...auditFilterQuery(filters),
     };
 
     return [

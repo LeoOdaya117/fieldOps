@@ -1,9 +1,9 @@
 import { Plus } from 'lucide-react';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import { ActionLink } from '@/components/action-link';
+import { AuditFilterFields } from '@/components/audit-filter-fields';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { DataTable } from '@/components/ui/data-table';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
@@ -14,6 +14,7 @@ import type {
     ReferenceDataFilters,
 } from '@/features/system/types';
 import { dashboard } from '@/routes';
+import { auditFilterCount, auditFilterQuery } from '@/types/audit';
 import {
     create as createCountry,
     index as countriesIndex,
@@ -46,8 +47,8 @@ export default function CountriesPage({
                 title="Search and filter countries"
                 description="Find a country by code or name."
                 activeFilterCount={
-                    [filters.search, filters.from, filters.to].filter(Boolean)
-                        .length
+                    [filters.search].filter(Boolean).length +
+                    auditFilterCount(filters)
                 }
                 pageSize={pageSize}
                 keyword={
@@ -62,20 +63,9 @@ export default function CountriesPage({
                         />
                     </div>
                 }
-                dateRange={
-                    <div className="grid gap-2">
-                        <Label htmlFor="country-date-range">Date range</Label>
-                        <DateRangePicker
-                            id="country-date-range"
-                            from={filters.from}
-                            to={filters.to}
-                            fromName="from"
-                            toName="to"
-                            label="Country date range"
-                        />
-                    </div>
-                }
-            ></SearchFilterSheet>
+            >
+                <AuditFilterFields filters={filters} idPrefix="country" />
+            </SearchFilterSheet>
             {canCreate ? (
                 <ActionLink href={createCountry.url()}>
                     <Plus />
@@ -112,6 +102,15 @@ export default function CountriesPage({
                     }
                     addDefaultColumns
                     excludeDefaultColumns={['status']}
+                    defaultColumnSort={{
+                        action: countriesIndex.url(),
+                        sort: filters.sort,
+                        direction: filters.direction,
+                        hidden: {
+                            search: filters.search,
+                            ...auditFilterQuery(filters),
+                        },
+                    }}
                     columnVisibility={{
                         storageKey: 'system.countries',
                         defaultVisibleKeys: [

@@ -23,6 +23,8 @@ import type {
     ReferenceDataFilters,
     Timezone,
 } from '@/features/system/types';
+import { formatDateTime } from '@/lib/format-date';
+import { auditFilterQuery } from '@/types/audit';
 
 type RecordStatusSwitchProps = {
     recordStatus: number;
@@ -54,22 +56,20 @@ function RecordStatusSwitch({ recordStatus, label }: RecordStatusSwitchProps) {
 }
 
 function formatDate(value: string | null): string {
-    return value ? new Date(value).toLocaleDateString() : '—';
+    return formatDateTime(value);
 }
 
 function countryFilters(filters: ReferenceDataFilters) {
     return {
         search: filters.search,
-        from: filters.from,
-        to: filters.to,
+        ...auditFilterQuery(filters),
     };
 }
 
 function timezoneFilters(filters: ReferenceDataFilters) {
     return {
         search: filters.search,
-        from: filters.from,
-        to: filters.to,
+        ...auditFilterQuery(filters),
     };
 }
 
@@ -137,7 +137,16 @@ export function countryTableColumns({
         {
             key: 'record_status',
             label: 'Record status',
-            header: 'Record status',
+            header: (
+                <SortableColumn
+                    action={countriesIndex.url()}
+                    label="Record status"
+                    sortKey="record_status"
+                    sort={sort}
+                    direction={direction}
+                    hidden={hidden}
+                />
+            ),
             cell: (country) => (
                 <RecordStatusSwitch
                     recordStatus={country.recordStatus}
@@ -230,7 +239,16 @@ export function timezoneTableColumns({
         {
             key: 'record_status',
             label: 'Record status',
-            header: 'Record status',
+            header: (
+                <SortableColumn
+                    action={timezonesIndex.url()}
+                    label="Record status"
+                    sortKey="record_status"
+                    sort={sort}
+                    direction={direction}
+                    hidden={hidden}
+                />
+            ),
             cell: (timezone) => (
                 <RecordStatusSwitch
                     recordStatus={timezone.recordStatus}

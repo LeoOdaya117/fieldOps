@@ -11,6 +11,8 @@ type SortableColumnProps = {
     sortKey: string;
     sort?: string;
     direction?: SortDirection;
+    sortParam?: string;
+    directionParam?: string;
     hidden?: Record<string, QueryValue>;
 };
 
@@ -44,6 +46,8 @@ function SortableColumn({
     sortKey,
     sort = '',
     direction = 'asc',
+    sortParam = 'sort',
+    directionParam = 'direction',
     hidden = {},
 }: SortableColumnProps) {
     const isActive = sort === sortKey;
@@ -51,8 +55,8 @@ function SortableColumn({
         isActive && direction === 'asc' ? 'desc' : 'asc';
     const href = buildQueryUrl(action, {
         ...hidden,
-        sort: sortKey,
-        direction: nextDirection,
+        [sortParam]: sortKey,
+        [directionParam]: nextDirection,
     });
 
     return (

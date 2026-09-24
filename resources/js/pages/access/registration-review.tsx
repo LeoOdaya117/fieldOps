@@ -24,6 +24,7 @@ type Registration = {
     email: string;
     status: 'pending' | 'approved' | 'rejected';
     createdAt: string | null;
+    updatedAt: string | null;
 };
 
 export default function RegistrationReviewPage({

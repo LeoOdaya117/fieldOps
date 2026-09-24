@@ -254,6 +254,48 @@ class UserManagementTest extends TestCase
         $this->assertTrue(Hash::check('password', $user->password));
     }
 
+    public function test_registration_index_exposes_timestamps_without_standard_actor_fields(): void
+    {
+        $registration = UserRegistration::query()->create([
+            'name' => 'Timestamp Applicant',
+            'email' => 'timestamp@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->get(route('access.users.registrations'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('registrations.0.id', $registration->id)
+                ->has('registrations.0.createdAt')
+                ->has('registrations.0.updatedAt')
+                ->missing('registrations.0.createdBy')
+                ->missing('registrations.0.updatedBy')
+                ->missing('registrations.0.recordStatus'));
+    }
+
+    public function test_registration_index_filters_by_updated_timestamp(): void
+    {
+        $registration = UserRegistration::query()->create([
+            'name' => 'Old Applicant',
+            'email' => 'old-applicant@example.com',
+            'password' => Hash::make('password'),
+        ]);
+        $registration->forceFill([
+            'created_at' => now()->subDays(5),
+            'updated_at' => now()->subDays(5),
+        ])->saveQuietly();
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->get(route('access.users.registrations', [
+                'updated_from' => now()->format('Y-m-d'),
+            ]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.updatedFrom', now()->format('Y-m-d'))
+                ->where('registrations', []));
+    }
+
     public function test_admin_can_reject_a_pending_registration_without_creating_a_user(): void
     {
         $registration = UserRegistration::query()->create([

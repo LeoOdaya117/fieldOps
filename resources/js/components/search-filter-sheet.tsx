@@ -25,8 +25,8 @@ type SearchFilterSheetProps = {
     resetHref: string;
     activeFilterCount?: number;
     pageSize?: number;
-    keyword: ReactNode;
-    dateRange: ReactNode;
+    keyword?: ReactNode;
+    dateRange?: ReactNode;
     children?: ReactNode;
 };
 
@@ -70,8 +70,8 @@ export default function SearchFilterSheet({
                     className="flex min-h-0 flex-1 flex-col"
                 >
                     <div className="flex-1 space-y-5 overflow-y-auto p-4">
-                        {keyword}
-                        {dateRange}
+                        {keyword ? keyword : null}
+                        {dateRange ? dateRange : null}
                         {children}
                         <div className="grid gap-2 border-t border-border pt-5">
                             <label

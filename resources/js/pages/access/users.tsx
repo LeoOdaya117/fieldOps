@@ -8,12 +8,12 @@ import {
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { ActionLink } from '@/components/action-link';
+import { AuditFilterFields } from '@/components/audit-filter-fields';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
-import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { AdaptiveSelect } from '@/components/ui/adaptive-select';
 import { Input } from '@/components/ui/input';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
@@ -23,11 +23,13 @@ import {
 } from '@/features/access/user-table-model';
 import type {
     Invitation,
+    InvitationTableFilters,
     RoleOption,
     Registration,
     UserTableFilters,
     UserRow,
 } from '@/features/access/user-table-model';
+import { auditFilterCount, auditFilterQuery } from '@/types/audit';
 import { dashboard } from '@/routes';
 import { index as usersIndex } from '@/routes/access/users';
 
@@ -55,6 +57,7 @@ type UsersPageProps = {
     canSuspend?: boolean;
     canReactivate?: boolean;
     filters: UserTableFilters;
+    invitationFilters?: InvitationTableFilters;
 };
 
 function StatCard({
@@ -120,6 +123,7 @@ export default function UsersPage({
     canSuspend = true,
     canReactivate = true,
     filters,
+    invitationFilters = { search: '', status: '' },
 }: UsersPageProps) {
     const previousUrl = users.links?.find((link) =>
         link.label.includes('Previous'),
@@ -165,6 +169,63 @@ export default function UsersPage({
             toggleAllUsers,
         });
 
+    const invitationTableActions = (
+        <SearchFilterSheet
+            action="/access/users"
+            resetHref="/access/users"
+            title="Search and filter invitations"
+            description="Find pending invitations and narrow them by their audit metadata."
+            activeFilterCount={
+                [invitationFilters.search, invitationFilters.status].filter(
+                    Boolean,
+                ).length + auditFilterCount(invitationFilters)
+            }
+            pageSize={pageSize}
+            keyword={
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="invitation-search"
+                        className="text-sm font-medium"
+                    >
+                        Search invitations
+                    </label>
+                    <Input
+                        id="invitation-search"
+                        name="invitation_search"
+                        defaultValue={invitationFilters.search}
+                        placeholder="Email or role"
+                    />
+                </div>
+            }
+        >
+            <AuditFilterFields
+                filters={invitationFilters}
+                idPrefix="invitation"
+                namePrefix="invitation_"
+            />
+            <div className="grid gap-2">
+                <label
+                    htmlFor="invitation-status"
+                    className="text-sm font-medium"
+                >
+                    Status
+                </label>
+                <AdaptiveSelect
+                    id="invitation-status"
+                    name="invitation_status"
+                    multiple
+                    defaultValue={invitationFilters.status}
+                    placeholder="All statuses"
+                    options={[
+                        { value: '', label: 'All statuses' },
+                        { value: 'active', label: 'Active' },
+                        { value: 'inactive', label: 'Inactive' },
+                    ]}
+                />
+            </div>
+        </SearchFilterSheet>
+    );
+
     const tableActions = (
         <>
             <SearchFilterSheet
@@ -174,7 +235,7 @@ export default function UsersPage({
                 description="Find users by name or email and narrow the list by account status."
                 activeFilterCount={
                     [filters.search, filters.status].filter(Boolean).length +
-                    [filters.from, filters.to].filter(Boolean).length
+                    auditFilterCount(filters)
                 }
                 pageSize={pageSize}
                 keyword={
@@ -194,25 +255,8 @@ export default function UsersPage({
                         />
                     </div>
                 }
-                dateRange={
-                    <div className="grid gap-2">
-                        <label
-                            htmlFor="user-date-range"
-                            className="text-sm font-medium"
-                        >
-                            Date range
-                        </label>
-                        <DateRangePicker
-                            id="user-date-range"
-                            from={filters.from}
-                            to={filters.to}
-                            fromName="from"
-                            toName="to"
-                            label="User date range"
-                        />
-                    </div>
-                }
             >
+                <AuditFilterFields filters={filters} idPrefix="user" />
                 <div className="grid gap-2">
                     <label
                         htmlFor="user-status"
@@ -305,9 +349,44 @@ export default function UsersPage({
                         scrollContainerClassName="px-4"
                         data={invitations}
                         tableColumns={invitationTableColumns}
+                        actions={invitationTableActions}
+                        addDefaultColumns
+                        defaultColumnSort={{
+                            action: usersIndex.url(),
+                            sort: invitationFilters.sort,
+                            direction: invitationFilters.direction,
+                            sortParam: 'invitation_sort',
+                            directionParam: 'invitation_direction',
+                            hidden: {
+                                invitation_search: invitationFilters.search,
+                                invitation_status: invitationFilters.status,
+                                invitation_from: invitationFilters.from,
+                                invitation_to: invitationFilters.to,
+                                invitation_updated_from:
+                                    invitationFilters.updatedFrom,
+                                invitation_updated_to:
+                                    invitationFilters.updatedTo,
+                                invitation_created_by:
+                                    invitationFilters.createdBy,
+                                invitation_updated_by:
+                                    invitationFilters.updatedBy,
+                                invitation_record_status:
+                                    invitationFilters.recordStatus,
+                            },
+                        }}
                         columnVisibility={{
-                            storageKey: 'access.invitations',
-                            defaultVisibleKeys: ['email', 'role', 'expires'],
+                            storageKey: 'access.invitations.v2',
+                            defaultVisibleKeys: [
+                                'email',
+                                'role',
+                                'expires',
+                                'created_at',
+                                'updated_at',
+                                'created_by',
+                                'updated_by',
+                                'status',
+                                'record_status',
+                            ],
                         }}
                         getRowKey={(invitation) => invitation.id}
                     />
@@ -331,6 +410,18 @@ export default function UsersPage({
                             No users found.
                         </p>
                     }
+                    addDefaultColumns
+                    excludeDefaultColumns={['created_at', 'status']}
+                    defaultColumnSort={{
+                        action: usersIndex.url(),
+                        sort: filters.sort,
+                        direction: filters.direction,
+                        hidden: {
+                            search: filters.search,
+                            status: filters.status,
+                            ...auditFilterQuery(filters),
+                        },
+                    }}
                     toolbar={
                         (canSuspend || canReactivate) &&
                         selectedUserIds.length > 0 ? (
@@ -387,12 +478,16 @@ export default function UsersPage({
                         ) : null
                     }
                     columnVisibility={{
-                        storageKey: 'access.users',
+                        storageKey: 'access.users.v2',
                         defaultVisibleKeys: [
                             'user',
                             'status',
                             'role',
                             'created',
+                            'updated_at',
+                            'created_by',
+                            'updated_by',
+                            'record_status',
                         ],
                     }}
                     getRowKey={(user) => user.id}

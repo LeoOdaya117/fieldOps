@@ -10,10 +10,12 @@ use App\Http\Requests\Access\DeleteBlockedIpAddressRequest;
 use App\Http\Requests\Access\StoreBlockedIpAddressRequest;
 use App\Http\Requests\Access\UpdateBlockedIpAddressRequest;
 use App\Models\BlockedIpAddress;
+use App\Models\User;
 use App\Support\Pagination\PageSize;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,6 +29,13 @@ class BlockedIpAddressController extends Controller
         $statuses = $this->filterValues($request->input('status'), ['active', 'inactive']);
         $from = $this->parseDate($request->input('from'));
         $to = $this->parseDate($request->input('to'));
+        $createdFrom = $this->parseDate($request->input('created_from'));
+        $createdTo = $this->parseDate($request->input('created_to'));
+        $updatedFrom = $this->parseDate($request->input('updated_from'));
+        $updatedTo = $this->parseDate($request->input('updated_to'));
+        $createdBy = trim((string) $request->input('created_by', ''));
+        $updatedBy = trim((string) $request->input('updated_by', ''));
+        $recordStatuses = $this->filterValues($request->input('record_status'), ['active', 'inactive']);
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
@@ -35,10 +44,19 @@ class BlockedIpAddressController extends Controller
             'is_active' => 'is_active',
             'blocked_at' => 'blocked_at',
             'last_seen_at' => 'last_seen_at',
+            'created_at' => 'created_at',
+            'updated_at' => 'updated_at',
+            'record_status' => 'record_status',
         ];
 
         $rules = BlockedIpAddress::query()
-            ->with(['user:id,name,email', 'blockedBy:id,name,email', 'unblockedBy:id,name,email'])
+            ->with([
+                'user:id,name,email',
+                'blockedBy:id,name,email',
+                'unblockedBy:id,name,email',
+                'createdBy:id,name,email',
+                'updatedBy:id,name,email',
+            ])
             ->when($search !== '', static fn ($query) => $query->where(static function ($query) use ($search): void {
                 $query->where('ip_address', 'like', "%{$search}%")
                     ->orWhere('reason', 'like', "%{$search}%")
@@ -47,16 +65,52 @@ class BlockedIpAddressController extends Controller
                         ->orWhere('email', 'like', "%{$search}%"));
             }))
             ->when($statuses !== [], static fn ($query) => $query->whereIn('is_active', array_map(static fn (string $status): bool => $status === 'active', $statuses)))
+            ->when(in_array('inactive', $recordStatuses, true), static fn ($query) => $query->withTrashed())
+            ->when($recordStatuses !== [], static fn ($query) => $query->whereIn(
+                'record_status',
+                array_map(static fn (string $status): int => $status === 'active' ? 1 : 0, $recordStatuses),
+            ))
             ->when($from !== null, static fn ($query) => $query->where('blocked_at', '>=', $from->startOfDay()))
             ->when($to !== null, static fn ($query) => $query->where('blocked_at', '<=', $to->endOfDay()))
+            ->when($createdFrom !== null, static fn ($query) => $query->where('created_at', '>=', $createdFrom->startOfDay()))
+            ->when($createdTo !== null, static fn ($query) => $query->where('created_at', '<=', $createdTo->endOfDay()))
+            ->when($updatedFrom !== null, static fn ($query) => $query->where('updated_at', '>=', $updatedFrom->startOfDay()))
+            ->when($updatedTo !== null, static fn ($query) => $query->where('updated_at', '<=', $updatedTo->endOfDay()))
+            ->when($createdBy !== '', static fn ($query) => $query->whereHas('createdBy', static fn ($actorQuery) => $actorQuery
+                ->where('name', 'like', "%{$createdBy}%")
+                ->orWhere('email', 'like', "%{$createdBy}%")))
+            ->when($updatedBy !== '', static fn ($query) => $query->whereHas('updatedBy', static fn ($actorQuery) => $actorQuery
+                ->where('name', 'like', "%{$updatedBy}%")
+                ->orWhere('email', 'like', "%{$updatedBy}%")))
             ->when(
-                isset($sortColumns[$sort]),
-                static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
-                static fn ($query) => $query->orderByDesc('is_active')->orderByDesc('last_seen_at')->orderByDesc('blocked_at'),
+                $sort === 'created_by',
+                static fn ($query) => $query->orderBy(
+                    DB::table('users as created_actors')
+                        ->select('created_actors.name')
+                        ->whereColumn('created_actors.id', 'blocked_ip_addresses.created_by'),
+                    $direction,
+                ),
+            )
+            ->when(
+                $sort === 'updated_by',
+                static fn ($query) => $query->orderBy(
+                    DB::table('users as updated_actors')
+                        ->select('updated_actors.name')
+                        ->whereColumn('updated_actors.id', 'blocked_ip_addresses.updated_by'),
+                    $direction,
+                ),
+            )
+            ->when(
+                $sort !== 'created_by' && $sort !== 'updated_by',
+                static fn ($query) => $query->when(
+                    isset($sortColumns[$sort]),
+                    static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
+                    static fn ($query) => $query->orderByDesc('is_active')->orderByDesc('last_seen_at')->orderByDesc('blocked_at'),
+                ),
             )
             ->paginate($pageSize)
             ->appends(PageSize::query($request, $pageSize))
-            ->through(static fn (BlockedIpAddress $rule): array => [
+            ->through(fn (BlockedIpAddress $rule): array => [
                 'id' => $rule->id,
                 'ipAddress' => $rule->ip_address,
                 'user' => $rule->user === null ? null : [
@@ -80,6 +134,11 @@ class BlockedIpAddressController extends Controller
                     'name' => $rule->unblockedBy->name,
                     'email' => $rule->unblockedBy->email,
                 ],
+                'createdAt' => $rule->created_at?->toIso8601String(),
+                'updatedAt' => $rule->updated_at?->toIso8601String(),
+                'createdBy' => $this->actor($rule->createdBy),
+                'updatedBy' => $this->actor($rule->updatedBy),
+                'recordStatus' => (int) $rule->record_status,
             ]);
 
         return Inertia::render('access/ip-blocks', [
@@ -89,6 +148,13 @@ class BlockedIpAddressController extends Controller
                 'status' => $this->filterValue($statuses),
                 'from' => $from?->format('Y-m-d') ?? '',
                 'to' => $to?->format('Y-m-d') ?? '',
+                'createdFrom' => $createdFrom?->format('Y-m-d') ?? '',
+                'createdTo' => $createdTo?->format('Y-m-d') ?? '',
+                'updatedFrom' => $updatedFrom?->format('Y-m-d') ?? '',
+                'updatedTo' => $updatedTo?->format('Y-m-d') ?? '',
+                'createdBy' => $createdBy,
+                'updatedBy' => $updatedBy,
+                'recordStatus' => $this->filterValue($recordStatuses),
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
@@ -241,7 +307,9 @@ class BlockedIpAddressController extends Controller
         }
     }
 
-    /** @param array<int, string> $allowed */
+    /** @param array<int, string> $allowed
+     * @return array<int, string>
+     */
     private function filterValues(mixed $value, array $allowed): array
     {
         $values = is_array($value) ? $value : [$value];
@@ -252,7 +320,9 @@ class BlockedIpAddressController extends Controller
         )));
     }
 
-    /** @param array<int, string> $values */
+    /** @param array<int, string> $values
+     * @return string|array<int, string>
+     */
     private function filterValue(array $values): string|array
     {
         return match (count($values)) {
@@ -260,5 +330,15 @@ class BlockedIpAddressController extends Controller
             1 => $values[0],
             default => $values,
         };
+    }
+
+    /** @return array{id: int, name: string, email: string}|null */
+    private function actor(?User $actor): ?array
+    {
+        return $actor === null ? null : [
+            'id' => (int) $actor->getKey(),
+            'name' => (string) $actor->name,
+            'email' => (string) $actor->email,
+        ];
     }
 }

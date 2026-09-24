@@ -37,13 +37,19 @@ class ReferenceDataTest extends TestCase
         $this->assertFalse(Schema::hasColumn('timezones', 'status'));
 
         $this->actingAs($admin)
-            ->get(route('system.countries.index'))
+            ->get(route('system.countries.index', [
+                'search' => 'Quality Zone',
+                'created_by' => $admin->email,
+                'updated_from' => now()->subDay()->format('Y-m-d'),
+            ]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('system/countries')
                 ->where('canManage', true)
                 ->where('canCreate', true)
                 ->has('filters')
+                ->where('filters.createdBy', $admin->email)
+                ->where('filters.updatedFrom', now()->subDay()->format('Y-m-d'))
                 ->missing('filters.status')
                 ->has('countries.data', 1, fn (Assert $data) => $data
                     ->where('id', $country->id)

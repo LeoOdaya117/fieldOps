@@ -701,6 +701,111 @@ describe('reusable data table components', () => {
         expect(screen.getByText('Active')).toBeInTheDocument();
     });
 
+    it('formats camelCase audit payloads through the shared default columns', () => {
+        render(
+            <DataTable
+                caption="Camel case audit records"
+                data={[
+                    {
+                        id: 1,
+                        name: 'Example',
+                        createdAt: '2030-01-02T00:00:00Z',
+                        updatedAt: '2030-01-03T00:00:00Z',
+                        createdBy: {
+                            id: 1,
+                            name: 'Owner',
+                            email: 'owner@example.com',
+                        },
+                        updatedBy: {
+                            id: 2,
+                            name: 'Admin',
+                            email: 'admin@example.com',
+                        },
+                        recordStatus: 1,
+                    },
+                ]}
+                tableColumns={[
+                    { key: 'name', header: 'Name', accessor: 'name' },
+                ]}
+                addDefaultColumns
+                getRowKey={(row) => row.id}
+            />,
+        );
+
+        expect(
+            screen.getByRole('columnheader', { name: 'Updated' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Owner')).toBeInTheDocument();
+        expect(screen.getByText('Admin')).toBeInTheDocument();
+        expect(screen.getByText('Active')).toBeInTheDocument();
+    });
+
+    it('activates shared audit sorting and toggles its direction', () => {
+        render(
+            <DataTable
+                caption="Sortable audit records"
+                data={[{ id: 1, name: 'Example' }]}
+                tableColumns={[
+                    { key: 'name', header: 'Name', accessor: 'name' },
+                ]}
+                addDefaultColumns
+                defaultColumnSort={{
+                    action: '/access/users',
+                    sort: 'updated_at',
+                    direction: 'asc',
+                    hidden: { status: 'active' },
+                }}
+                getRowKey={(row) => row.id}
+            />,
+        );
+
+        expect(
+            screen.getByRole('link', { name: 'Sort Updated descending' }),
+        ).toHaveAttribute(
+            'href',
+            '/access/users?status=active&sort=updated_at&direction=desc',
+        );
+        expect(
+            screen.getByRole('link', { name: 'Sort Created by ascending' }),
+        ).toHaveAttribute(
+            'href',
+            '/access/users?status=active&sort=created_by&direction=asc',
+        );
+    });
+
+    it('ignores stale visibility preferences after an affected table key is versioned', () => {
+        localStorage.setItem(
+            'fieldops:data-table-columns:access.roles',
+            JSON.stringify({ visibleKeys: ['role'] }),
+        );
+
+        render(
+            <DataTable
+                caption="Versioned audit records"
+                data={[{ id: 1, name: 'Example' }]}
+                tableColumns={[
+                    { key: 'role', header: 'Role', accessor: 'name' },
+                ]}
+                addDefaultColumns
+                columnVisibility={{
+                    storageKey: 'access.roles.v2',
+                    defaultVisibleKeys: ['role', 'created_at', 'updated_at'],
+                }}
+                getRowKey={(row) => row.id}
+            />,
+        );
+
+        expect(
+            screen.getByRole('columnheader', { name: 'Role' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Created' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Updated' }),
+        ).toBeInTheDocument();
+    });
+
     it('renders reusable numbered pagination controls with arrow navigation', async () => {
         const user = userEvent.setup();
         inertiaRouter.get.mockClear();

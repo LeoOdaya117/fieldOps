@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Access\BulkRoleDeleteRequest;
 use App\Http\Requests\Access\SaveRoleRequest;
 use App\Models\Role;
+use App\Models\User;
 use App\Support\Pagination\PageSize;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
@@ -30,8 +31,14 @@ class RoleController extends Controller
         $types = $this->filterValues($request->input('type'), ['system', 'custom']);
         $assignedValues = $this->filterValues($request->input('assigned'), ['assigned', 'unassigned']);
         $permissionsMin = trim((string) $request->input('permissions_min', ''));
+        $statuses = $this->filterValues($request->input('status'), ['active', 'inactive']);
         $from = $this->parseDate($request->input('from'));
         $to = $this->parseDate($request->input('to'));
+        $updatedFrom = $this->parseDate($request->input('updated_from'));
+        $updatedTo = $this->parseDate($request->input('updated_to'));
+        $createdBy = trim((string) $request->input('created_by', ''));
+        $updatedBy = trim((string) $request->input('updated_by', ''));
+        $recordStatuses = $this->filterValues($request->input('record_status'), ['active', 'inactive']);
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
@@ -40,9 +47,14 @@ class RoleController extends Controller
             'is_system' => 'is_system',
             'users_count' => 'users_count',
             'permissions_count' => 'permissions_count',
+            'status' => 'status',
+            'created_at' => 'created_at',
+            'updated_at' => 'updated_at',
+            'record_status' => 'record_status',
         ];
 
         $roles = Role::query()
+            ->with(['createdBy:id,name,email', 'updatedBy:id,name,email'])
             ->withCount(['users', 'permissions'])
             ->when($search !== '', static fn ($query) => $query->where(static function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%")
@@ -53,18 +65,53 @@ class RoleController extends Controller
             ->when(count($assignedValues) === 1 && $assignedValues[0] === 'assigned', static fn ($query) => $query->has('users'))
             ->when(count($assignedValues) === 1 && $assignedValues[0] === 'unassigned', static fn ($query) => $query->doesntHave('users'))
             ->when(ctype_digit($permissionsMin), static fn ($query) => $query->has('permissions', '>=', (int) $permissionsMin))
+            ->when($statuses !== [], static fn ($query) => $query->whereIn('status', $statuses))
+            ->when(in_array('inactive', $recordStatuses, true), static fn ($query) => $query->withTrashed())
+            ->when($recordStatuses !== [], static fn ($query) => $query->whereIn(
+                'record_status',
+                array_map(static fn (string $status): int => $status === 'active' ? 1 : 0, $recordStatuses),
+            ))
             ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
             ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
+            ->when($updatedFrom !== null, static fn ($query) => $query->where('updated_at', '>=', $updatedFrom->startOfDay()))
+            ->when($updatedTo !== null, static fn ($query) => $query->where('updated_at', '<=', $updatedTo->endOfDay()))
+            ->when($createdBy !== '', static fn ($query) => $query->whereHas('createdBy', static fn ($actorQuery) => $actorQuery
+                ->where('name', 'like', "%{$createdBy}%")
+                ->orWhere('email', 'like', "%{$createdBy}%")))
+            ->when($updatedBy !== '', static fn ($query) => $query->whereHas('updatedBy', static fn ($actorQuery) => $actorQuery
+                ->where('name', 'like', "%{$updatedBy}%")
+                ->orWhere('email', 'like', "%{$updatedBy}%")))
             ->when(
-                isset($sortColumns[$sort]),
-                static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
-                static fn ($query) => $query->orderBy('is_system', 'desc')->orderBy('display_name'),
+                $sort === 'created_by',
+                static fn ($query) => $query->orderBy(
+                    DB::table('users as created_actors')
+                        ->select('created_actors.name')
+                        ->whereColumn('created_actors.id', 'roles.created_by'),
+                    $direction,
+                ),
+            )
+            ->when(
+                $sort === 'updated_by',
+                static fn ($query) => $query->orderBy(
+                    DB::table('users as updated_actors')
+                        ->select('updated_actors.name')
+                        ->whereColumn('updated_actors.id', 'roles.updated_by'),
+                    $direction,
+                ),
+            )
+            ->when(
+                $sort !== 'created_by' && $sort !== 'updated_by',
+                static fn ($query) => $query->when(
+                    isset($sortColumns[$sort]),
+                    static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
+                    static fn ($query) => $query->orderBy('is_system', 'desc')->orderBy('display_name'),
+                ),
             )
             ->paginate($pageSize)
             ->appends(PageSize::query($request, $pageSize));
 
         return Inertia::render('access/roles', [
-            'roles' => $roles->through(static fn (Role $role): array => [
+            'roles' => $roles->through(fn (Role $role): array => [
                 'id' => $role->id,
                 'name' => $role->name,
                 'displayName' => $role->display_name,
@@ -72,6 +119,12 @@ class RoleController extends Controller
                 'isSystem' => (bool) $role->is_system,
                 'usersCount' => $role->users_count,
                 'permissionsCount' => $role->permissions_count,
+                'status' => $role->status,
+                'recordStatus' => (int) $role->record_status,
+                'createdAt' => $role->created_at?->toIso8601String(),
+                'updatedAt' => $role->updated_at?->toIso8601String(),
+                'createdBy' => $this->actor($role->createdBy),
+                'updatedBy' => $this->actor($role->updatedBy),
             ]),
             'canManageSystemRoles' => $request->user()->isOwner(),
             'canCreate' => $request->user()->can('roles.create'),
@@ -81,8 +134,14 @@ class RoleController extends Controller
                 'type' => $this->filterValue($types),
                 'assigned' => $this->filterValue($assignedValues),
                 'permissionsMin' => $permissionsMin,
+                'status' => $this->filterValue($statuses),
                 'from' => $from?->format('Y-m-d') ?? '',
                 'to' => $to?->format('Y-m-d') ?? '',
+                'updatedFrom' => $updatedFrom?->format('Y-m-d') ?? '',
+                'updatedTo' => $updatedTo?->format('Y-m-d') ?? '',
+                'createdBy' => $createdBy,
+                'updatedBy' => $updatedBy,
+                'recordStatus' => $this->filterValue($recordStatuses),
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
@@ -240,7 +299,9 @@ class RoleController extends Controller
         }
     }
 
-    /** @param array<int, string> $allowed */
+    /** @param array<int, string> $allowed
+     * @return array<int, string>
+     */
     private function filterValues(mixed $value, array $allowed): array
     {
         $values = is_array($value) ? $value : [$value];
@@ -251,7 +312,9 @@ class RoleController extends Controller
         )));
     }
 
-    /** @param array<int, string> $values */
+    /** @param array<int, string> $values
+     * @return string|array<int, string>
+     */
     private function filterValue(array $values): string|array
     {
         return match (count($values)) {
@@ -259,5 +322,15 @@ class RoleController extends Controller
             1 => $values[0],
             default => $values,
         };
+    }
+
+    /** @return array{id: int, name: string, email: string}|null */
+    private function actor(?User $actor): ?array
+    {
+        return $actor === null ? null : [
+            'id' => (int) $actor->getKey(),
+            'name' => (string) $actor->name,
+            'email' => (string) $actor->email,
+        ];
     }
 }

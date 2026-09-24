@@ -197,8 +197,16 @@ describe('access administration pages', () => {
             screen.getByRole('heading', { name: 'Users' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: /Filter/ }),
+            screen.getAllByRole('button', { name: /Filter/ }),
+        ).toHaveLength(2);
+        await user.click(screen.getAllByRole('button', { name: /Filter/ })[0]);
+        expect(screen.getByLabelText('Created by')).toBeInTheDocument();
+        expect(screen.getByLabelText('Updated by')).toBeInTheDocument();
+        expect(
+            screen.getByRole('group', { name: 'Record status' }),
         ).toBeInTheDocument();
+        expect(screen.getByLabelText('Updated date range')).toBeInTheDocument();
+        await user.keyboard('{Escape}');
         expect(screen.getByRole('link', { name: 'Add user' })).toHaveAttribute(
             'href',
             '/access/users/create',
@@ -251,6 +259,29 @@ describe('access administration pages', () => {
                 name: 'Manage roles',
             }),
         ).toHaveAttribute('href', '/access/roles');
+        expect(
+            within(userTable).getByRole('columnheader', {
+                name: /^Sort Updated ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(userTable).getAllByRole('columnheader', { name: /Status/ }),
+        ).toHaveLength(1);
+        expect(
+            within(userTable).getByRole('columnheader', {
+                name: /^Sort Created by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(userTable).getByRole('columnheader', {
+                name: /^Sort Updated by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(userTable).getByRole('columnheader', {
+                name: /^Sort Record status ascending$/,
+            }),
+        ).toBeInTheDocument();
 
         await user.click(
             within(userTableContainer).getByRole('button', {
@@ -262,7 +293,7 @@ describe('access administration pages', () => {
         );
         await user.keyboard('{Escape}');
         expect(
-            screen.queryByRole('columnheader', { name: /Created/ }),
+            within(userTable).queryByRole('columnheader', { name: 'Created' }),
         ).not.toBeInTheDocument();
         expect(
             screen.getByRole('checkbox', { name: 'Select Alex' }),
@@ -271,7 +302,7 @@ describe('access administration pages', () => {
             screen.getByRole('button', { name: 'Actions for Alex' }),
         ).toBeInTheDocument();
         expect(
-            localStorage.getItem('fieldops:data-table-columns:access.users'),
+            localStorage.getItem('fieldops:data-table-columns:access.users.v2'),
         ).toContain('user');
 
         const invitationTable = screen.getByRole('table', {
@@ -280,6 +311,37 @@ describe('access administration pages', () => {
         const invitationTableContainer = invitationTable.closest(
             '[data-slot="data-table-container"]',
         ) as HTMLElement;
+
+        expect(
+            within(invitationTable).getByRole('columnheader', {
+                name: /^Sort Created ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(invitationTable).getByRole('columnheader', {
+                name: /^Sort Updated ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(invitationTable).getByRole('columnheader', {
+                name: /^Sort Created by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(invitationTable).getByRole('columnheader', {
+                name: /^Sort Updated by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(invitationTable).getByRole('columnheader', {
+                name: /^Sort Status ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(invitationTable).getByRole('columnheader', {
+                name: /^Sort Record status ascending$/,
+            }),
+        ).toBeInTheDocument();
 
         await user.click(
             within(invitationTableContainer).getByRole('button', {
@@ -291,7 +353,7 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
         expect(
             localStorage.getItem(
-                'fieldops:data-table-columns:access.invitations',
+                'fieldops:data-table-columns:access.invitations.v2',
             ),
         ).toContain('email');
         await user.keyboard('{Escape}');
@@ -759,6 +821,34 @@ describe('access administration pages', () => {
             screen.getByRole('heading', { name: 'Pending registrations' }),
         ).toBeInTheDocument();
         expect(screen.getByText('pending@example.com')).toBeInTheDocument();
+        const registrationsTable = screen.getByRole('table', {
+            name: 'Pending user registrations',
+        });
+        expect(
+            within(registrationsTable).getByRole('columnheader', {
+                name: /^Sort Created ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(registrationsTable).getByRole('columnheader', {
+                name: /^Sort Updated ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(registrationsTable).getAllByRole('columnheader', {
+                name: 'Status',
+            }),
+        ).toHaveLength(1);
+        expect(
+            within(registrationsTable).queryByRole('columnheader', {
+                name: 'Created by',
+            }),
+        ).not.toBeInTheDocument();
+        expect(
+            within(registrationsTable).queryByRole('columnheader', {
+                name: 'Record status',
+            }),
+        ).not.toBeInTheDocument();
         await user.click(
             screen.getByRole('button', {
                 name: 'Actions for Pending applicant',
@@ -825,6 +915,34 @@ describe('access administration pages', () => {
             document.querySelector('[data-slot="data-table-scroll-container"]'),
         ).toHaveClass('px-4');
         expect(screen.getByText('System')).toBeInTheDocument();
+        const roleTable = screen.getByRole('table', {
+            name: 'FieldOps role catalog',
+        });
+        expect(
+            within(roleTable).getByRole('columnheader', {
+                name: /^Sort Created ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(roleTable).getByRole('columnheader', {
+                name: /^Sort Updated ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(roleTable).getByRole('columnheader', {
+                name: /^Sort Created by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(roleTable).getByRole('columnheader', {
+                name: /^Sort Updated by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(roleTable).getByRole('columnheader', {
+                name: /^Sort Record status ascending$/,
+            }),
+        ).toBeInTheDocument();
         await user.click(
             screen.getByRole('button', { name: 'Actions for Super Admin' }),
         );
@@ -953,6 +1071,37 @@ describe('access administration pages', () => {
             screen.getByText('Blocked', { selector: '[data-slot="badge"]' }),
         ).toBeInTheDocument();
         expect(screen.getByText('Last seen')).toBeInTheDocument();
+        const ipTable = screen.getByRole('table', {
+            name: 'IP address access records',
+        });
+        expect(
+            within(ipTable).getByRole('columnheader', {
+                name: /^Sort Created ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(ipTable).getByRole('columnheader', {
+                name: /^Sort Updated ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(ipTable).getAllByRole('columnheader', { name: /Status/ }),
+        ).toHaveLength(1);
+        expect(
+            within(ipTable).getByRole('columnheader', {
+                name: /^Sort Created by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(ipTable).getByRole('columnheader', {
+                name: /^Sort Updated by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(ipTable).getByRole('columnheader', {
+                name: /^Sort Record status ascending$/,
+            }),
+        ).toBeInTheDocument();
         await user.click(
             screen.getByRole('button', {
                 name: 'Actions for 203.0.113.10',

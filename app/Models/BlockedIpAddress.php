@@ -20,10 +20,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $unblocked_by
  * @property CarbonImmutable|null $first_seen_at
  * @property CarbonImmutable|null $last_seen_at
+ * @property int|null $created_by
+ * @property int|null $updated_by
  * @property int $record_status
  * @property-read User|null $blockedBy
+ * @property-read User|null $createdBy
  * @property-read User|null $user
  * @property-read User|null $unblockedBy
+ * @property-read User|null $updatedBy
  */
 class BlockedIpAddress extends Model
 {
@@ -73,6 +77,12 @@ class BlockedIpAddress extends Model
     }
 
     /** @return BelongsTo<User, $this> */
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by')->withTrashed();
+    }
+
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class)->withTrashed();
@@ -82,5 +92,11 @@ class BlockedIpAddress extends Model
     public function unblockedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'unblocked_by')->withTrashed();
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by')->withTrashed();
     }
 }

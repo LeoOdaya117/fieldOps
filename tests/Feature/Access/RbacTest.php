@@ -9,6 +9,7 @@ use App\Enums\UserStatus;
 use App\Models\AccessAuditEvent;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\UserInvitation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\Fluent\AssertableJson as Assert;
@@ -37,6 +38,112 @@ class RbacTest extends TestCase
         $this->assertNull($owner->two_factor_confirmed_at);
 
         $this->actingAs($owner)->get(route('access.users.index'))->assertOk();
+    }
+
+    public function test_access_index_payloads_include_standard_audit_fields(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::Owner->value);
+
+        $this->actingAs($owner);
+
+        $user = User::factory()->create([
+            'name' => 'Audited user',
+            'email' => 'audited-user@example.com',
+        ]);
+        $role = Role::query()->create([
+            'name' => 'audited_role',
+            'guard_name' => 'web',
+            'display_name' => 'Audited role',
+            'description' => 'Audit payload test role.',
+            'is_system' => false,
+        ]);
+        UserInvitation::query()->create([
+            'email' => 'audited-invitation@example.com',
+            'role_id' => $role->id,
+            'invited_by' => $owner->id,
+            'token_hash' => UserInvitation::hashToken('audit-test-token'),
+            'expires_at' => now()->addDay(),
+        ]);
+
+        $this->get(route('access.users.index', ['search' => 'Audited user']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('users.data.0.id', $user->id)
+                ->where('users.data.0.createdBy.id', $owner->id)
+                ->where('users.data.0.updatedBy.id', $owner->id)
+                ->where('users.data.0.recordStatus', 1)
+                ->has('users.data.0.createdAt')
+                ->has('users.data.0.updatedAt')
+                ->where('invitations.0.createdBy.id', $owner->id)
+                ->where('invitations.0.updatedBy.id', $owner->id)
+                ->where('invitations.0.recordStatus', 1)
+                ->has('invitations.0.createdAt')
+                ->has('invitations.0.updatedAt'));
+
+        $this->get(route('access.roles.index', ['search' => 'Audited role']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('roles.data.0.id', $role->id)
+                ->where('roles.data.0.createdBy.id', $owner->id)
+                ->where('roles.data.0.updatedBy.id', $owner->id)
+                ->where('roles.data.0.recordStatus', 1)
+                ->has('roles.data.0.createdAt')
+                ->has('roles.data.0.updatedAt'));
+    }
+
+    public function test_access_indexes_filter_by_audit_actor_and_record_status(): void
+    {
+        $owner = User::factory()->create(['name' => 'Audit owner']);
+        $owner->syncRoles(RoleName::Owner->value);
+
+        $this->actingAs($owner);
+        $user = User::factory()->create([
+            'name' => 'Filterable user',
+            'email' => 'filterable-user@example.com',
+        ]);
+        $deletedUser = User::factory()->create(['name' => 'Deleted user']);
+        $deletedUser->delete();
+        $role = Role::query()->create([
+            'name' => 'filterable_role',
+            'guard_name' => 'web',
+            'display_name' => 'Filterable role',
+            'description' => 'Audit filter test role.',
+            'is_system' => false,
+        ]);
+        UserInvitation::query()->create([
+            'email' => 'filterable-invitation@example.com',
+            'role_id' => $role->id,
+            'invited_by' => $owner->id,
+            'token_hash' => UserInvitation::hashToken('filterable-invitation-token'),
+            'expires_at' => now()->addDay(),
+        ]);
+
+        $this->get(route('access.users.index', [
+            'search' => 'Filterable user',
+            'created_by' => $owner->email,
+        ]))->assertInertia(fn (Assert $page) => $page
+            ->where('users.data.0.id', $user->id)
+            ->where('filters.createdBy', $owner->email));
+
+        $this->get(route('access.users.index', [
+            'search' => 'Deleted user',
+            'record_status' => 'inactive',
+        ]))->assertInertia(fn (Assert $page) => $page
+            ->where('users.data.0.id', $deletedUser->id)
+            ->where('users.data.0.recordStatus', 0));
+
+        $this->get(route('access.users.index', [
+            'invitation_search' => 'filterable-invitation@example.com',
+            'invitation_created_by' => $owner->email,
+        ]))->assertInertia(fn (Assert $page) => $page
+            ->where('invitations.0.email', 'filterable-invitation@example.com')
+            ->where('invitationFilters.createdBy', $owner->email));
+
+        $this->get(route('access.roles.index', [
+            'search' => 'Filterable role',
+            'created_by' => $owner->email,
+        ]))->assertInertia(fn (Assert $page) => $page
+            ->where('roles.data.0.id', $role->id)
+            ->where('filters.createdBy', $owner->email));
     }
 
     public function test_owner_can_view_audit_history(): void

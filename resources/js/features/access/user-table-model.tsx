@@ -13,11 +13,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { DataTableColumn } from '@/components/ui/data-table';
+import { auditFilterQuery } from '@/types/audit';
+import type { AuditTableFilters, StandardAuditFields } from '@/types/audit';
 import {
     TableActionForm,
     TableActionLink,
     TableActions,
 } from '@/components/ui/table-actions';
+import { formatDateTime } from '@/lib/format-date';
 import {
     destroy as deleteUser,
     edit as editUser,
@@ -31,7 +34,7 @@ export type RoleOption = {
     is_system: boolean;
 };
 
-export type UserRow = {
+export type UserRow = StandardAuditFields & {
     id: number;
     name: string;
     email: string;
@@ -46,14 +49,14 @@ export type UserRow = {
         isSystem: boolean;
     } | null;
     canDelete?: boolean;
-    createdAt: string | null;
 };
 
-export type Invitation = {
+export type Invitation = StandardAuditFields & {
     id: number;
     email: string;
     role: { id: number; name: string; displayName: string };
     expiresAt: string;
+    status: string;
 };
 
 export type Registration = {
@@ -62,14 +65,20 @@ export type Registration = {
     email: string;
     status: 'pending' | 'approved' | 'rejected';
     createdAt: string | null;
+    updatedAt: string | null;
 };
 
-export type UserTableFilters = {
+export type UserTableFilters = AuditTableFilters & {
     search: string;
     status: string | string[];
-    from?: string;
-    to?: string;
     perPage?: number;
+    sort?: string;
+    direction?: 'asc' | 'desc';
+};
+
+export type InvitationTableFilters = AuditTableFilters & {
+    search: string;
+    status: string | string[];
     sort?: string;
     direction?: 'asc' | 'desc';
 };
@@ -220,19 +229,6 @@ export function registrationTableColumns(): DataTableColumn<Registration>[] {
             ),
         },
         {
-            key: 'submitted',
-            header: 'Submitted',
-            label: 'Submitted',
-            cell: (registration) => (
-                <div className="flex items-center gap-2 text-sm whitespace-nowrap text-muted-foreground">
-                    <Clock3 className="size-3.5" />
-                    {registration.createdAt
-                        ? new Date(registration.createdAt).toLocaleDateString()
-                        : '—'}
-                </div>
-            ),
-        },
-        {
             key: 'actions',
             header: 'Actions',
             hideable: false,
@@ -279,6 +275,11 @@ export function userTableColumns({
 }: UserTableOptions): DataTableColumn<UserRow>[] {
     const sort = filters.sort ?? '';
     const direction = filters.direction ?? 'asc';
+    const hidden = {
+        search: filters.search,
+        status: filters.status,
+        ...auditFilterQuery(filters),
+    };
 
     return [
         {
@@ -327,10 +328,7 @@ export function userTableColumns({
                     sort={sort}
                     direction={direction}
                     hidden={{
-                        search: filters.search,
-                        status: filters.status,
-                        from: filters.from,
-                        to: filters.to,
+                        ...hidden,
                     }}
                 />
             ),
@@ -367,10 +365,7 @@ export function userTableColumns({
                     sort={sort}
                     direction={direction}
                     hidden={{
-                        search: filters.search,
-                        status: filters.status,
-                        from: filters.from,
-                        to: filters.to,
+                        ...hidden,
                     }}
                 />
             ),
@@ -397,19 +392,14 @@ export function userTableColumns({
                     sort={sort}
                     direction={direction}
                     hidden={{
-                        search: filters.search,
-                        status: filters.status,
-                        from: filters.from,
-                        to: filters.to,
+                        ...hidden,
                     }}
                 />
             ),
             cell: (user) => (
                 <div className="flex items-center gap-2 text-sm whitespace-nowrap text-muted-foreground">
                     <CalendarDays className="size-3.5" />
-                    {user.createdAt
-                        ? new Date(user.createdAt).toLocaleDateString()
-                        : '—'}
+                    {formatDateTime(user.createdAt)}
                 </div>
             ),
         },

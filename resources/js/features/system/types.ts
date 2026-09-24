@@ -1,16 +1,8 @@
-export type AuditActor = {
-    id: number;
-    name: string;
-    email: string;
-} | null;
+import type { AuditTableFilters, StandardAuditFields } from '@/types/audit';
 
-export type ReferenceDataAudit = {
-    recordStatus: number;
-    createdAt: string | null;
-    updatedAt: string | null;
-    createdBy: AuditActor;
-    updatedBy: AuditActor;
-};
+export type { AuditActor } from '@/types/audit';
+
+export type ReferenceDataAudit = StandardAuditFields;
 
 export type Country = ReferenceDataAudit & {
     id: number;
@@ -23,10 +15,8 @@ export type Timezone = ReferenceDataAudit & {
     name: string;
 };
 
-export type ReferenceDataFilters = {
+export type ReferenceDataFilters = AuditTableFilters & {
     search: string;
-    from?: string;
-    to?: string;
     perPage?: number;
     sort?: string;
     direction?: 'asc' | 'desc';

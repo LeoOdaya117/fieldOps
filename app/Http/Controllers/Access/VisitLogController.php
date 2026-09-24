@@ -134,7 +134,9 @@ class VisitLogController extends Controller
         }
     }
 
-    /** @param array<int, string> $allowed */
+    /** @param array<int, string> $allowed
+     * @return array<int, string>
+     */
     private function filterValues(mixed $value, array $allowed): array
     {
         $values = is_array($value) ? $value : [$value];
@@ -145,7 +147,9 @@ class VisitLogController extends Controller
         )));
     }
 
-    /** @param array<int, string> $values */
+    /** @param array<int, string> $values
+     * @return string|array<int, string>
+     */
     private function filterValue(array $values): string|array
     {
         return match (count($values)) {

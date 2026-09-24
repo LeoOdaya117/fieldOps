@@ -3,6 +3,8 @@ import { SortableColumn } from '@/components/sortable-column';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { DataTableColumn } from '@/components/ui/data-table';
+import { auditFilterQuery } from '@/types/audit';
+import type { AuditTableFilters, StandardAuditFields } from '@/types/audit';
 import {
     TableActionForm,
     TableActionLink,
@@ -10,7 +12,7 @@ import {
 } from '@/components/ui/table-actions';
 import { edit as editRole, show as showRole } from '@/routes/access/roles';
 
-export type Role = {
+export type Role = StandardAuditFields & {
     id: number;
     name: string;
     displayName: string;
@@ -18,15 +20,15 @@ export type Role = {
     isSystem: boolean;
     usersCount: number;
     permissionsCount: number;
+    status: string;
 };
 
-export type RoleTableFilters = {
+export type RoleTableFilters = AuditTableFilters & {
     search: string;
     type: string | string[];
     assigned: string | string[];
     permissionsMin: string;
-    from?: string;
-    to?: string;
+    status: string | string[];
     perPage?: number;
     sort?: string;
     direction?: 'asc' | 'desc';
@@ -57,6 +59,14 @@ export function roleTableColumns({
 }: RoleTableOptions): DataTableColumn<Role>[] {
     const sort = filters.sort ?? '';
     const direction = filters.direction ?? 'asc';
+    const hidden = {
+        search: filters.search,
+        type: filters.type,
+        assigned: filters.assigned,
+        permissions_min: filters.permissionsMin,
+        status: filters.status,
+        ...auditFilterQuery(filters),
+    };
 
     return [
         {
@@ -110,12 +120,7 @@ export function roleTableColumns({
                     sort={sort}
                     direction={direction}
                     hidden={{
-                        search: filters.search,
-                        type: filters.type,
-                        assigned: filters.assigned,
-                        permissions_min: filters.permissionsMin,
-                        from: filters.from,
-                        to: filters.to,
+                        ...hidden,
                     }}
                 />
             ),
@@ -156,12 +161,7 @@ export function roleTableColumns({
                     sort={sort}
                     direction={direction}
                     hidden={{
-                        search: filters.search,
-                        type: filters.type,
-                        assigned: filters.assigned,
-                        permissions_min: filters.permissionsMin,
-                        from: filters.from,
-                        to: filters.to,
+                        ...hidden,
                     }}
                 />
             ),
@@ -194,12 +194,7 @@ export function roleTableColumns({
                     sort={sort}
                     direction={direction}
                     hidden={{
-                        search: filters.search,
-                        type: filters.type,
-                        assigned: filters.assigned,
-                        permissions_min: filters.permissionsMin,
-                        from: filters.from,
-                        to: filters.to,
+                        ...hidden,
                     }}
                 />
             ),
@@ -230,12 +225,7 @@ export function roleTableColumns({
                     sort={sort}
                     direction={direction}
                     hidden={{
-                        search: filters.search,
-                        type: filters.type,
-                        assigned: filters.assigned,
-                        permissions_min: filters.permissionsMin,
-                        from: filters.from,
-                        to: filters.to,
+                        ...hidden,
                     }}
                 />
             ),
