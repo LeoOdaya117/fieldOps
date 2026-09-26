@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select';
 
 type Props = {
+    canUpdateSettings?: boolean;
     settings: {
         name: string;
         timezone: string;
@@ -52,6 +53,7 @@ function SectionTitle({
 }
 
 export default function SystemSettings({
+    canUpdateSettings = false,
     settings,
     timezones,
     paginationOptions,
@@ -95,6 +97,7 @@ export default function SystemSettings({
                                                     : undefined
                                             }
                                             required
+                                            disabled={!canUpdateSettings}
                                         />
                                         <InputError
                                             id="system-name-error"
@@ -114,6 +117,7 @@ export default function SystemSettings({
                                             value={timezone}
                                             onValueChange={setTimezone}
                                             required
+                                            disabled={!canUpdateSettings}
                                         >
                                             <SelectTrigger
                                                 id="system-timezone"
@@ -172,6 +176,7 @@ export default function SystemSettings({
                                             value={paginationSize}
                                             onValueChange={setPaginationSize}
                                             required
+                                            disabled={!canUpdateSettings}
                                         >
                                             <SelectTrigger
                                                 id="pagination-size"
@@ -234,6 +239,7 @@ export default function SystemSettings({
                                                         : 'idle-timeout-help'
                                                 }
                                                 required
+                                                disabled={!canUpdateSettings}
                                             />
                                             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
                                                 seconds
@@ -315,6 +321,7 @@ export default function SystemSettings({
                                                         : undefined
                                                 }
                                                 required
+                                                disabled={!canUpdateSettings}
                                             />
                                             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted-foreground">
                                                 minutes
@@ -329,7 +336,9 @@ export default function SystemSettings({
                             </section>
 
                             <footer className="flex justify-end border-t border-border bg-muted/35 px-5 py-4 sm:px-7">
-                                <Button disabled={processing}>
+                                <Button
+                                    disabled={processing || !canUpdateSettings}
+                                >
                                     {processing ? 'Saving…' : 'Save changes'}
                                 </Button>
                             </footer>

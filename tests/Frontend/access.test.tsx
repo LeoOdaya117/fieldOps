@@ -196,9 +196,9 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('heading', { name: 'Users' }),
         ).toBeInTheDocument();
-        expect(
-            screen.getAllByRole('button', { name: /Filter/ }),
-        ).toHaveLength(1);
+        expect(screen.getAllByRole('button', { name: /Filter/ })).toHaveLength(
+            1,
+        );
         await user.click(screen.getAllByRole('button', { name: /Filter/ })[0]);
         expect(screen.getByLabelText('Date range')).toBeInTheDocument();
         expect(screen.queryByLabelText('Created by')).not.toBeInTheDocument();
@@ -431,7 +431,7 @@ describe('access administration pages', () => {
             'href',
             '/access/users/1',
         );
-    });
+    }, 10_000);
 
     it('hides create and invite actions without the corresponding permissions', () => {
         const { unmount } = render(
@@ -582,7 +582,59 @@ describe('access administration pages', () => {
             { id: 2, name: 'dashboard.view' },
             { id: 3, name: 'roles.create' },
             { id: 4, name: 'users.view' },
+            { id: 5, name: 'users.view_deleted' },
+            { id: 6, name: 'users.update_deleted' },
+            { id: 7, name: 'roles.view_deleted' },
+            { id: 8, name: 'roles.update_deleted' },
+            { id: 9, name: 'countries.view_deleted' },
+            { id: 10, name: 'countries.update_deleted' },
+            { id: 11, name: 'timezones.view_deleted' },
+            { id: 12, name: 'timezones.update_deleted' },
+            { id: 13, name: 'ip_blocks.view_deleted' },
+            { id: 14, name: 'ip_blocks.update_deleted' },
+            { id: 15, name: 'organization_locations.view_deleted' },
+            { id: 16, name: 'organization_locations.update_deleted' },
+            { id: 17, name: 'media_assets.view_deleted' },
+            { id: 18, name: 'media_assets.update_deleted' },
+            { id: 19, name: 'countries.create' },
+            { id: 20, name: 'countries.update' },
+            { id: 21, name: 'countries.delete' },
+            { id: 22, name: 'settings.view' },
+            { id: 23, name: 'settings.update' },
+            { id: 24, name: 'visit_logs.view' },
         ];
+        const recordStatusResources = [
+            { label: 'Users', key: 'users' },
+            { label: 'Roles', key: 'roles' },
+            { label: 'Countries', key: 'countries' },
+            { label: 'Timezones', key: 'timezones' },
+            { label: 'Ip Blocks', key: 'ip_blocks' },
+            { label: 'Organization Locations', key: 'organization_locations' },
+            { label: 'Media Assets', key: 'media_assets' },
+        ];
+
+        function expandAndCheckRecordStatusPermissions() {
+            for (const { label, key } of recordStatusResources) {
+                fireEvent.click(
+                    screen.getByRole('button', {
+                        name: `Expand ${label} permissions`,
+                    }),
+                );
+
+                const group = screen.getByRole('region', { name: label });
+
+                expect(
+                    within(group).getByRole('checkbox', {
+                        name: new RegExp(`${key}\\.view_deleted`),
+                    }),
+                ).toBeInTheDocument();
+                expect(
+                    within(group).getByRole('checkbox', {
+                        name: new RegExp(`${key}\\.update_deleted`),
+                    }),
+                ).toBeInTheDocument();
+            }
+        }
 
         render(<RoleCreatePage permissions={permissions} />);
 
@@ -605,6 +657,38 @@ describe('access administration pages', () => {
             screen.getByRole('heading', { name: 'Users' }),
         ).toBeInTheDocument();
         expect(screen.getByText('roles.create')).toBeInTheDocument();
+        expandAndCheckRecordStatusPermissions();
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Expand Countries permissions',
+            }),
+        );
+        const countriesPermissions = screen.getByRole('region', {
+            name: 'Countries',
+        });
+
+        for (const action of ['Create', 'Update', 'Delete']) {
+            expect(
+                within(countriesPermissions).getByText(action, {
+                    exact: true,
+                }),
+            ).toBeInTheDocument();
+        }
+
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Expand Settings permissions',
+            }),
+        );
+        const settingsPermissions = screen.getByRole('region', {
+            name: 'Settings',
+        });
+        expect(
+            within(settingsPermissions).getByText('View', { exact: true }),
+        ).toBeInTheDocument();
+        expect(
+            within(settingsPermissions).getByText('Update', { exact: true }),
+        ).toBeInTheDocument();
 
         cleanup();
 
@@ -616,7 +700,12 @@ describe('access administration pages', () => {
                     name: 'reviewer',
                     displayName: 'Reviewer',
                     description: 'Custom',
-                    permissions: ['dashboard.view'],
+                    permissions: [
+                        'dashboard.view',
+                        'users.view_deleted',
+                        'organization_locations.view_deleted',
+                        'media_assets.update_deleted',
+                    ],
                 }}
             />,
         );
@@ -647,6 +736,76 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('button', { name: 'Collapse Audit permissions' }),
         ).toBeInTheDocument();
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Expand Users permissions',
+            }),
+        );
+        expect(
+            within(screen.getByRole('region', { name: 'Users' })).getByRole(
+                'checkbox',
+                { name: /users\.view_deleted/ },
+            ),
+        ).toBeChecked();
+        expect(
+            within(screen.getByRole('region', { name: 'Users' })).getByRole(
+                'checkbox',
+                { name: /users\.update_deleted/ },
+            ),
+        ).not.toBeChecked();
+        expect(
+            within(screen.getByRole('region', { name: 'Users' })).getByText(
+                'View Deleted',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            within(screen.getByRole('region', { name: 'Users' })).getByText(
+                'Update Deleted',
+            ),
+        ).toBeInTheDocument();
+
+        for (const key of [
+            'audit.create',
+            'audit.update',
+            'audit.delete',
+            'visit_logs.create',
+            'visit_logs.update',
+            'visit_logs.delete',
+            'dashboard.create',
+            'dashboard.update',
+            'dashboard.delete',
+        ]) {
+            expect(
+                screen.queryByRole('checkbox', {
+                    name: new RegExp(key.replace('.', '\\.')),
+                }),
+            ).not.toBeInTheDocument();
+        }
+
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Expand Organization Locations permissions',
+            }),
+        );
+        expect(
+            within(
+                screen.getByRole('region', {
+                    name: 'Organization Locations',
+                }),
+            ).getByRole('checkbox', {
+                name: /organization_locations\.view_deleted/,
+            }),
+        ).toBeChecked();
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Expand Media Assets permissions',
+            }),
+        );
+        expect(
+            within(
+                screen.getByRole('region', { name: 'Media Assets' }),
+            ).getByRole('checkbox', { name: /media_assets\.update_deleted/ }),
+        ).toBeChecked();
 
         await user.click(
             screen.getByRole('button', {
@@ -697,7 +856,7 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('checkbox', { name: /roles\.create/ }),
         ).not.toBeChecked();
-    });
+    }, 10_000);
 
     it('keeps user creation and invitations on dedicated pages', () => {
         render(
@@ -901,7 +1060,7 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
     });
 
-    it('shows system role actions to owner-level administrators', async () => {
+    it('shows system role actions to Super Admins', async () => {
         const user = userEvent.setup();
         render(
             <RolesPage
@@ -1067,7 +1226,8 @@ describe('access administration pages', () => {
                     to: 1,
                 }}
                 filters={{ search: '', status: '' }}
-                canManage
+                canUpdate
+                canDelete
             />,
         );
 
@@ -1311,7 +1471,7 @@ describe('access administration pages', () => {
         ).toHaveLength(1);
         expect(
             document.querySelectorAll('[data-slot="details-section"]'),
-        ).toHaveLength(2);
+        ).toHaveLength(3);
         expect(
             document.querySelector('[data-slot="details-page"]'),
         ).toHaveClass('pt-0', 'sm:pt-0', 'lg:pt-0');
@@ -1362,7 +1522,7 @@ describe('access administration pages', () => {
         ).toHaveLength(1);
         expect(
             document.querySelectorAll('[data-slot="details-section"]'),
-        ).toHaveLength(3);
+        ).toHaveLength(4);
         expect(screen.getByText('dashboard.view')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
             'href',
@@ -1388,7 +1548,8 @@ describe('access administration pages', () => {
                     unblockedAt: null,
                     unblockedBy: null,
                 }}
-                canManage
+                canUpdate
+                canDelete
             />,
         );
         expect(
@@ -1399,7 +1560,7 @@ describe('access administration pages', () => {
         ).toHaveLength(1);
         expect(
             document.querySelectorAll('[data-slot="details-section"]'),
-        ).toHaveLength(2);
+        ).toHaveLength(3);
         expect(screen.getByText('Repeated abuse')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
             'href',

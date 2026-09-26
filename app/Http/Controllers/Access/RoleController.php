@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Access;
 
+use App\Actions\Rbac\AssertRoleCanBeRemoved;
 use App\Actions\Rbac\BulkDeleteRoles;
 use App\Actions\Rbac\RecordAccessAudit;
 use App\Actions\Rbac\ValidateRoleGrant;
@@ -16,7 +17,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
@@ -30,6 +30,11 @@ class RoleController extends Controller
         $search = trim((string) $request->input('search', ''));
         $types = $this->filterValues($request->input('type'), ['system', 'custom']);
         $assignedValues = $this->filterValues($request->input('assigned'), ['assigned', 'unassigned']);
+        $canViewDeleted = $request->user()?->can('roles.view_deleted') === true;
+        $recordStatuses = $canViewDeleted
+            ? $this->filterValues($request->input('record_status', ['active']), ['active', 'inactive'])
+            : ['active'];
+        $recordStatuses = $recordStatuses === [] ? ['active'] : $recordStatuses;
         $permissionsMin = trim((string) $request->input('permissions_min', ''));
         $from = $this->parseDate($request->input('from'));
         $to = $this->parseDate($request->input('to'));
@@ -47,7 +52,7 @@ class RoleController extends Controller
             'record_status' => 'record_status',
         ];
 
-        $roles = Role::query()
+        $roles = ($canViewDeleted ? Role::withTrashed() : Role::query())
             ->with(['createdBy:id,name,email', 'updatedBy:id,name,email'])
             ->withCount(['users', 'permissions'])
             ->when($search !== '', static fn ($query) => $query->where(static function ($query) use ($search): void {
@@ -56,6 +61,7 @@ class RoleController extends Controller
                     ->orWhere('description', 'like', "%{$search}%");
             }))
             ->when(count($types) === 1, static fn ($query) => $query->where('is_system', $types[0] === 'system'))
+            ->when($recordStatuses !== ['active', 'inactive'], static fn ($query) => $query->whereIn('record_status', array_map(static fn (string $value): int => $value === 'active' ? 1 : 0, $recordStatuses)))
             ->when(count($assignedValues) === 1 && $assignedValues[0] === 'assigned', static fn ($query) => $query->has('users'))
             ->when(count($assignedValues) === 1 && $assignedValues[0] === 'unassigned', static fn ($query) => $query->doesntHave('users'))
             ->when(ctype_digit($permissionsMin), static fn ($query) => $query->has('permissions', '>=', (int) $permissionsMin))
@@ -101,14 +107,17 @@ class RoleController extends Controller
                 'permissionsCount' => $role->permissions_count,
                 'status' => $role->status,
                 'recordStatus' => (int) $role->record_status,
+                'recordStatusUrl' => route('access.roles.record-status', $role->getKey()),
                 'createdAt' => $role->created_at?->toIso8601String(),
                 'updatedAt' => $role->updated_at?->toIso8601String(),
                 'createdBy' => $this->actor($role->createdBy),
                 'updatedBy' => $this->actor($role->updatedBy),
             ]),
-            'canManageSystemRoles' => $request->user()->isOwner(),
+            'canManageSystemRoles' => $request->user()->isSuperAdmin(),
             'canCreate' => $request->user()->can('roles.create'),
             'canDeleteRoles' => $request->user()->can('roles.delete'),
+            'canViewDeleted' => $canViewDeleted,
+            'canUpdateDeleted' => $request->user()->can('roles.update_deleted'),
             'filters' => [
                 'search' => $search,
                 'type' => $this->filterValue($types),
@@ -119,6 +128,7 @@ class RoleController extends Controller
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
+                'recordStatus' => $this->filterValue($recordStatuses),
             ],
         ]);
     }
@@ -140,6 +150,8 @@ class RoleController extends Controller
             'role' => [
                 'id' => $role->id,
                 'name' => $role->name,
+                'recordStatus' => (int) $role->record_status,
+                'recordStatusUrl' => route('access.roles.record-status', $role->getKey()),
                 'displayName' => $role->display_name,
                 'description' => $role->description,
                 'permissions' => $role->permissions()->orderBy('name')->pluck('name')->values(),
@@ -148,8 +160,10 @@ class RoleController extends Controller
         ]);
     }
 
-    public function show(Role $role): Response
+    public function show(int $role): Response
     {
+        $canViewDeleted = request()->user()?->can('roles.view_deleted') === true;
+        $role = ($canViewDeleted ? Role::withTrashed() : Role::query())->findOrFail($role);
         $this->authorize('view', $role);
 
         $role->load(['permissions:id,name', 'users:id,name,email']);
@@ -172,6 +186,8 @@ class RoleController extends Controller
             ],
             'canEdit' => request()->user()?->can('update', $role) === true,
             'canDelete' => request()->user()?->can('delete', $role) === true,
+            'canViewDeleted' => $canViewDeleted,
+            'canUpdateDeleted' => request()->user()?->can('roles.update_deleted') === true,
         ]);
     }
 
@@ -217,13 +233,10 @@ class RoleController extends Controller
         return to_route('access.roles.index')->with('success', 'Role updated.');
     }
 
-    public function destroy(Role $role, RecordAccessAudit $audit): RedirectResponse
+    public function destroy(Role $role, RecordAccessAudit $audit, AssertRoleCanBeRemoved $assertRoleCanBeRemoved): RedirectResponse
     {
         $this->authorize('delete', $role);
-
-        if ($role->users()->exists()) {
-            throw ValidationException::withMessages(['role' => 'A role cannot be deleted while it is assigned to users.']);
-        }
+        $assertRoleCanBeRemoved->execute($role, 'role', 'deleted');
 
         DB::transaction(function () use ($role, $audit): void {
             $before = ['name' => $role->name, 'display_name' => $role->display_name];

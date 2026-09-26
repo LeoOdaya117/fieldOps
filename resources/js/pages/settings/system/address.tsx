@@ -3,6 +3,7 @@ import { Building2, MapPin } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { OrganizationLocationActions } from '@/features/system/components/organization-location-actions';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -34,6 +35,15 @@ type Props = {
     regions: Region[];
     provinces: Province[];
     localities: Locality[];
+    recordStatus?: number | null;
+    recordStatusUrl?: string | null;
+    deleteUrl?: string | null;
+    canViewDeleted?: boolean;
+    canUpdateDeleted?: boolean;
+    canCreate?: boolean;
+    canUpdate?: boolean;
+    canDelete?: boolean;
+    canUpdateSettings?: boolean;
 };
 
 export default function OrganizationAddress({
@@ -41,7 +51,16 @@ export default function OrganizationAddress({
     regions,
     provinces,
     localities,
+    recordStatus = null,
+    recordStatusUrl = null,
+    deleteUrl = null,
+    canUpdateDeleted = false,
+    canCreate = false,
+    canUpdate = false,
+    canDelete = false,
+    canUpdateSettings = false,
 }: Props) {
+    const canSave = canUpdateSettings && (canCreate || canUpdate);
     const initialLocality = localities.find(
         (item) => item.code === location.locality_code,
     );
@@ -118,6 +137,18 @@ export default function OrganizationAddress({
                                     </div>
                                 </div>
 
+                                <div className="mb-6">
+                                    <OrganizationLocationActions
+                                        label="organization location"
+                                        recordStatus={recordStatus}
+                                        recordStatusUrl={recordStatusUrl}
+                                        deleteUrl={deleteUrl}
+                                        canUpdateDeleted={canUpdateDeleted}
+                                        canDelete={canDelete}
+                                        canUpdateSettings={canUpdateSettings}
+                                    />
+                                </div>
+
                                 {regions.length === 0 ? (
                                     <div className="rounded-lg border border-border bg-muted/45 p-4 text-sm leading-6 text-muted-foreground">
                                         Philippine address references are not
@@ -142,6 +173,7 @@ export default function OrganizationAddress({
                                                     setParentChoice('');
                                                     setLocalityCode('');
                                                 }}
+                                                disabled={!canSave}
                                                 required
                                             >
                                                 <SelectTrigger
@@ -199,7 +231,9 @@ export default function OrganizationAddress({
                                                             : '',
                                                     );
                                                 }}
-                                                disabled={!regionCode}
+                                                disabled={
+                                                    !canSave || !regionCode
+                                                }
                                                 required
                                             >
                                                 <SelectTrigger
@@ -293,6 +327,7 @@ export default function OrganizationAddress({
                                                 value={submittedLocalityCode}
                                                 onValueChange={setLocalityCode}
                                                 disabled={
+                                                    !canSave ||
                                                     !provinceCode ||
                                                     parentChoice.startsWith(
                                                         'locality:',
@@ -382,7 +417,9 @@ export default function OrganizationAddress({
                                 </p>
                                 <Button
                                     disabled={
-                                        processing || regions.length === 0
+                                        processing ||
+                                        regions.length === 0 ||
+                                        !canSave
                                     }
                                 >
                                     {processing ? 'Saving…' : 'Save address'}

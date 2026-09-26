@@ -44,7 +44,8 @@ class ReferenceDataTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('system/countries')
-                ->where('canManage', true)
+                ->where('canUpdate', true)
+                ->where('canDelete', true)
                 ->where('canCreate', true)
                 ->has('filters')
                 ->where('filters.from', now()->subDay()->format('Y-m-d'))
@@ -60,7 +61,8 @@ class ReferenceDataTest extends TestCase
                     ->where('createdBy.id', $admin->id)
                     ->where('updatedBy.id', $admin->id)
                     ->has('createdAt')
-                    ->has('updatedAt')));
+                    ->has('updatedAt')
+                    ->has('recordStatusUrl')));
 
         $this->actingAs($admin)
             ->get(route('system.countries.create'))
@@ -89,7 +91,8 @@ class ReferenceDataTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('system/timezones')
-                ->where('canManage', true)
+                ->where('canUpdate', true)
+                ->where('canDelete', true)
                 ->where('canCreate', true)
                 ->has('timezones.data', 1, fn (Assert $data) => $data
                     ->where('id', $timezone->id)
@@ -99,7 +102,8 @@ class ReferenceDataTest extends TestCase
                     ->where('createdBy.id', $admin->id)
                     ->where('updatedBy.id', $admin->id)
                     ->has('createdAt')
-                    ->has('updatedAt')));
+                    ->has('updatedAt')
+                    ->has('recordStatusUrl')));
 
         $this->actingAs($admin)
             ->get(route('system.timezones.create'))
@@ -378,7 +382,7 @@ class ReferenceDataTest extends TestCase
     private function administrator(): User
     {
         $admin = User::factory()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
 
         return $admin;
     }

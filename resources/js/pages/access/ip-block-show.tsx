@@ -11,6 +11,7 @@ import { ActionLink } from '@/components/action-link';
 import { DetailsActionForm, DetailsPage } from '@/components/details-page';
 import { DetailsView } from '@/components/details-view';
 import { Badge } from '@/components/ui/badge';
+import { RecordStatusControl } from '@/components/ui/record-status-control';
 import type {
     BlockedIpAddress,
     SecurityActor,
@@ -62,10 +63,14 @@ function Actor({ actor }: { actor: SecurityActor | null }) {
 
 export default function IpBlockShowPage({
     blockedIpAddress,
-    canManage,
+    canUpdate = false,
+    canDelete = false,
+    canUpdateDeleted = false,
 }: {
     blockedIpAddress: IpBlockDetails;
-    canManage: boolean;
+    canUpdate?: boolean;
+    canDelete?: boolean;
+    canUpdateDeleted?: boolean;
 }) {
     return (
         <DetailsPage
@@ -74,57 +79,69 @@ export default function IpBlockShowPage({
             backHref={ipBlocksIndex.url()}
             backLabel="Back to IP addresses"
             actions={
-                canManage ? (
+                canUpdate || canDelete ? (
                     <>
-                        <ActionLink href={editIpBlock.url(blockedIpAddress.id)}>
-                            <Pencil />
-                            Edit
-                        </ActionLink>
-                        <DetailsActionForm
-                            action={
-                                blockedIpAddress.isActive
-                                    ? deactivateIpBlock.url(blockedIpAddress.id)
-                                    : activateIpBlock.url(blockedIpAddress.id)
-                            }
-                            method="patch"
-                            variant={
-                                blockedIpAddress.isActive
-                                    ? 'outline'
-                                    : 'default'
-                            }
-                            confirmation={{
-                                title: blockedIpAddress.isActive
-                                    ? `Allow ${blockedIpAddress.ipAddress}?`
-                                    : `Block ${blockedIpAddress.ipAddress}?`,
-                                description: blockedIpAddress.isActive
-                                    ? 'Future requests from this address will be allowed.'
-                                    : 'Future requests from this address will receive access denied.',
-                                confirmLabel: blockedIpAddress.isActive
-                                    ? 'Allow'
-                                    : 'Block',
-                            }}
-                        >
-                            {blockedIpAddress.isActive ? (
-                                <CircleCheck />
-                            ) : (
-                                <CircleSlash2 />
-                            )}
-                            {blockedIpAddress.isActive ? 'Allow' : 'Block'}
-                        </DetailsActionForm>
-                        <DetailsActionForm
-                            action={deleteIpBlock.url(blockedIpAddress.id)}
-                            method="delete"
-                            destructive
-                            confirmation={{
-                                title: `Delete ${blockedIpAddress.ipAddress}?`,
-                                description:
-                                    'This removes the IP address record and its block history.',
-                                confirmLabel: 'Delete',
-                            }}
-                        >
-                            <Trash2 />
-                            Delete
-                        </DetailsActionForm>
+                        {canUpdate && (
+                            <ActionLink
+                                href={editIpBlock.url(blockedIpAddress.id)}
+                            >
+                                <Pencil />
+                                Edit
+                            </ActionLink>
+                        )}
+                        {canUpdate && (
+                            <DetailsActionForm
+                                action={
+                                    blockedIpAddress.isActive
+                                        ? deactivateIpBlock.url(
+                                              blockedIpAddress.id,
+                                          )
+                                        : activateIpBlock.url(
+                                              blockedIpAddress.id,
+                                          )
+                                }
+                                method="patch"
+                                variant={
+                                    blockedIpAddress.isActive
+                                        ? 'outline'
+                                        : 'default'
+                                }
+                                confirmation={{
+                                    title: blockedIpAddress.isActive
+                                        ? `Allow ${blockedIpAddress.ipAddress}?`
+                                        : `Block ${blockedIpAddress.ipAddress}?`,
+                                    description: blockedIpAddress.isActive
+                                        ? 'Future requests from this address will be allowed.'
+                                        : 'Future requests from this address will receive access denied.',
+                                    confirmLabel: blockedIpAddress.isActive
+                                        ? 'Allow'
+                                        : 'Block',
+                                }}
+                            >
+                                {blockedIpAddress.isActive ? (
+                                    <CircleCheck />
+                                ) : (
+                                    <CircleSlash2 />
+                                )}
+                                {blockedIpAddress.isActive ? 'Allow' : 'Block'}
+                            </DetailsActionForm>
+                        )}
+                        {canDelete && (
+                            <DetailsActionForm
+                                action={deleteIpBlock.url(blockedIpAddress.id)}
+                                method="delete"
+                                destructive
+                                confirmation={{
+                                    title: `Delete ${blockedIpAddress.ipAddress}?`,
+                                    description:
+                                        'This removes the IP address record and its block history.',
+                                    confirmLabel: 'Delete',
+                                }}
+                            >
+                                <Trash2 />
+                                Delete
+                            </DetailsActionForm>
+                        )}
                     </>
                 ) : null
             }
@@ -149,6 +166,22 @@ export default function IpBlockShowPage({
                     </div>
                 }
                 sections={[
+                    {
+                        key: 'record-status',
+                        title: 'Record status',
+                        description:
+                            'The record lifecycle state used by active lists, separate from this IP rule’s block state.',
+                        content: (
+                            <RecordStatusControl
+                                recordStatus={blockedIpAddress.recordStatus}
+                                recordStatusUrl={
+                                    blockedIpAddress.recordStatusUrl
+                                }
+                                label={blockedIpAddress.ipAddress}
+                                canUpdateDeleted={canUpdateDeleted}
+                            />
+                        ),
+                    },
                     {
                         key: 'rule',
                         title: 'Access rule',

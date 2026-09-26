@@ -42,6 +42,7 @@ export type BlockedIpAddress = StandardAuditFields & {
     blockedBy: SecurityActor | null;
     unblockedAt: string | null;
     unblockedBy: SecurityActor | null;
+    recordStatusUrl?: string;
 };
 
 export type BlockedIpTableFilters = AuditTableFilters & {
@@ -54,7 +55,8 @@ export type BlockedIpTableFilters = AuditTableFilters & {
 
 type BlockedIpTableOptions = {
     filters: BlockedIpTableFilters;
-    canManage: boolean;
+    canUpdate: boolean;
+    canDelete: boolean;
     firstRowNumber: number;
 };
 
@@ -74,7 +76,8 @@ function initials(name: string): string {
 
 export function blockedIpTableColumns({
     filters,
-    canManage,
+    canUpdate,
+    canDelete,
     firstRowNumber,
 }: BlockedIpTableOptions): DataTableColumn<BlockedIpAddress>[] {
     const sort = filters.sort ?? '';
@@ -84,6 +87,7 @@ export function blockedIpTableColumns({
         status: filters.status,
         from: filters.from,
         to: filters.to,
+        record_status: filters.recordStatus,
     };
 
     return [
@@ -221,12 +225,14 @@ export function blockedIpTableColumns({
                         <Eye />
                         View
                     </TableActionLink>
-                    {canManage && (
+                    {canUpdate && (
+                        <TableActionLink href={editIpBlock.url(rule.id)}>
+                            <Pencil />
+                            Edit
+                        </TableActionLink>
+                    )}
+                    {canDelete && (
                         <>
-                            <TableActionLink href={editIpBlock.url(rule.id)}>
-                                <Pencil />
-                                Edit
-                            </TableActionLink>
                             <TableActionForm
                                 action={deleteIpBlock.url(rule.id)}
                                 method="delete"

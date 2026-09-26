@@ -26,6 +26,11 @@ class BlockedIpAddressController extends Controller
         $this->authorize('viewAny', BlockedIpAddress::class);
 
         $search = trim((string) $request->input('search', ''));
+        $canViewDeleted = $request->user()?->can('ip_blocks.view_deleted') === true;
+        $recordStatuses = $canViewDeleted
+            ? $this->filterValues($request->input('record_status', ['active']), ['active', 'inactive'])
+            : ['active'];
+        $recordStatuses = $recordStatuses === [] ? ['active'] : $recordStatuses;
         $statuses = $this->filterValues($request->input('status'), ['active', 'inactive']);
         $from = $this->parseDate($request->input('from'));
         $to = $this->parseDate($request->input('to'));
@@ -42,7 +47,7 @@ class BlockedIpAddressController extends Controller
             'record_status' => 'record_status',
         ];
 
-        $rules = BlockedIpAddress::query()
+        $rules = ($canViewDeleted ? BlockedIpAddress::withTrashed() : BlockedIpAddress::query())
             ->with([
                 'user:id,name,email',
                 'blockedBy:id,name,email',
@@ -58,6 +63,7 @@ class BlockedIpAddressController extends Controller
                         ->orWhere('email', 'like', "%{$search}%"));
             }))
             ->when($statuses !== [], static fn ($query) => $query->whereIn('is_active', array_map(static fn (string $status): bool => $status === 'active', $statuses)))
+            ->when($recordStatuses !== ['active', 'inactive'], static fn ($query) => $query->whereIn('record_status', array_map(static fn (string $value): int => $value === 'active' ? 1 : 0, $recordStatuses)))
             ->when($from !== null, static fn ($query) => $query->where('blocked_at', '>=', $from->startOfDay()))
             ->when($to !== null, static fn ($query) => $query->where('blocked_at', '<=', $to->endOfDay()))
             ->when(
@@ -117,6 +123,7 @@ class BlockedIpAddressController extends Controller
                 'createdBy' => $this->actor($rule->createdBy),
                 'updatedBy' => $this->actor($rule->updatedBy),
                 'recordStatus' => (int) $rule->record_status,
+                'recordStatusUrl' => route('access.ip-blocks.record-status', $rule->getKey()),
             ]);
 
         return Inertia::render('access/ip-blocks', [
@@ -129,9 +136,13 @@ class BlockedIpAddressController extends Controller
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
+                'recordStatus' => $this->filterValue($recordStatuses),
             ],
-            'canManage' => $request->user()?->can('ip_blocks.manage') === true,
-            'canCreate' => $request->user()?->can('ip_blocks.manage') === true,
+            'canCreate' => $request->user()?->can('ip_blocks.create') === true,
+            'canUpdate' => $request->user()?->can('ip_blocks.update') === true,
+            'canDelete' => $request->user()?->can('ip_blocks.delete') === true,
+            'canViewDeleted' => $canViewDeleted,
+            'canUpdateDeleted' => $request->user()?->can('ip_blocks.update_deleted') === true,
         ]);
     }
 
@@ -144,14 +155,19 @@ class BlockedIpAddressController extends Controller
         ]);
     }
 
-    public function show(BlockedIpAddress $blockedIpAddress): Response
+    public function show(int $blockedIpAddress): Response
     {
+        $canViewDeleted = request()->user()?->can('ip_blocks.view_deleted') === true;
+        $blockedIpAddress = ($canViewDeleted ? BlockedIpAddress::withTrashed() : BlockedIpAddress::query())->findOrFail($blockedIpAddress);
         $this->authorize('view', $blockedIpAddress);
         $blockedIpAddress->load(['user:id,name,email', 'blockedBy:id,name,email', 'unblockedBy:id,name,email']);
 
         return Inertia::render('access/ip-block-show', [
             'blockedIpAddress' => $this->details($blockedIpAddress),
-            'canManage' => request()->user()?->can('update', $blockedIpAddress) === true,
+            'canUpdate' => request()->user()?->can('update', $blockedIpAddress) === true,
+            'canDelete' => request()->user()?->can('delete', $blockedIpAddress) === true,
+            'canViewDeleted' => $canViewDeleted,
+            'canUpdateDeleted' => request()->user()?->can('ip_blocks.update_deleted') === true,
         ]);
     }
 
@@ -238,6 +254,8 @@ class BlockedIpAddressController extends Controller
     {
         return [
             'id' => $rule->id,
+            'recordStatus' => (int) $rule->record_status,
+            'recordStatusUrl' => route('access.ip-blocks.record-status', $rule->getKey()),
             'ipAddress' => $rule->ip_address,
             'user' => $rule->user === null ? null : [
                 'id' => $rule->user->id,

@@ -48,6 +48,7 @@ export type UserRow = StandardAuditFields & {
         isSystem: boolean;
     } | null;
     canDelete?: boolean;
+    recordStatusUrl?: string;
 };
 
 export type Invitation = StandardAuditFields & {
@@ -56,6 +57,7 @@ export type Invitation = StandardAuditFields & {
     role: { id: number; name: string; displayName: string };
     expiresAt: string;
     status: string;
+    recordStatusUrl?: string;
 };
 
 export type Registration = {
@@ -277,6 +279,7 @@ export function userTableColumns({
         status: filters.status,
         from: filters.from,
         to: filters.to,
+        record_status: filters.recordStatus,
     };
 
     return [

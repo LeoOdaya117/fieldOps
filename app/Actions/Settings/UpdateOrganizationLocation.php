@@ -6,6 +6,7 @@ use App\Actions\Rbac\RecordAccessAudit;
 use App\Models\OrganizationLocation;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class UpdateOrganizationLocation
 {
@@ -59,6 +60,21 @@ class UpdateOrganizationLocation
 
     private function primary(User $actor): OrganizationLocation
     {
+        $existing = OrganizationLocation::withTrashed()
+            ->where('scope', OrganizationLocation::PRIMARY_SCOPE)
+            ->lockForUpdate()
+            ->first();
+
+        if ($existing?->trashed()) {
+            throw ValidationException::withMessages([
+                'location' => 'Restore the primary organization location before editing it.',
+            ]);
+        }
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
         return OrganizationLocation::query()->firstOrCreate(
             ['scope' => OrganizationLocation::PRIMARY_SCOPE],
             [

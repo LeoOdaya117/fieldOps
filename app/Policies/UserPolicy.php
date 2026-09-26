@@ -40,11 +40,13 @@ class UserPolicy
     {
         return $user->can('users.delete')
             && ! $user->is($subject)
-            && ($user->isOwner() || ! $subject->isOwner());
+            && ($user->isSuperAdmin() || ! $subject->isSuperAdmin());
     }
 
     public function suspend(User $user, User $subject): bool
     {
-        return $user->can('users.suspend') && ! $user->is($subject);
+        return $user->can('users.suspend')
+            && ! $user->is($subject)
+            && ($user->isSuperAdmin() || ! $subject->isSuperAdmin());
     }
 }

@@ -8,7 +8,7 @@ class DeleteBlockedIpAddressRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('ip_blocks.manage') === true;
+        return $this->user()?->can('ip_blocks.delete') === true;
     }
 
     /** @return array<string, mixed> */

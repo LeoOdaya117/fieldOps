@@ -43,6 +43,7 @@ Do not add repositories, generic services, or a separate domain layer by default
 - Put input validation and request-level authorization in Form Requests.
 - Use Policies for resource-level authorization and test authorization independently from authentication.
 - Use Actions for reusable, multi-step, transactional, or externally integrated operations.
+- For resources using `HasRecordStatus`, expose `canViewDeleted` and `canUpdateDeleted` capabilities consistently on list/detail pages, filter inactive rows only when `view_deleted` is authorized, and handle status changes through an explicit resource route backed by the shared `ChangeRecordStatus` action. Keep route authorization and model-specific safeguards server-side; never rely on hidden UI controls alone.
 - Use Eloquent relationships, scopes, casts, factories, and database constraints for persistence behavior.
 - Use transactions for multi-record writes and make operations idempotent where retries are possible.
 - Use `validated()` data only. Do not mass-assign untrusted request input.

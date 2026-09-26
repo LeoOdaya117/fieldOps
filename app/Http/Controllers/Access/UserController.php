@@ -84,8 +84,10 @@ class UserController extends Controller
         ]);
     }
 
-    public function show(User $user): Response
+    public function show(int $user): Response
     {
+        $canViewDeleted = request()->user()?->can('users.view_deleted') === true;
+        $user = ($canViewDeleted ? User::withTrashed() : User::query())->findOrFail($user);
         $this->authorize('view', $user);
 
         $user->load('roles:id,name,display_name,is_system');
@@ -107,11 +109,15 @@ class UserController extends Controller
                 'emailVerifiedAt' => $user->email_verified_at?->toIso8601String(),
                 'createdAt' => $user->created_at?->toIso8601String(),
                 'updatedAt' => $user->updated_at?->toIso8601String(),
+                'recordStatus' => (int) $user->record_status,
+                'recordStatusUrl' => route('access.users.record-status', $user->getKey()),
             ],
             'canEdit' => request()->user()?->can('update', $user) === true,
             'canDelete' => request()->user()?->can('delete', $user) === true,
             'canSuspend' => request()->user()?->can('suspend', $user) === true,
             'canReactivate' => request()->user()?->can('update', $user) === true,
+            'canViewDeleted' => $canViewDeleted,
+            'canUpdateDeleted' => request()->user()?->can('users.update_deleted') === true,
         ]);
     }
 
@@ -136,6 +142,11 @@ class UserController extends Controller
 
         $search = trim((string) $request->input('search', ''));
         $statuses = $this->filterValues($request->input('status'), ['active', 'suspended']);
+        $canViewDeleted = $request->user()?->can('users.view_deleted') === true;
+        $recordStatuses = $canViewDeleted
+            ? $this->filterValues($request->input('record_status', ['active']), ['active', 'inactive'])
+            : ['active'];
+        $recordStatuses = $recordStatuses === [] ? ['active'] : $recordStatuses;
         $from = $this->parseDate($request->input('from'));
         $to = $this->parseDate($request->input('to'));
         $invitationSort = (string) $request->input('invitation_sort', '');
@@ -158,7 +169,7 @@ class UserController extends Controller
         ];
 
         return Inertia::render('access/users', [
-            'users' => User::query()
+            'users' => ($canViewDeleted ? User::withTrashed() : User::query())
                 ->with([
                     'roles:id,name,display_name,is_system',
                     'createdBy:id,name,email',
@@ -169,6 +180,7 @@ class UserController extends Controller
                         ->orWhere('email', 'like', "%{$search}%");
                 }))
                 ->when($statuses !== [], static fn ($query) => $query->whereIn('status', $statuses))
+                ->when($recordStatuses !== ['active', 'inactive'], static fn ($query) => $query->whereIn('record_status', array_map(static fn (string $value): int => $value === 'active' ? 1 : 0, $recordStatuses)))
                 ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
                 ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
                 ->when(
@@ -219,11 +231,12 @@ class UserController extends Controller
                     'createdBy' => $this->actor($user->createdBy),
                     'updatedBy' => $this->actor($user->updatedBy),
                     'recordStatus' => (int) $user->record_status,
+                    'recordStatusUrl' => route('access.users.record-status', $user->getKey()),
                 ]),
             'activeUsersCount' => User::query()
                 ->where('status', UserStatus::Active->value)
                 ->count(),
-            'invitations' => UserInvitation::query()
+            'invitations' => ($canViewDeleted ? UserInvitation::withTrashed() : UserInvitation::query())
                 ->with([
                     'role:id,name,display_name',
                     'createdBy:id,name,email',
@@ -231,6 +244,7 @@ class UserController extends Controller
                 ])
                 ->whereNull('accepted_at')
                 ->whereNull('revoked_at')
+                ->when($recordStatuses !== ['active', 'inactive'], static fn ($query) => $query->whereIn('record_status', array_map(static fn (string $value): int => $value === 'active' ? 1 : 0, $recordStatuses)))
                 ->when(
                     $invitationSort === 'created_by',
                     static fn ($query) => $query->orderBy(
@@ -273,6 +287,7 @@ class UserController extends Controller
                     'createdBy' => $this->actor($invitation->createdBy),
                     'updatedBy' => $this->actor($invitation->updatedBy),
                     'recordStatus' => (int) $invitation->record_status,
+                    'recordStatusUrl' => route('access.users.invitations.record-status', $invitation->getKey()),
                 ])->values(),
             'registrations' => $request->user()->can('users.review_registrations')
                 ? UserRegistration::query()
@@ -295,6 +310,8 @@ class UserController extends Controller
             'canEdit' => $request->user()->can('users.update'),
             'canSuspend' => $request->user()->can('users.suspend'),
             'canReactivate' => $request->user()->can('users.update'),
+            'canViewDeleted' => $canViewDeleted,
+            'canUpdateDeleted' => $request->user()->can('users.update_deleted'),
             'filters' => [
                 'search' => $search,
                 'status' => $this->filterValue($statuses),
@@ -303,10 +320,12 @@ class UserController extends Controller
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
+                'recordStatus' => $this->filterValue($recordStatuses),
             ],
             'invitationFilters' => [
                 'sort' => $invitationSort,
                 'direction' => $invitationDirection,
+                'recordStatus' => $this->filterValue($recordStatuses),
             ],
         ]);
     }
@@ -318,8 +337,8 @@ class UserController extends Controller
     {
         return Role::query()
             ->when(
-                ! request()->user()->isOwner(),
-                static fn ($query) => $query->whereNotIn('name', RoleName::ownerRoleNames()),
+                ! request()->user()->isSuperAdmin(),
+                static fn ($query) => $query->whereNotIn('name', RoleName::elevatedRoleNames()),
             )
             ->orderBy('display_name')
             ->get(['id', 'name', 'display_name', 'is_system']);
@@ -409,7 +428,7 @@ class UserController extends Controller
     public function assignRole(AssignRoleRequest $request, User $user, AssignRoleToUser $assign): RedirectResponse
     {
         $role = Role::query()->findOrFail($request->integer('role_id'));
-        $this->authorize('assign', $role);
+        $this->authorize('assign', [$role, $user]);
         $assign->execute($user, $role, $request->user());
 
         return back()->with('success', 'Role updated.');

@@ -10,7 +10,7 @@ class StoreBlockedIpAddressRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('ip_blocks.manage') === true;
+        return $this->user()?->can('ip_blocks.create') === true;
     }
 
     protected function prepareForValidation(): void

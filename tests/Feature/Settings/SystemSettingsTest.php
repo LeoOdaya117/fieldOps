@@ -19,7 +19,7 @@ class SystemSettingsTest extends TestCase
     public function test_an_administrator_can_view_and_update_system_settings(): void
     {
         $admin = User::factory()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
 
         $this->actingAs($admin)
             ->get(route('system-settings.edit'))
@@ -108,7 +108,7 @@ class SystemSettingsTest extends TestCase
     public function test_system_settings_require_recent_password_confirmation_and_validate_policy_bounds(): void
     {
         $admin = User::factory()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
         $payload = [
             'name' => 'FieldOps',
             'timezone' => 'UTC',
@@ -142,7 +142,7 @@ class SystemSettingsTest extends TestCase
     public function test_an_administrator_can_compare_and_apply_a_layout_theme(): void
     {
         $admin = User::factory()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
 
         $this->actingAs($admin)
             ->get(route('system-settings.layout.edit'))
@@ -175,7 +175,7 @@ class SystemSettingsTest extends TestCase
     public function test_layout_theme_requires_confirmation_permission_and_a_known_value(): void
     {
         $admin = User::factory()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
 
         $this->actingAs($admin)
             ->patch(route('system-settings.layout.update'), ['theme' => 'atlas'])
@@ -211,7 +211,7 @@ class SystemSettingsTest extends TestCase
     public function test_unverified_administrators_cannot_read_or_change_system_settings(): void
     {
         $admin = User::factory()->unverified()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
 
         $read = $this->actingAs($admin)->get(route('system-settings.edit'));
         $write = $this->actingAs($admin)->patch(route('system-settings.update'));

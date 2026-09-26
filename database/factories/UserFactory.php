@@ -24,11 +24,11 @@ class UserFactory extends Factory
     public function configure(): static
     {
         return $this->afterCreating(function (User $user): void {
-            if (! Role::query()->where('name', RoleName::Technician->value)->exists()) {
+            if (! Role::query()->where('name', RoleName::User->value)->exists()) {
                 app(RbacSeeder::class)->run();
             }
 
-            $user->syncRoles(RoleName::Technician->value);
+            $user->syncRoles(RoleName::User->value);
         });
     }
 
@@ -44,6 +44,7 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'status' => UserStatus::Active,
+            'session_version' => 1,
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             /* @chisel-2fa */

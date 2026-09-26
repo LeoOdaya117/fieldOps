@@ -39,7 +39,7 @@ vi.mock('@inertiajs/react', () => ({
                 authorization: {
                     role: null,
                     permissions: [],
-                    isOwner: false,
+                    isSuperAdmin: false,
                 },
             },
         },

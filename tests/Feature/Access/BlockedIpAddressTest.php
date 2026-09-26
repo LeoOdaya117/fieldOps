@@ -92,7 +92,7 @@ class BlockedIpAddressTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_owner_can_create_deactivate_and_reactivate_an_ip_block_with_audit_events(): void
+    public function test_super_admin_can_create_deactivate_and_reactivate_an_ip_block_with_audit_events(): void
     {
         $owner = $this->owner();
 
@@ -219,6 +219,7 @@ class BlockedIpAddressTest extends TestCase
             'is_active' => false,
             'blocked_at' => now(),
         ]);
+        $rule->delete();
 
         $this->get(route('access.ip-blocks.index', [
             'record_status' => 'inactive',
@@ -227,17 +228,17 @@ class BlockedIpAddressTest extends TestCase
             'direction' => 'desc',
         ]))->assertInertia(fn (Assert $page) => $page
             ->where('blockedIpAddresses.data.0.id', $rule->id)
-            ->where('blockedIpAddresses.data.0.recordStatus', 1)
+            ->where('blockedIpAddresses.data.0.recordStatus', 0)
             ->where('filters.sort', 'created_by')
             ->where('filters.direction', 'desc')
             ->missing('filters.createdBy')
-            ->missing('filters.recordStatus'));
+            ->where('filters.recordStatus', 'inactive'));
     }
 
     private function owner(): User
     {
         $owner = User::factory()->create();
-        $owner->syncRoles(RoleName::Owner->value);
+        $owner->syncRoles(RoleName::SuperAdmin->value);
 
         return $owner;
     }

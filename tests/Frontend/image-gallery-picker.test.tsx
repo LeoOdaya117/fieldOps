@@ -22,17 +22,36 @@ const asset: MediaAssetDto = {
     contentUrl: '/media-assets/7/content',
     thumbnailUrl: '/media-assets/7/thumbnail',
     assigned: false,
+    recordStatus: 1,
+    recordStatusUrl: '/media-assets/7/record-status',
+    updateUrl: '/media-assets/7',
 };
 
 describe('ImageGalleryPicker', () => {
     beforeEach(() => {
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-            ok: true,
-            json: async () => ({
-                data: [asset],
-                meta: { current_page: 1, last_page: 1, total: 1 },
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockImplementation((request: RequestInfo | URL) => {
+                const inactive = String(request).includes(
+                    'record_status=inactive',
+                );
+
+                return Promise.resolve({
+                    ok: true,
+                    json: async () => ({
+                        data: [
+                            inactive ? { ...asset, recordStatus: 0 } : asset,
+                        ],
+                        meta: { current_page: 1, last_page: 1, total: 1 },
+                        canCreate: true,
+                        canUpdate: true,
+                        canDelete: true,
+                        canViewDeleted: true,
+                        canUpdateDeleted: true,
+                    }),
+                });
             }),
-        }));
+        );
     });
 
     afterEach(() => {
@@ -55,9 +74,15 @@ describe('ImageGalleryPicker', () => {
             />,
         );
 
-        await user.click(await screen.findByRole('button', { name: /operations-logo\.png/i }));
+        await user.click(
+            await screen.findByRole('button', {
+                name: /operations-logo\.png/i,
+            }),
+        );
         expect(onChange).toHaveBeenCalledWith(asset);
-        await user.click(screen.getByRole('button', { name: 'Use selected image' }));
+        await user.click(
+            screen.getByRole('button', { name: 'Use selected image' }),
+        );
         expect(onConfirm).toHaveBeenCalledWith(asset);
     });
 
@@ -77,10 +102,97 @@ describe('ImageGalleryPicker', () => {
         await user.type(input, 'logo');
         await user.keyboard('{Enter}');
 
-        await waitFor(() => expect(fetch).toHaveBeenLastCalledWith(
-            '/media-assets?page=1&search=logo',
-            expect.objectContaining({ credentials: 'same-origin' }),
-        ));
+        await waitFor(() =>
+            expect(fetch).toHaveBeenLastCalledWith(
+                '/media-assets?page=1&search=logo',
+                expect.objectContaining({ credentials: 'same-origin' }),
+            ),
+        );
+    });
+
+    it('filters inactive media and prevents assigning it until restored', async () => {
+        const user = userEvent.setup();
+        render(
+            <ImageGalleryPicker
+                open
+                onOpenChange={() => undefined}
+                value={null}
+                onChange={() => undefined}
+                onConfirm={() => undefined}
+            />,
+        );
+
+        await user.click(
+            await screen.findByRole('button', { name: 'Inactive' }),
+        );
+        await waitFor(() =>
+            expect(fetch).toHaveBeenLastCalledWith(
+                '/media-assets?page=1&record_status=inactive',
+                expect.anything(),
+            ),
+        );
+        await user.click(
+            await screen.findByRole('button', {
+                name: /operations-logo\.png/i,
+            }),
+        );
+        expect(
+            screen.getByRole('button', { name: 'Restore image to assign it' }),
+        ).toBeDisabled();
+        expect(
+            screen.queryByRole('button', { name: 'Rename' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Delete image' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('hides mutation tabs and lifecycle controls when capabilities are absent', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({
+                ok: true,
+                json: async () => ({
+                    data: [asset],
+                    meta: { current_page: 1, last_page: 1, total: 1 },
+                    canCreate: false,
+                    canUpdate: false,
+                    canDelete: false,
+                    canViewDeleted: false,
+                    canUpdateDeleted: false,
+                }),
+            }),
+        );
+        render(
+            <ImageGalleryPicker
+                open
+                onOpenChange={() => undefined}
+                value={null}
+                onChange={() => undefined}
+                onConfirm={() => undefined}
+            />,
+        );
+        expect(
+            await screen.findByRole('tab', { name: 'My uploads' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('tab', { name: 'Upload' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('tab', { name: 'Camera' }),
+        ).not.toBeInTheDocument();
+        await userEvent.setup().click(
+            await screen.findByRole('button', {
+                name: /operations-logo\.png/i,
+            }),
+        );
+        expect(screen.getByText('Active')).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Rename' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Delete image' }),
+        ).not.toBeInTheDocument();
     });
 
     it('stops every camera track when the picker unmounts', async () => {
@@ -109,7 +221,9 @@ describe('ImageGalleryPicker', () => {
         );
 
         await user.click(await screen.findByRole('tab', { name: 'Camera' }));
-        await waitFor(() => expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled());
+        await waitFor(() =>
+            expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalled(),
+        );
         unmount();
         expect(stop).toHaveBeenCalled();
     });

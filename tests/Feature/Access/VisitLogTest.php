@@ -170,7 +170,7 @@ class VisitLogTest extends TestCase
     public function test_users_without_visit_log_permission_are_denied(): void
     {
         $user = User::factory()->create();
-        $user->syncRoles(RoleName::Technician->value);
+        $user->syncRoles(RoleName::User->value);
 
         $this->actingAs($user)->get(route('access.visit-logs.index'))->assertForbidden();
     }
@@ -365,7 +365,7 @@ class VisitLogTest extends TestCase
     private function owner(): User
     {
         $owner = User::factory()->create();
-        $owner->syncRoles(RoleName::Owner->value);
+        $owner->syncRoles(RoleName::SuperAdmin->value);
 
         return $owner;
     }

@@ -95,7 +95,7 @@ const navigationDefinitions: Array<{
                 title: 'System settings',
                 href: '/settings/system',
                 icon: Settings2,
-                permission: 'settings.manage_system',
+                permission: 'settings.view',
             },
         ],
     },
@@ -103,7 +103,7 @@ const navigationDefinitions: Array<{
 
 export function getNavigationGroups(auth: Auth): NavigationGroup[] {
     const can = (permission: string) =>
-        auth.authorization.isOwner ||
+        auth.authorization.isSuperAdmin ||
         auth.authorization.permissions.includes(permission);
 
     return navigationDefinitions

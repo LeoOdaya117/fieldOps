@@ -14,7 +14,7 @@ class AssignPlatformImageRequest extends FormRequest
         return $user !== null
             && $user->isActive()
             && $user->email_verified_at !== null
-            && $user->isOwner();
+            && $user->isSuperAdmin();
     }
 
     /** @return array<string, mixed> */

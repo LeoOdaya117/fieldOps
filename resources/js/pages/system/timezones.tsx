@@ -14,6 +14,7 @@ import type {
     Timezone,
 } from '@/features/system/types';
 import { dashboard } from '@/routes';
+import { RecordStatusFilters } from '@/components/record-status-filters';
 import {
     create as createTimezone,
     index as timezonesIndex,
@@ -21,13 +22,19 @@ import {
 
 export default function TimezonesPage({
     timezones,
-    canManage = false,
+    canUpdate = false,
+    canDelete = false,
     canCreate = false,
+    canViewDeleted = false,
+    canUpdateDeleted = false,
     filters = { search: '' },
 }: {
     timezones: PaginatedReferenceData<Timezone>;
-    canManage?: boolean;
+    canUpdate?: boolean;
+    canDelete?: boolean;
     canCreate?: boolean;
+    canViewDeleted?: boolean;
+    canUpdateDeleted?: boolean;
     filters?: ReferenceDataFilters;
 }) {
     const pageSize = timezones.per_page ?? filters.perPage ?? DEFAULT_PAGE_SIZE;
@@ -46,8 +53,12 @@ export default function TimezonesPage({
                 title="Search and filter timezones"
                 description="Find a timezone identifier."
                 activeFilterCount={
-                    [filters.search, filters.from, filters.to].filter(Boolean)
-                        .length
+                    [
+                        filters.search,
+                        filters.from,
+                        filters.to,
+                        filters.recordStatus,
+                    ].filter(Boolean).length
                 }
                 pageSize={pageSize}
                 keyword={
@@ -75,7 +86,12 @@ export default function TimezonesPage({
                         />
                     </div>
                 }
-            />
+            >
+                <RecordStatusFilters
+                    canViewDeleted={canViewDeleted}
+                    value={filters.recordStatus}
+                />
+            </SearchFilterSheet>
             {canCreate ? (
                 <ActionLink href={createTimezone.url()}>
                     <Plus />
@@ -100,7 +116,9 @@ export default function TimezonesPage({
                     tableColumns={() =>
                         timezoneTableColumns({
                             filters,
-                            canManage,
+                            canUpdate,
+                            canDelete,
+                            canUpdateDeleted,
                             firstRowNumber: timezones.from ?? 1,
                         })
                     }
@@ -111,6 +129,7 @@ export default function TimezonesPage({
                         </p>
                     }
                     addDefaultColumns
+                    canUpdateDeleted={canUpdateDeleted}
                     excludeDefaultColumns={['status']}
                     defaultColumnSort={{
                         action: timezonesIndex.url(),
@@ -120,6 +139,7 @@ export default function TimezonesPage({
                             search: filters.search,
                             from: filters.from,
                             to: filters.to,
+                            record_status: filters.recordStatus,
                         },
                     }}
                     columnVisibility={{

@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ChevronRight, Menu } from 'lucide-react';
-import { useState, type ComponentProps } from 'react';
+import type { ComponentProps } from 'react';
+import { useState } from 'react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { PlatformLogo } from '@/components/platform-logo';
 import { UserMenuContent } from '@/components/user-menu-content';

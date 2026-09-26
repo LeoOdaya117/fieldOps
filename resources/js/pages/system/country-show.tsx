@@ -2,10 +2,8 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { ActionLink } from '@/components/action-link';
 import { DetailsActionForm, DetailsPage } from '@/components/details-page';
 import { DetailsView } from '@/components/details-view';
-import {
-    RecordStatusSwitch,
-    formatDate,
-} from '@/features/system/reference-data-table-model';
+import { RecordStatusControl } from '@/components/ui/record-status-control';
+import { formatDate } from '@/features/system/reference-data-table-model';
 import type { AuditActor, Country } from '@/features/system/types';
 import { dashboard } from '@/routes';
 import {
@@ -20,12 +18,14 @@ function actorLabel(actor: AuditActor): string {
 
 export default function CountryShowPage({
     country,
-    canEdit = false,
+    canUpdate = false,
     canDelete = false,
+    canUpdateDeleted = false,
 }: {
     country: Country;
-    canEdit?: boolean;
+    canUpdate?: boolean;
     canDelete?: boolean;
+    canUpdateDeleted?: boolean;
 }) {
     return (
         <DetailsPage
@@ -35,7 +35,7 @@ export default function CountryShowPage({
             backLabel="Back to countries"
             actions={
                 <>
-                    {canEdit ? (
+                    {canUpdate ? (
                         <ActionLink href={editCountry.url(country.id)}>
                             <Pencil />
                             Edit
@@ -109,9 +109,11 @@ export default function CountryShowPage({
                             'The lifecycle state used to keep this record available or retained for audit.',
                         content: (
                             <div className="space-y-4">
-                                <RecordStatusSwitch
+                                <RecordStatusControl
                                     recordStatus={country.recordStatus}
                                     label={country.name}
+                                    recordStatusUrl={country.recordStatusUrl}
+                                    canUpdateDeleted={canUpdateDeleted}
                                 />
                                 <p className="text-xs leading-5 text-muted-foreground">
                                     {country.recordStatus === 1
@@ -157,7 +159,7 @@ export default function CountryShowPage({
                                 cell: (record) =>
                                     record.recordStatus === 1
                                         ? 'Active record'
-                                        : 'Deleted record',
+                                        : 'Inactive record',
                                 span: 1,
                             },
                         ],

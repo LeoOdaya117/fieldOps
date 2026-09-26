@@ -137,7 +137,8 @@ describe('system reference data UI', () => {
         const { unmount } = render(
             <CountriesPage
                 countries={countryPageData}
-                canManage
+                canUpdate
+                canDelete
                 canCreate
                 filters={{ search: '' }}
             />,
@@ -178,7 +179,8 @@ describe('system reference data UI', () => {
         render(
             <TimezonesPage
                 timezones={timezonePageData}
-                canManage={false}
+                canUpdate={false}
+                canDelete={false}
                 canCreate={false}
                 filters={{ search: '' }}
             />,
@@ -203,7 +205,7 @@ describe('system reference data UI', () => {
 
     it('renders country and timezone records through the shared detail view', () => {
         const { unmount } = render(
-            <CountryShowPage country={country} canEdit canDelete />,
+            <CountryShowPage country={country} canUpdate canDelete />,
         );
 
         expect(
@@ -219,9 +221,7 @@ describe('system reference data UI', () => {
                 ) as HTMLElement,
             ).getByRole('heading', { name: 'Philippines' }),
         ).toBeInTheDocument();
-        expect(
-            screen.getByRole('switch', { name: /Active record/ }),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Active')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
             'href',
             '/system/countries/1/edit',
@@ -232,7 +232,7 @@ describe('system reference data UI', () => {
         render(
             <TimezoneShowPage
                 timezone={timezone}
-                canEdit
+                canUpdate
                 canDelete
                 isCurrent
             />,
@@ -249,9 +249,7 @@ describe('system reference data UI', () => {
             ).getByRole('heading', { name: 'Asia/Manila' }),
         ).toBeInTheDocument();
         expect(screen.getByText('Current system timezone')).toBeInTheDocument();
-        expect(
-            screen.getByRole('switch', { name: /Active record/ }),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Active')).toBeInTheDocument();
     });
 
     it('renders country columns, record status, row actions, and pagination', async () => {
@@ -268,7 +266,8 @@ describe('system reference data UI', () => {
                             sort: '',
                             direction: 'asc',
                         },
-                        canManage: true,
+                        canUpdate: true,
+                        canDelete: true,
                         firstRowNumber: 1,
                     })
                 }
@@ -332,11 +331,7 @@ describe('system reference data UI', () => {
             }),
         ).toBeInTheDocument();
         expect(screen.getAllByText('Admin')).toHaveLength(2);
-        expect(
-            screen.getByRole('switch', {
-                name: 'Active record for Philippines',
-            }),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Active')).toBeInTheDocument();
         expect(screen.getAllByText(/Showing 1–1 of 1 countries/)).toHaveLength(
             1,
         );
@@ -364,7 +359,7 @@ describe('system reference data UI', () => {
         ).toBeInTheDocument();
     });
 
-    it('renders read-only record status and actions for viewers without manage permission', async () => {
+    it('renders a record status badge and actions for viewers without status-update permission', async () => {
         const user = userEvent.setup();
 
         render(
@@ -374,7 +369,8 @@ describe('system reference data UI', () => {
                 tableColumns={() =>
                     timezoneTableColumns({
                         filters: { search: '' },
-                        canManage: false,
+                        canUpdate: false,
+                        canDelete: false,
                         firstRowNumber: 1,
                     })
                 }
@@ -386,11 +382,7 @@ describe('system reference data UI', () => {
         expect(
             screen.queryByRole('columnheader', { name: 'Status' }),
         ).not.toBeInTheDocument();
-        expect(
-            screen.getByRole('switch', {
-                name: 'Active record for Asia/Manila',
-            }),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Active')).toBeInTheDocument();
         await user.click(
             screen.getByRole('button', { name: 'Actions for Asia/Manila' }),
         );

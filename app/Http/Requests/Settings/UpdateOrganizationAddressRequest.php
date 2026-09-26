@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Models\OrganizationLocation;
 use App\Models\PsgcLocality;
 use App\Models\PsgcProvince;
 use Illuminate\Foundation\Http\FormRequest;
@@ -14,10 +15,25 @@ class UpdateOrganizationAddressRequest extends FormRequest
     {
         $user = $this->user();
 
-        return $user !== null
-            && $user->isActive()
-            && $user->email_verified_at !== null
-            && $user->can('settings.manage_system');
+        if ($user === null
+            || ! $user->isActive()
+            || $user->email_verified_at === null
+            || ! $user->can('settings.update')) {
+            return false;
+        }
+
+        $location = OrganizationLocation::query()
+            ->withoutGlobalScope('record_status')
+            ->where('scope', OrganizationLocation::PRIMARY_SCOPE)
+            ->first();
+
+        if ($location?->trashed()) {
+            return false;
+        }
+
+        return $location === null
+            ? $user->can('organization_locations.create')
+            : $user->can('organization_locations.update');
     }
 
     protected function prepareForValidation(): void

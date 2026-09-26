@@ -98,9 +98,11 @@ function ThemePreview({ theme }: { theme: PlatformTheme }) {
 export default function PlatformLayoutSettings({
     currentTheme,
     themes,
+    canUpdateSettings = false,
 }: {
     currentTheme: PlatformTheme;
     themes: PlatformThemeOption[];
+    canUpdateSettings?: boolean;
 }) {
     const [selectedTheme, setSelectedTheme] = useState(currentTheme);
 
@@ -135,7 +137,10 @@ export default function PlatformLayoutSettings({
                                 </p>
                             </div>
                         </header>
-                        <fieldset className="settings-section">
+                        <fieldset
+                            className="settings-section"
+                            disabled={!canUpdateSettings}
+                        >
                             <legend className="sr-only">
                                 Application layout
                             </legend>
@@ -224,7 +229,9 @@ export default function PlatformLayoutSettings({
                             </p>
                             <Button
                                 disabled={
-                                    processing || selectedTheme === currentTheme
+                                    processing ||
+                                    selectedTheme === currentTheme ||
+                                    !canUpdateSettings
                                 }
                             >
                                 {processing ? 'Applying…' : 'Apply layout'}

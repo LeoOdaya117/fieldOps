@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActionLink } from '@/components/action-link';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
+import { RecordStatusFilters } from '@/components/record-status-filters';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { AdaptiveSelect } from '@/components/ui/adaptive-select';
@@ -33,6 +34,8 @@ export default function RolesPage({
     canManageSystemRoles = false,
     canCreate = false,
     canDeleteRoles = true,
+    canViewDeleted = false,
+    canUpdateDeleted = false,
     filters = {
         search: '',
         type: '',
@@ -44,6 +47,8 @@ export default function RolesPage({
     canManageSystemRoles?: boolean;
     canCreate?: boolean;
     canDeleteRoles?: boolean;
+    canViewDeleted?: boolean;
+    canUpdateDeleted?: boolean;
     filters?: RoleTableFilters;
 }) {
     const roleRows = Array.isArray(roles) ? roles : roles.data;
@@ -111,6 +116,7 @@ export default function RolesPage({
                         filters.permissionsMin,
                         filters.from,
                         filters.to,
+                        filters.recordStatus,
                     ].filter(Boolean).length
                 }
                 pageSize={pageSize}
@@ -206,6 +212,10 @@ export default function RolesPage({
                         placeholder="0"
                     />
                 </div>
+                <RecordStatusFilters
+                    canViewDeleted={canViewDeleted}
+                    value={filters.recordStatus}
+                />
             </SearchFilterSheet>
             {canCreate && (
                 <ActionLink href="/access/roles/create">
@@ -240,6 +250,7 @@ export default function RolesPage({
                         </>
                     }
                     addDefaultColumns
+                    canUpdateDeleted={canUpdateDeleted}
                     defaultColumnSort={{
                         action: rolesIndex.url(),
                         sort: filters.sort,
@@ -251,6 +262,7 @@ export default function RolesPage({
                             permissions_min: filters.permissionsMin,
                             from: filters.from,
                             to: filters.to,
+                            record_status: filters.recordStatus,
                         },
                     }}
                     toolbar={

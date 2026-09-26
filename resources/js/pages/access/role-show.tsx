@@ -4,6 +4,7 @@ import { DetailsActionForm, DetailsPage } from '@/components/details-page';
 import { DetailsView } from '@/components/details-view';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { RecordStatusControl } from '@/components/ui/record-status-control';
 import { dashboard } from '@/routes';
 import {
     destroy as deleteRole,
@@ -21,6 +22,8 @@ type RoleDetails = {
     permissionsCount: number;
     permissions: string[];
     users: { id: number; name: string; email: string }[];
+    recordStatus?: number;
+    recordStatusUrl?: string;
 };
 
 function initials(name: string): string {
@@ -37,10 +40,12 @@ export default function RoleShowPage({
     role,
     canEdit,
     canDelete = false,
+    canUpdateDeleted = false,
 }: {
     role: RoleDetails;
     canEdit?: boolean;
     canDelete?: boolean;
+    canUpdateDeleted?: boolean;
 }) {
     return (
         <DetailsPage
@@ -102,6 +107,20 @@ export default function RoleShowPage({
                     </div>
                 }
                 sections={[
+                    {
+                        key: 'record-status',
+                        title: 'Record status',
+                        description:
+                            'The record lifecycle state used by active lists.',
+                        content: (
+                            <RecordStatusControl
+                                recordStatus={role.recordStatus ?? 1}
+                                recordStatusUrl={role.recordStatusUrl}
+                                label={role.displayName}
+                                canUpdateDeleted={canUpdateDeleted}
+                            />
+                        ),
+                    },
                     {
                         key: 'definition',
                         title: 'Role definition',

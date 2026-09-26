@@ -34,16 +34,20 @@ class AssignRoleToUser
                 throw ValidationException::withMessages(['role' => 'You cannot change your own role.']);
             }
 
-            if (in_array($current?->name, RoleName::ownerRoleNames(), true) && $target->status === UserStatus::Active) {
-                $remainingOwners = User::query()
+            if (in_array($current?->name, RoleName::elevatedRoleNames(), true) && ! $actor?->isSuperAdmin()) {
+                throw ValidationException::withMessages(['role_id' => 'Only a Super Admin can change the role of a Super Admin.']);
+            }
+
+            if (in_array($current?->name, RoleName::elevatedRoleNames(), true) && $target->status === UserStatus::Active) {
+                $remainingSuperAdmins = User::query()
                     ->where('status', UserStatus::Active->value)
                     ->where('users.id', '<>', $target->getKey())
-                    ->role(RoleName::ownerRoleNames())
+                    ->role(RoleName::elevatedRoleNames())
                     ->lockForUpdate()
                     ->count();
 
-                if ($remainingOwners < 1) {
-                    throw ValidationException::withMessages(['role' => 'The enterprise must retain at least one active Owner.']);
+                if ($remainingSuperAdmins < 1) {
+                    throw ValidationException::withMessages(['role' => 'The enterprise must retain at least one active Super Admin.']);
                 }
             }
 

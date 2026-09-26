@@ -9,7 +9,9 @@ class SaveCountryRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('countries.manage') === true;
+        $permission = $this->isMethod('post') ? 'countries.create' : 'countries.update';
+
+        return $this->user()?->can($permission) === true;
     }
 
     protected function prepareForValidation(): void

@@ -20,6 +20,7 @@ export type Role = StandardAuditFields & {
     usersCount: number;
     permissionsCount: number;
     status: string;
+    recordStatusUrl?: string;
 };
 
 export type RoleTableFilters = AuditTableFilters & {
@@ -64,6 +65,7 @@ export function roleTableColumns({
         permissions_min: filters.permissionsMin,
         from: filters.from,
         to: filters.to,
+        record_status: filters.recordStatus,
     };
 
     return [

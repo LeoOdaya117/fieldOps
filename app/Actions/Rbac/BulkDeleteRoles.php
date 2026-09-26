@@ -6,11 +6,13 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class BulkDeleteRoles
 {
-    public function __construct(private readonly RecordAccessAudit $audit) {}
+    public function __construct(
+        private readonly RecordAccessAudit $audit,
+        private readonly AssertRoleCanBeRemoved $assertRoleCanBeRemoved,
+    ) {}
 
     /**
      * @param  Collection<int, Role>  $roles
@@ -21,11 +23,7 @@ class BulkDeleteRoles
 
         DB::transaction(function () use ($roles, $actor, &$deleted): void {
             foreach ($roles as $role) {
-                if ($role->users()->exists()) {
-                    throw ValidationException::withMessages([
-                        'role' => "The role {$role->display_name} cannot be deleted while it is assigned to users.",
-                    ]);
-                }
+                $this->assertRoleCanBeRemoved->execute($role, 'role', 'deleted');
 
                 $before = [
                     'name' => $role->name,

@@ -8,11 +8,13 @@ export type Country = ReferenceDataAudit & {
     id: number;
     code: string;
     name: string;
+    recordStatusUrl?: string;
 };
 
 export type Timezone = ReferenceDataAudit & {
     id: number;
     name: string;
+    recordStatusUrl?: string;
 };
 
 export type ReferenceDataFilters = AuditTableFilters & {

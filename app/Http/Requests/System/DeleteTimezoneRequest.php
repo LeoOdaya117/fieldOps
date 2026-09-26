@@ -8,7 +8,7 @@ class DeleteTimezoneRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('timezones.manage') === true;
+        return $this->user()?->can('timezones.delete') === true;
     }
 
     /** @return array<string, mixed> */

@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import { ActionLink } from '@/components/action-link';
 import SearchFilterSheet from '@/components/search-filter-sheet';
+import { RecordStatusFilters } from '@/components/record-status-filters';
 import { DataTable } from '@/components/ui/data-table';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { AdaptiveSelect } from '@/components/ui/adaptive-select';
@@ -33,15 +34,21 @@ type PaginatedBlockedIps = {
 type Props = {
     blockedIpAddresses: PaginatedBlockedIps;
     filters: BlockedIpTableFilters;
-    canManage?: boolean;
+    canUpdate?: boolean;
+    canDelete?: boolean;
     canCreate?: boolean;
+    canViewDeleted?: boolean;
+    canUpdateDeleted?: boolean;
 };
 
 export default function IpBlocksPage({
     blockedIpAddresses,
     filters,
-    canManage = false,
+    canUpdate = false,
+    canDelete = false,
     canCreate = false,
+    canViewDeleted = false,
+    canUpdateDeleted = false,
 }: Props) {
     const pageSize =
         blockedIpAddresses.per_page ?? filters.perPage ?? DEFAULT_PAGE_SIZE;
@@ -65,6 +72,7 @@ export default function IpBlocksPage({
                         filters.status,
                         filters.from,
                         filters.to,
+                        filters.recordStatus,
                     ].filter(Boolean).length
                 }
                 pageSize={pageSize}
@@ -109,6 +117,10 @@ export default function IpBlocksPage({
                         ]}
                     />
                 </div>
+                <RecordStatusFilters
+                    canViewDeleted={canViewDeleted}
+                    value={filters.recordStatus}
+                />
             </SearchFilterSheet>
             {canCreate && (
                 <ActionLink href={createIpBlock.url()}>
@@ -134,7 +146,8 @@ export default function IpBlocksPage({
                     tableColumns={() =>
                         blockedIpTableColumns({
                             filters,
-                            canManage,
+                            canUpdate,
+                            canDelete,
                             firstRowNumber: blockedIpAddresses.from ?? 1,
                         })
                     }
@@ -145,6 +158,7 @@ export default function IpBlocksPage({
                         </p>
                     }
                     addDefaultColumns
+                    canUpdateDeleted={canUpdateDeleted}
                     excludeDefaultColumns={['status']}
                     defaultColumnSort={{
                         action: ipBlocksIndex.url(),
@@ -155,6 +169,7 @@ export default function IpBlocksPage({
                             status: filters.status,
                             from: filters.from,
                             to: filters.to,
+                            record_status: filters.recordStatus,
                         },
                     }}
                     columnVisibility={{

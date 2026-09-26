@@ -14,6 +14,7 @@ import type {
     ReferenceDataFilters,
 } from '@/features/system/types';
 import { dashboard } from '@/routes';
+import { RecordStatusFilters } from '@/components/record-status-filters';
 import {
     create as createCountry,
     index as countriesIndex,
@@ -21,13 +22,19 @@ import {
 
 export default function CountriesPage({
     countries,
-    canManage = false,
+    canUpdate = false,
+    canDelete = false,
     canCreate = false,
+    canViewDeleted = false,
+    canUpdateDeleted = false,
     filters = { search: '' },
 }: {
     countries: PaginatedReferenceData<Country>;
-    canManage?: boolean;
+    canUpdate?: boolean;
+    canDelete?: boolean;
     canCreate?: boolean;
+    canViewDeleted?: boolean;
+    canUpdateDeleted?: boolean;
     filters?: ReferenceDataFilters;
 }) {
     const pageSize = countries.per_page ?? filters.perPage ?? DEFAULT_PAGE_SIZE;
@@ -46,8 +53,12 @@ export default function CountriesPage({
                 title="Search and filter countries"
                 description="Find a country by code or name."
                 activeFilterCount={
-                    [filters.search, filters.from, filters.to].filter(Boolean)
-                        .length
+                    [
+                        filters.search,
+                        filters.from,
+                        filters.to,
+                        filters.recordStatus,
+                    ].filter(Boolean).length
                 }
                 pageSize={pageSize}
                 keyword={
@@ -75,7 +86,12 @@ export default function CountriesPage({
                         />
                     </div>
                 }
-            />
+            >
+                <RecordStatusFilters
+                    canViewDeleted={canViewDeleted}
+                    value={filters.recordStatus}
+                />
+            </SearchFilterSheet>
             {canCreate ? (
                 <ActionLink href={createCountry.url()}>
                     <Plus />
@@ -100,7 +116,9 @@ export default function CountriesPage({
                     tableColumns={() =>
                         countryTableColumns({
                             filters,
-                            canManage,
+                            canUpdate,
+                            canDelete,
+                            canUpdateDeleted,
                             firstRowNumber: countries.from ?? 1,
                         })
                     }
@@ -111,6 +129,7 @@ export default function CountriesPage({
                         </p>
                     }
                     addDefaultColumns
+                    canUpdateDeleted={canUpdateDeleted}
                     excludeDefaultColumns={['status']}
                     defaultColumnSort={{
                         action: countriesIndex.url(),
@@ -120,6 +139,7 @@ export default function CountriesPage({
                             search: filters.search,
                             from: filters.from,
                             to: filters.to,
+                            record_status: filters.recordStatus,
                         },
                     }}
                     columnVisibility={{

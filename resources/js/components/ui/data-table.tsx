@@ -1,5 +1,4 @@
 import type { ComponentProps, Key, ReactNode } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { SortableColumn } from '@/components/sortable-column';
 import {
     DataTableColumnVisibility,
@@ -12,6 +11,7 @@ import { TablePagination } from '@/components/ui/table-pagination';
 import type { TablePaginationProps } from '@/components/ui/table-pagination';
 import { formatDateTime } from '@/lib/format-date';
 import { cn } from '@/lib/utils';
+import { RecordStatusControl } from '@/components/ui/record-status-control';
 
 type DataTableColumn<T> = {
     key: string;
@@ -54,6 +54,7 @@ type DataTableProps<T = unknown> = ComponentProps<'table'> & {
         row: T,
         index: number,
     ) => Omit<ComponentProps<'tr'>, 'children' | 'key'>;
+    canUpdateDeleted?: boolean;
 };
 
 function DataTable<T>({
@@ -74,6 +75,7 @@ function DataTable<T>({
     pagination,
     getRowKey,
     getRowProps,
+    canUpdateDeleted = false,
     ...props
 }: DataTableProps<T>) {
     const configuredColumns =
@@ -86,6 +88,7 @@ function DataTable<T>({
                     configuredColumns ?? [],
                     excludeDefaultColumns,
                     defaultColumnSort,
+                    canUpdateDeleted,
                 )
               : configuredColumns;
     const hideableColumns =
@@ -330,24 +333,6 @@ function formatDefaultValue(value: unknown) {
     return String(value);
 }
 
-function formatRecordStatus(value: unknown) {
-    const isDeleted = value === 0 || value === '0' || value === false;
-
-    return (
-        <Badge
-            variant="outline"
-            className={
-                isDeleted
-                    ? 'border-destructive/30 bg-destructive/10 text-destructive'
-                    : 'border-success/30 bg-success/10 text-success'
-            }
-        >
-            <span className="size-1.5 rounded-full bg-current" />
-            {isDeleted ? 'Deleted' : 'Active'}
-        </Badge>
-    );
-}
-
 function defaultColumnHeader(
     label: string,
     sortKey: string,
@@ -366,6 +351,7 @@ function defaultColumnHeader(
 
 function defaultTableColumns(
     sortOptions?: DefaultColumnSortOptions,
+    canUpdateDeleted = false,
 ): DataTableColumn<unknown>[] {
     return [
         {
@@ -406,19 +392,33 @@ function defaultTableColumns(
                 sortOptions,
             ),
             label: 'Record status',
-            cell: (row) => formatRecordStatus(readDefaultValue(row, 'record_status')),
+            cell: (row) => (
+                <RecordStatusControl
+                    recordStatus={Number(readDefaultValue(row, 'record_status') ?? 0)}
+                    label={String(readDefaultValue(row, 'name') ?? readDefaultValue(row, 'email') ?? readDefaultValue(row, 'display_name') ?? 'record')}
+                    recordStatusUrl={readDefaultString(row, 'record_status_url') ?? readDefaultString(row, 'recordStatusUrl')}
+                    canUpdateDeleted={canUpdateDeleted}
+                />
+            ),
         },
     ];
+}
+
+function readDefaultString(row: unknown, key: string): string | undefined {
+    const value = readDefaultValue(row, key);
+
+    return typeof value === 'string' ? value : undefined;
 }
 
 function mergeDefaultColumns<T>(
     columns: readonly DataTableColumn<T>[],
     excludeDefaultColumns: readonly string[],
     sortOptions?: DefaultColumnSortOptions,
+    canUpdateDeleted = false,
 ) {
     const keys = new Set(columns.map((column) => column.key));
     const excludedKeys = new Set(excludeDefaultColumns);
-    const defaults = defaultTableColumns(sortOptions).filter(
+    const defaults = defaultTableColumns(sortOptions, canUpdateDeleted).filter(
         (column) => !keys.has(column.key) && !excludedKeys.has(column.key),
     );
 

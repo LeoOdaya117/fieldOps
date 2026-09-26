@@ -24,7 +24,7 @@ class UserManagementTest extends TestCase
     {
         Storage::fake('public');
         $admin = $this->admin();
-        $role = Role::query()->where('name', RoleName::Supervisor->value)->firstOrFail();
+        $role = Role::query()->where('name', RoleName::User->value)->firstOrFail();
 
         $this->actingAs($admin)
             ->withSession(['auth.password_confirmed_at' => time()])
@@ -46,7 +46,7 @@ class UserManagementTest extends TestCase
         $this->assertSame('Field supervisor', $user->position);
         $this->assertSame('Operations', $user->department);
         $this->assertSame(UserStatus::Active, $user->status);
-        $this->assertTrue($user->hasRole(RoleName::Supervisor->value));
+        $this->assertTrue($user->hasRole(RoleName::User->value));
         $this->assertTrue(Hash::check('new-password', $user->password));
         $this->assertNotNull($user->email_verified_at);
         $this->assertNotNull($user->avatar_path);
@@ -60,14 +60,14 @@ class UserManagementTest extends TestCase
     public function test_admin_cannot_create_a_user_with_a_role_beyond_their_authority(): void
     {
         $admin = $this->admin();
-        $ownerRole = Role::query()->where('name', RoleName::Owner->value)->firstOrFail();
+        $ownerRole = Role::query()->where('name', RoleName::SuperAdmin->value)->firstOrFail();
 
         $this->actingAs($admin)
             ->withSession(['auth.password_confirmed_at' => time()])
             ->from(route('access.users.create'))
             ->post(route('access.users.store'), [
-                'name' => 'Unauthorized Owner',
-                'email' => 'unauthorized-owner@example.com',
+                'name' => 'Unauthorized Super Admin',
+                'email' => 'unauthorized-super-admin@example.com',
                 'password' => 'new-password',
                 'password_confirmation' => 'new-password',
                 'role_id' => $ownerRole->id,
@@ -77,7 +77,7 @@ class UserManagementTest extends TestCase
             ->assertSessionHasErrors('role_id');
 
         $this->assertDatabaseMissing('users', [
-            'email' => 'unauthorized-owner@example.com',
+            'email' => 'unauthorized-super-admin@example.com',
         ]);
     }
 
@@ -85,7 +85,9 @@ class UserManagementTest extends TestCase
     {
         $admin = $this->admin();
         $target = User::factory()->create();
-        $role = Role::query()->where('name', RoleName::Supervisor->value)->firstOrFail();
+        $sessionVersion = $target->session_version;
+        $rememberToken = $target->remember_token;
+        $role = Role::query()->where('name', RoleName::User->value)->firstOrFail();
 
         DB::table('sessions')->insert([
             'id' => 'target-session',
@@ -116,7 +118,7 @@ class UserManagementTest extends TestCase
         $this->assertSame('Supervisor', $target->position);
         $this->assertSame('Operations', $target->department);
         $this->assertSame(UserStatus::Suspended, $target->status);
-        $this->assertTrue($target->hasRole(RoleName::Supervisor->value));
+        $this->assertTrue($target->hasRole(RoleName::User->value));
         $this->assertTrue(Hash::check('changed-password', $target->password));
         $this->assertDatabaseMissing('sessions', ['id' => 'target-session']);
         $this->assertDatabaseHas('access_audit_events', [
@@ -129,6 +131,8 @@ class UserManagementTest extends TestCase
     {
         $admin = $this->admin();
         $target = User::factory()->create();
+        $sessionVersion = $target->session_version;
+        $rememberToken = $target->remember_token;
 
         DB::table('sessions')->insert([
             'id' => 'deleted-user-session',
@@ -150,6 +154,9 @@ class UserManagementTest extends TestCase
         ]);
         $this->assertNull(User::query()->whereKey($target->id)->first());
         $this->assertTrue(User::withTrashed()->whereKey($target->id)->firstOrFail()->trashed());
+        $deletedTarget = User::withTrashed()->findOrFail($target->id);
+        $this->assertSame($sessionVersion + 1, $deletedTarget->session_version);
+        $this->assertNotSame($rememberToken, $deletedTarget->remember_token);
         $this->assertDatabaseMissing('sessions', ['id' => 'deleted-user-session']);
         $this->assertDatabaseHas('access_audit_events', [
             'event' => 'user.deleted',
@@ -162,7 +169,7 @@ class UserManagementTest extends TestCase
         Storage::fake('public');
         $admin = $this->admin();
         $target = User::factory()->create();
-        $role = Role::query()->where('name', RoleName::Technician->value)->firstOrFail();
+        $role = Role::query()->where('name', RoleName::User->value)->firstOrFail();
         $oldPath = UploadedFile::fake()->image('old.png')->store("users/{$target->id}", 'public');
         $target->forceFill(['avatar_path' => $oldPath])->save();
 
@@ -237,7 +244,7 @@ class UserManagementTest extends TestCase
         $this->assertGuest();
         $registration = UserRegistration::query()->where('email', 'pending@example.com')->firstOrFail();
         $admin = $this->admin();
-        $role = Role::query()->where('name', RoleName::Technician->value)->firstOrFail();
+        $role = Role::query()->where('name', RoleName::User->value)->firstOrFail();
 
         $this->actingAs($admin)
             ->withSession(['auth.password_confirmed_at' => time()])
@@ -249,7 +256,7 @@ class UserManagementTest extends TestCase
         $user = User::query()->where('email', 'pending@example.com')->firstOrFail();
 
         $this->assertSame(UserStatus::Active, $user->status);
-        $this->assertTrue($user->hasRole(RoleName::Technician->value));
+        $this->assertTrue($user->hasRole(RoleName::User->value));
         $this->assertSame(RegistrationStatus::Approved, $registration->fresh()->status);
         $this->assertTrue(Hash::check('password', $user->password));
     }
@@ -264,7 +271,7 @@ class UserManagementTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->get(route('access.users.registrations'))
+            ->get(route('access.users.registrations.index'))
             ->assertInertia(fn (Assert $page) => $page
                 ->where('registrations.0.id', $registration->id)
                 ->has('registrations.0.createdAt')
@@ -293,7 +300,7 @@ class UserManagementTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)
-            ->get(route('access.users.registrations', [
+            ->get(route('access.users.registrations.index', [
                 'sort' => 'updated_at',
                 'direction' => 'asc',
                 'updated_from' => now()->format('Y-m-d'),
@@ -338,7 +345,7 @@ class UserManagementTest extends TestCase
     public function test_user_photo_upload_is_validated(): void
     {
         $admin = $this->admin();
-        $role = Role::query()->where('name', RoleName::Technician->value)->firstOrFail();
+        $role = Role::query()->where('name', RoleName::User->value)->firstOrFail();
 
         $this->actingAs($admin)
             ->withSession(['auth.password_confirmed_at' => time()])
@@ -377,7 +384,7 @@ class UserManagementTest extends TestCase
     private function admin(): User
     {
         $admin = User::factory()->withTwoFactor()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
 
         return $admin;
     }

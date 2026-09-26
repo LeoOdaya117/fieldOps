@@ -9,11 +9,11 @@ use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
-class BootstrapRbacOwner extends Command
+class BootstrapRbacSuperAdmin extends Command
 {
-    protected $signature = 'rbac:bootstrap-owner {email : Verified user email to make the initial Owner}';
+    protected $signature = 'rbac:bootstrap-super-admin {email : Verified user email to make the initial Super Admin}';
 
-    protected $description = 'Assign the initial Owner role to one verified active user.';
+    protected $description = 'Assign the initial Super Admin role to one verified active user.';
 
     public function handle(): int
     {
@@ -25,18 +25,18 @@ class BootstrapRbacOwner extends Command
             return self::FAILURE;
         }
 
-        if (User::query()->where('status', UserStatus::Active->value)->role(RoleName::ownerRoleNames())->exists()) {
-            $this->error('An active owner-level administrator already exists.');
+        if (User::query()->where('status', UserStatus::Active->value)->role(RoleName::elevatedRoleNames())->exists()) {
+            $this->error('An active Super Admin already exists.');
 
             return self::FAILURE;
         }
 
         DB::transaction(function () use ($user): void {
-            $role = Role::query()->where('name', RoleName::Owner->value)->where('guard_name', 'web')->firstOrFail();
+            $role = Role::query()->where('name', RoleName::SuperAdmin->value)->where('guard_name', 'web')->firstOrFail();
             $user->syncRoles([$role]);
         });
 
-        $this->info("{$user->email} is now the initial Owner.");
+        $this->info("{$user->email} is now the initial Super Admin.");
 
         return self::SUCCESS;
     }

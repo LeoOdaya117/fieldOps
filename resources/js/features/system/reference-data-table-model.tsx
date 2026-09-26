@@ -24,35 +24,7 @@ import type {
     Timezone,
 } from '@/features/system/types';
 import { formatDateTime } from '@/lib/format-date';
-
-type RecordStatusSwitchProps = {
-    recordStatus: number;
-    label: string;
-};
-
-function RecordStatusSwitch({ recordStatus, label }: RecordStatusSwitchProps) {
-    const isActive = recordStatus === 1;
-
-    return (
-        <span
-            role="switch"
-            aria-checked={isActive}
-            aria-disabled="true"
-            aria-label={`${isActive ? 'Active' : 'Deleted'} record for ${label}`}
-            className="inline-flex items-center gap-2 text-xs font-semibold"
-        >
-            <span
-                aria-hidden="true"
-                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border ${isActive ? 'border-success/40 bg-success/80' : 'border-border bg-muted'}`}
-            >
-                <span
-                    className={`size-3.5 rounded-full bg-background shadow-sm ${isActive ? 'translate-x-4' : 'translate-x-0.5'}`}
-                />
-            </span>
-            <span>{isActive ? 'Active' : 'Deleted'}</span>
-        </span>
-    );
-}
+import { RecordStatusControl } from '@/components/ui/record-status-control';
 
 function formatDate(value: string | null): string {
     return formatDateTime(value);
@@ -63,6 +35,7 @@ function countryFilters(filters: ReferenceDataFilters) {
         search: filters.search,
         from: filters.from,
         to: filters.to,
+        record_status: filters.recordStatus,
     };
 }
 
@@ -71,17 +44,22 @@ function timezoneFilters(filters: ReferenceDataFilters) {
         search: filters.search,
         from: filters.from,
         to: filters.to,
+        record_status: filters.recordStatus,
     };
 }
 
 export function countryTableColumns({
     filters,
-    canManage,
+    canUpdate,
+    canDelete,
     firstRowNumber,
+    canUpdateDeleted = false,
 }: {
     filters: ReferenceDataFilters;
-    canManage: boolean;
+    canUpdate: boolean;
+    canDelete: boolean;
     firstRowNumber: number;
+    canUpdateDeleted?: boolean;
 }): DataTableColumn<Country>[] {
     const sort = filters.sort ?? '';
     const direction = filters.direction ?? 'asc';
@@ -149,9 +127,11 @@ export function countryTableColumns({
                 />
             ),
             cell: (country) => (
-                <RecordStatusSwitch
+                <RecordStatusControl
                     recordStatus={country.recordStatus}
                     label={country.name}
+                    recordStatusUrl={country.recordStatusUrl}
+                    canUpdateDeleted={canUpdateDeleted}
                 />
             ),
         },
@@ -167,12 +147,14 @@ export function countryTableColumns({
                         <Eye />
                         View
                     </TableActionLink>
-                    {canManage ? (
+                    {canUpdate && (
+                        <TableActionLink href={editCountry.url(country.id)}>
+                            <Edit />
+                            Edit
+                        </TableActionLink>
+                    )}
+                    {canDelete ? (
                         <>
-                            <TableActionLink href={editCountry.url(country.id)}>
-                                <Edit />
-                                Edit
-                            </TableActionLink>
                             <TableActionForm
                                 action={deleteCountry.url(country.id)}
                                 method="delete"
@@ -197,12 +179,16 @@ export function countryTableColumns({
 
 export function timezoneTableColumns({
     filters,
-    canManage,
+    canUpdate,
+    canDelete,
     firstRowNumber,
+    canUpdateDeleted = false,
 }: {
     filters: ReferenceDataFilters;
-    canManage: boolean;
+    canUpdate: boolean;
+    canDelete: boolean;
     firstRowNumber: number;
+    canUpdateDeleted?: boolean;
 }): DataTableColumn<Timezone>[] {
     const sort = filters.sort ?? '';
     const direction = filters.direction ?? 'asc';
@@ -251,9 +237,11 @@ export function timezoneTableColumns({
                 />
             ),
             cell: (timezone) => (
-                <RecordStatusSwitch
+                <RecordStatusControl
                     recordStatus={timezone.recordStatus}
                     label={timezone.name}
+                    recordStatusUrl={timezone.recordStatusUrl}
+                    canUpdateDeleted={canUpdateDeleted}
                 />
             ),
         },
@@ -269,14 +257,14 @@ export function timezoneTableColumns({
                         <Eye />
                         View
                     </TableActionLink>
-                    {canManage ? (
+                    {canUpdate && (
+                        <TableActionLink href={editTimezone.url(timezone.id)}>
+                            <Edit />
+                            Edit
+                        </TableActionLink>
+                    )}
+                    {canDelete ? (
                         <>
-                            <TableActionLink
-                                href={editTimezone.url(timezone.id)}
-                            >
-                                <Edit />
-                                Edit
-                            </TableActionLink>
                             <TableActionForm
                                 action={deleteTimezone.url(timezone.id)}
                                 method="delete"
@@ -299,4 +287,4 @@ export function timezoneTableColumns({
     ];
 }
 
-export { RecordStatusSwitch, formatDate };
+export { formatDate };

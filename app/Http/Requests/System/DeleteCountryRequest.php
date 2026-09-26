@@ -8,7 +8,7 @@ class DeleteCountryRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('countries.manage') === true;
+        return $this->user()?->can('countries.delete') === true;
     }
 
     /** @return array<string, mixed> */

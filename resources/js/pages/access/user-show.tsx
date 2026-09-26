@@ -12,6 +12,7 @@ import { DetailsActionForm, DetailsPage } from '@/components/details-page';
 import { DetailsView } from '@/components/details-view';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { RecordStatusControl } from '@/components/ui/record-status-control';
 import { dashboard } from '@/routes';
 import {
     edit as editUser,
@@ -33,6 +34,8 @@ type UserDetails = {
     emailVerifiedAt: string | null;
     createdAt: string | null;
     updatedAt: string | null;
+    recordStatus?: number;
+    recordStatusUrl?: string;
 };
 
 function initials(name: string): string {
@@ -73,12 +76,14 @@ export default function UserShowPage({
     canDelete = false,
     canSuspend = false,
     canReactivate = false,
+    canUpdateDeleted = false,
 }: {
     user: UserDetails;
     canEdit?: boolean;
     canDelete?: boolean;
     canSuspend?: boolean;
     canReactivate?: boolean;
+    canUpdateDeleted?: boolean;
 }) {
     return (
         <DetailsPage
@@ -171,6 +176,20 @@ export default function UserShowPage({
                     </div>
                 }
                 sections={[
+                    {
+                        key: 'record-status',
+                        title: 'Record status',
+                        description:
+                            'The record lifecycle state used by active lists.',
+                        content: (
+                            <RecordStatusControl
+                                recordStatus={user.recordStatus ?? 1}
+                                recordStatusUrl={user.recordStatusUrl}
+                                label={user.name}
+                                canUpdateDeleted={canUpdateDeleted}
+                            />
+                        ),
+                    },
                     {
                         key: 'profile',
                         title: 'Profile details',

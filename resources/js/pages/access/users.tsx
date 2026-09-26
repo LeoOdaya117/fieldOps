@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 import { ActionLink } from '@/components/action-link';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
+import { RecordStatusFilters } from '@/components/record-status-filters';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
@@ -55,6 +56,8 @@ type UsersPageProps = {
     canEdit?: boolean;
     canSuspend?: boolean;
     canReactivate?: boolean;
+    canViewDeleted?: boolean;
+    canUpdateDeleted?: boolean;
     filters: UserTableFilters;
     invitationFilters?: InvitationTableFilters;
 };
@@ -121,6 +124,8 @@ export default function UsersPage({
     canEdit = true,
     canSuspend = true,
     canReactivate = true,
+    canViewDeleted = false,
+    canUpdateDeleted = false,
     filters,
     invitationFilters = {},
 }: UsersPageProps) {
@@ -176,7 +181,11 @@ export default function UsersPage({
                 title="Search and filter users"
                 description="Find users by name or email and narrow the list by account status."
                 activeFilterCount={
-                    [filters.search, filters.status].filter(Boolean).length +
+                    [
+                        filters.search,
+                        filters.status,
+                        filters.recordStatus,
+                    ].filter(Boolean).length +
                     [filters.from, filters.to].filter(Boolean).length
                 }
                 pageSize={pageSize}
@@ -236,6 +245,10 @@ export default function UsersPage({
                         ]}
                     />
                 </div>
+                <RecordStatusFilters
+                    canViewDeleted={canViewDeleted}
+                    value={filters.recordStatus}
+                />
             </SearchFilterSheet>
             {canCreate && (
                 <ActionLink href="/access/users/create">
@@ -309,6 +322,7 @@ export default function UsersPage({
                         data={invitations}
                         tableColumns={invitationTableColumns}
                         addDefaultColumns
+                        canUpdateDeleted={canUpdateDeleted}
                         defaultColumnSort={{
                             action: usersIndex.url(),
                             sort: invitationFilters.sort,
@@ -353,6 +367,7 @@ export default function UsersPage({
                         </p>
                     }
                     addDefaultColumns
+                    canUpdateDeleted={canUpdateDeleted}
                     excludeDefaultColumns={['created_at', 'status']}
                     defaultColumnSort={{
                         action: usersIndex.url(),
@@ -363,6 +378,7 @@ export default function UsersPage({
                             status: filters.status,
                             from: filters.from,
                             to: filters.to,
+                            record_status: filters.recordStatus,
                         },
                     }}
                     toolbar={

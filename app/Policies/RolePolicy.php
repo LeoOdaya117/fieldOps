@@ -25,18 +25,19 @@ class RolePolicy
 
     public function update(User $user, Role $role): bool
     {
-        return $user->can('roles.update') && ($user->isOwner() || ! $role->is_system);
+        return $user->can('roles.update') && ($user->isSuperAdmin() || ! $role->is_system);
     }
 
     public function delete(User $user, Role $role): bool
     {
         return $user->can('roles.delete')
-            && ($user->isOwner() || ! $role->is_system);
+            && ($user->isSuperAdmin() || ! $role->is_system);
     }
 
-    public function assign(User $user, Role $role): bool
+    public function assign(User $user, Role $role, User $subject): bool
     {
         return $user->can('roles.assign')
-            && (! in_array($role->name, RoleName::ownerRoleNames(), true) || $user->isOwner());
+            && (! in_array($role->name, RoleName::elevatedRoleNames(), true) || $user->isSuperAdmin())
+            && ($user->isSuperAdmin() || ! $subject->isSuperAdmin());
     }
 }

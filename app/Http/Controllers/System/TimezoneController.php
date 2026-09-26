@@ -24,6 +24,11 @@ class TimezoneController extends Controller
         $this->authorize('viewAny', Timezone::class);
 
         $search = trim((string) $request->input('search', ''));
+        $canViewDeleted = $request->user()?->can('timezones.view_deleted') === true;
+        $recordStatuses = $canViewDeleted
+            ? $this->filterValues($request->input('record_status', ['active']), ['active', 'inactive'])
+            : ['active'];
+        $recordStatuses = $recordStatuses === [] ? ['active'] : $recordStatuses;
         $from = $this->parseDate($request->input('from'));
         $to = $this->parseDate($request->input('to'));
         $sort = (string) $request->input('sort', '');
@@ -36,9 +41,10 @@ class TimezoneController extends Controller
             'record_status' => 'record_status',
         ];
 
-        $timezones = Timezone::query()
+        $timezones = ($canViewDeleted ? Timezone::withTrashed() : Timezone::query())
             ->with(['createdBy:id,name,email', 'updatedBy:id,name,email'])
             ->when($search !== '', static fn ($query) => $query->where('name', 'like', "%{$search}%"))
+            ->when($recordStatuses !== ['active', 'inactive'], static fn ($query) => $query->whereIn('record_status', array_map(static fn (string $value): int => $value === 'active' ? 1 : 0, $recordStatuses)))
             ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
             ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
             ->when(
@@ -73,8 +79,11 @@ class TimezoneController extends Controller
 
         return Inertia::render('system/timezones', [
             'timezones' => $timezones,
-            'canManage' => $request->user()?->can('timezones.manage') === true,
-            'canCreate' => $request->user()?->can('timezones.manage') === true,
+            'canCreate' => $request->user()?->can('timezones.create') === true,
+            'canUpdate' => $request->user()?->can('timezones.update') === true,
+            'canDelete' => $request->user()?->can('timezones.delete') === true,
+            'canViewDeleted' => $canViewDeleted,
+            'canUpdateDeleted' => $request->user()?->can('timezones.update_deleted') === true,
             'filters' => [
                 'search' => $search,
                 'from' => $from?->format('Y-m-d') ?? '',
@@ -82,6 +91,7 @@ class TimezoneController extends Controller
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
+                'recordStatus' => $this->filterValue($recordStatuses),
             ],
         ]);
     }
@@ -93,16 +103,20 @@ class TimezoneController extends Controller
         return Inertia::render('system/timezone-create');
     }
 
-    public function show(Timezone $timezone): Response
+    public function show(int $timezone): Response
     {
+        $canViewDeleted = request()->user()?->can('timezones.view_deleted') === true;
+        $timezone = ($canViewDeleted ? Timezone::withTrashed() : Timezone::query())->findOrFail($timezone);
         $this->authorize('view', $timezone);
         $timezone->load(['createdBy:id,name,email', 'updatedBy:id,name,email']);
 
         return Inertia::render('system/timezone-show', [
             'timezone' => $this->serialize($timezone),
-            'canEdit' => request()->user()?->can('update', $timezone) === true,
+            'canUpdate' => request()->user()?->can('update', $timezone) === true,
             'canDelete' => request()->user()?->can('delete', $timezone) === true,
             'isCurrent' => $timezone->name === SystemSettings::timezone(),
+            'canViewDeleted' => $canViewDeleted,
+            'canUpdateDeleted' => request()->user()?->can('timezones.update_deleted') === true,
         ]);
     }
 
@@ -148,6 +162,7 @@ class TimezoneController extends Controller
             'id' => $timezone->id,
             'name' => $timezone->name,
             'recordStatus' => (int) $timezone->record_status,
+            'recordStatusUrl' => route('system.timezones.record-status', $timezone->getKey()),
             'createdAt' => $timezone->created_at?->toIso8601String(),
             'updatedAt' => $timezone->updated_at?->toIso8601String(),
             'createdBy' => $this->actor($timezone->createdBy),
@@ -178,5 +193,31 @@ class TimezoneController extends Controller
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /** @param list<string>|string|null $value
+     * @param  list<string>  $allowed
+     * @return list<string>
+     */
+    private function filterValues(mixed $value, array $allowed): array
+    {
+        $values = is_array($value) ? $value : [$value];
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $item): string => (string) $item, $values),
+            static fn (string $item): bool => in_array($item, $allowed, true),
+        )));
+    }
+
+    /** @param list<string> $values
+     * @return string|list<string>
+     */
+    private function filterValue(array $values): string|array
+    {
+        return match (count($values)) {
+            0 => '',
+            1 => $values[0],
+            default => $values,
+        };
     }
 }

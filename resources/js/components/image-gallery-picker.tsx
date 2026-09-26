@@ -13,6 +13,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
+import { RecordStatusControl } from '@/components/ui/record-status-control';
 import {
     Dialog,
     DialogContent,
@@ -41,7 +42,23 @@ type MediaResponse = {
         last_page: number;
         total: number;
     };
+    canCreate?: boolean;
+    canUpdate?: boolean;
+    canDelete?: boolean;
+    canViewDeleted?: boolean;
+    canUpdateDeleted?: boolean;
 };
+
+type MediaCapabilities = Required<
+    Pick<
+        MediaResponse,
+        | 'canCreate'
+        | 'canUpdate'
+        | 'canDelete'
+        | 'canViewDeleted'
+        | 'canUpdateDeleted'
+    >
+>;
 
 function csrfToken(): string {
     const value = document.cookie
@@ -96,6 +113,18 @@ export function ImageGalleryPicker({
     const [selected, setSelected] = useState<MediaAssetDto | null>(value);
     const [searchInput, setSearchInput] = useState('');
     const [search, setSearch] = useState('');
+    const [recordStatusFilter, setRecordStatusFilter] = useState<
+        'active' | 'inactive'
+    >('active');
+    const [capabilities, setCapabilities] = useState<MediaCapabilities>({
+        canCreate: false,
+        canUpdate: false,
+        canDelete: false,
+        canViewDeleted: false,
+        canUpdateDeleted: false,
+    });
+    const [nameDraft, setNameDraft] = useState('');
+    const [renameProcessing, setRenameProcessing] = useState(false);
     const [page, setPage] = useState(1);
     const [meta, setMeta] = useState({
         current_page: 1,
@@ -141,7 +170,11 @@ export function ImageGalleryPicker({
     }, []);
 
     const loadAssets = useCallback(
-        async (requestedPage: number, requestedSearch: string) => {
+        async (
+            requestedPage: number,
+            requestedSearch: string,
+            requestedStatus: 'active' | 'inactive',
+        ): Promise<MediaAssetDto[] | null> => {
             setLoading(true);
             setError(null);
 
@@ -152,6 +185,10 @@ export function ImageGalleryPicker({
 
                 if (requestedSearch) {
                     query.set('search', requestedSearch);
+                }
+
+                if (requestedStatus === 'inactive') {
+                    query.set('record_status', requestedStatus);
                 }
 
                 const response = await fetch(`/media-assets?${query}`, {
@@ -169,12 +206,23 @@ export function ImageGalleryPicker({
                 const body = (await response.json()) as MediaResponse;
                 setAssets(body.data);
                 setMeta(body.meta);
+                setCapabilities({
+                    canCreate: body.canCreate === true,
+                    canUpdate: body.canUpdate === true,
+                    canDelete: body.canDelete === true,
+                    canViewDeleted: body.canViewDeleted === true,
+                    canUpdateDeleted: body.canUpdateDeleted === true,
+                });
+
+                return body.data;
             } catch (reason) {
                 setError(
                     reason instanceof Error
                         ? reason.message
                         : 'Your media library could not be loaded.',
                 );
+
+                return null;
             } finally {
                 setLoading(false);
             }
@@ -193,8 +241,9 @@ export function ImageGalleryPicker({
             setPage(1);
             setSearch('');
             setSearchInput('');
+            setRecordStatusFilter('active');
             setError(null);
-            void loadAssets(1, '');
+            void loadAssets(1, '', 'active');
         }, 0);
 
         return () => window.clearTimeout(task);
@@ -282,7 +331,7 @@ export function ImageGalleryPicker({
             onChange(asset);
             setTab('library');
             setPage(1);
-            await loadAssets(1, '');
+            await loadAssets(1, '', 'active');
             setSearch('');
             setSearchInput('');
             stopCamera();
@@ -448,7 +497,86 @@ export function ImageGalleryPicker({
 
         setSelected(null);
         onChange(null);
-        await loadAssets(page, search);
+        await loadAssets(page, search, recordStatusFilter);
+    };
+
+    const saveSelectedName = async () => {
+        if (!selected || !capabilities.canUpdate || renameProcessing) {
+            return;
+        }
+
+        const name = nameDraft.trim();
+
+        if (!name || name === selected.name) {
+            setNameDraft(selected.name);
+
+            return;
+        }
+
+        setRenameProcessing(true);
+        setError(null);
+
+        try {
+            const response = await fetch(
+                selected.updateUrl ?? `/media-assets/${selected.id}`,
+                {
+                    method: 'PATCH',
+                    credentials: 'same-origin',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-XSRF-TOKEN': csrfToken(),
+                    },
+                    body: JSON.stringify({ name }),
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error('The image name could not be updated.');
+            }
+
+            const payload = (await response.json()) as { data: MediaAssetDto };
+            setSelected(payload.data);
+            setNameDraft(payload.data.name);
+            onChange(payload.data);
+            await loadAssets(page, search, recordStatusFilter);
+        } catch (reason) {
+            setError(
+                reason instanceof Error
+                    ? reason.message
+                    : 'The image name could not be updated.',
+            );
+        } finally {
+            setRenameProcessing(false);
+        }
+    };
+
+    const changeSelectedStatus = async (recordStatus: 0 | 1) => {
+        if (!selected?.recordStatusUrl) {
+            throw new Error('The image status cannot be updated.');
+        }
+
+        const response = await fetch(selected.recordStatusUrl, {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': csrfToken(),
+            },
+            body: JSON.stringify({ record_status: recordStatus }),
+        });
+
+        if (!response.ok) {
+            throw new Error('The image status could not be updated.');
+        }
+
+        const updated = { ...selected, recordStatus };
+        setSelected(updated);
+        onChange(updated);
+        await loadAssets(page, search, recordStatusFilter);
     };
 
     const close = (nextOpen: boolean) => {
@@ -483,23 +611,28 @@ export function ImageGalleryPicker({
                                 ['upload', UploadCloud, 'Upload'],
                                 ['camera', Camera, 'Camera'],
                             ] as const
-                        ).map(([key, Icon, label]) => (
-                            <button
-                                key={key}
-                                type="button"
-                                role="tab"
-                                aria-selected={tab === key}
-                                onClick={() => selectTab(key)}
-                                className={cn(
-                                    'relative inline-flex min-h-11 items-center gap-2 px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
-                                    tab === key &&
-                                        'text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-primary',
-                                )}
-                            >
-                                <Icon className="size-4" />
-                                {label}
-                            </button>
-                        ))}
+                        )
+                            .filter(
+                                ([key]) =>
+                                    key === 'library' || capabilities.canCreate,
+                            )
+                            .map(([key, Icon, label]) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={tab === key}
+                                    onClick={() => selectTab(key)}
+                                    className={cn(
+                                        'relative inline-flex min-h-11 items-center gap-2 px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
+                                        tab === key &&
+                                            'text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-primary',
+                                    )}
+                                >
+                                    <Icon className="size-4" />
+                                    {label}
+                                </button>
+                            ))}
                     </div>
 
                     {error && (
@@ -522,7 +655,11 @@ export function ImageGalleryPicker({
                                             const next = searchInput.trim();
                                             setSearch(next);
                                             setPage(1);
-                                            void loadAssets(1, next);
+                                            void loadAssets(
+                                                1,
+                                                next,
+                                                recordStatusFilter,
+                                            );
                                         }}
                                     >
                                         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -538,6 +675,47 @@ export function ImageGalleryPicker({
                                             className="pl-9"
                                         />
                                     </form>
+                                    {capabilities.canViewDeleted && (
+                                        <div className="mb-4 flex flex-wrap items-center gap-2">
+                                            <span className="text-sm font-medium">
+                                                Show:
+                                            </span>
+                                            {(
+                                                ['active', 'inactive'] as const
+                                            ).map((status) => (
+                                                <Button
+                                                    key={status}
+                                                    type="button"
+                                                    size="sm"
+                                                    variant={
+                                                        recordStatusFilter ===
+                                                        status
+                                                            ? 'default'
+                                                            : 'outline'
+                                                    }
+                                                    aria-pressed={
+                                                        recordStatusFilter ===
+                                                        status
+                                                    }
+                                                    onClick={() => {
+                                                        setRecordStatusFilter(
+                                                            status,
+                                                        );
+                                                        setPage(1);
+                                                        void loadAssets(
+                                                            1,
+                                                            search,
+                                                            status,
+                                                        );
+                                                    }}
+                                                >
+                                                    {status === 'active'
+                                                        ? 'Active'
+                                                        : 'Inactive'}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    )}
 
                                     {loading ? (
                                         <div className="flex min-h-72 items-center justify-center text-sm text-muted-foreground">
@@ -618,6 +796,7 @@ export function ImageGalleryPicker({
                                                         void loadAssets(
                                                             next,
                                                             search,
+                                                            recordStatusFilter,
                                                         );
                                                     }}
                                                 >
@@ -641,6 +820,7 @@ export function ImageGalleryPicker({
                                                         void loadAssets(
                                                             next,
                                                             search,
+                                                            recordStatusFilter,
                                                         );
                                                     }}
                                                 >
@@ -664,6 +844,58 @@ export function ImageGalleryPicker({
                                             <h3 className="mt-4 text-sm font-semibold break-words">
                                                 {selected.name}
                                             </h3>
+                                            {selected.recordStatus !==
+                                                undefined && (
+                                                <div className="mt-3">
+                                                    <RecordStatusControl
+                                                        recordStatus={
+                                                            selected.recordStatus
+                                                        }
+                                                        label={selected.name}
+                                                        recordStatusUrl={
+                                                            selected.recordStatusUrl ??
+                                                            ''
+                                                        }
+                                                        canUpdateDeleted={
+                                                            capabilities.canUpdateDeleted
+                                                        }
+                                                        onStatusChange={
+                                                            changeSelectedStatus
+                                                        }
+                                                    />
+                                                </div>
+                                            )}
+                                            {capabilities.canUpdate &&
+                                                selected.recordStatus !== 0 && (
+                                                    <div className="mt-3 flex gap-2">
+                                                        <Input
+                                                            aria-label="Image name"
+                                                            value={nameDraft}
+                                                            onChange={(event) =>
+                                                                setNameDraft(
+                                                                    event.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            disabled={
+                                                                renameProcessing ||
+                                                                nameDraft.trim() ===
+                                                                    selected.name
+                                                            }
+                                                            onClick={() =>
+                                                                void saveSelectedName()
+                                                            }
+                                                        >
+                                                            {renameProcessing
+                                                                ? 'Saving…'
+                                                                : 'Rename'}
+                                                        </Button>
+                                                    </div>
+                                                )}
                                             <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-xs">
                                                 <dt className="text-muted-foreground">
                                                     Dimensions
@@ -701,21 +933,26 @@ export function ImageGalleryPicker({
                                                     ).toLocaleDateString()}
                                                 </dd>
                                             </dl>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                disabled={selected.assigned}
-                                                className="mt-5 text-destructive hover:text-destructive"
-                                                onClick={() =>
-                                                    setDeleteOpen(true)
-                                                }
-                                            >
-                                                <Trash2 className="size-4" />
-                                                {selected.assigned
-                                                    ? 'Assigned image'
-                                                    : 'Delete image'}
-                                            </Button>
+                                            {capabilities.canDelete &&
+                                                selected.recordStatus !== 0 && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        disabled={
+                                                            selected.assigned
+                                                        }
+                                                        className="mt-5 text-destructive hover:text-destructive"
+                                                        onClick={() =>
+                                                            setDeleteOpen(true)
+                                                        }
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                        {selected.assigned
+                                                            ? 'Assigned image'
+                                                            : 'Delete image'}
+                                                    </Button>
+                                                )}
                                         </div>
                                     ) : (
                                         <p className="text-sm leading-6 text-muted-foreground">
@@ -726,7 +963,7 @@ export function ImageGalleryPicker({
                             </div>
                         )}
 
-                        {tab === 'upload' && (
+                        {tab === 'upload' && capabilities.canCreate && (
                             <div className="flex min-h-full items-center justify-center p-5 sm:p-8">
                                 <label
                                     className={cn(
@@ -790,7 +1027,7 @@ export function ImageGalleryPicker({
                             </div>
                         )}
 
-                        {tab === 'camera' && (
+                        {tab === 'camera' && capabilities.canCreate && (
                             <div className="flex min-h-full flex-col items-center justify-center p-5 sm:p-8">
                                 <div className="w-full max-w-2xl">
                                     {cameras.length > 1 && (
@@ -934,7 +1171,7 @@ export function ImageGalleryPicker({
                         </Button>
                         <Button
                             type="button"
-                            disabled={!selected}
+                            disabled={!selected || selected.recordStatus === 0}
                             onClick={() => {
                                 if (selected) {
                                     onConfirm(selected);
@@ -942,7 +1179,9 @@ export function ImageGalleryPicker({
                                 }
                             }}
                         >
-                            Use selected image
+                            {selected?.recordStatus === 0
+                                ? 'Restore image to assign it'
+                                : 'Use selected image'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -955,7 +1194,7 @@ export function ImageGalleryPicker({
                 options={{
                     title: 'Delete this image?',
                     description:
-                        'It will be removed from your media library and cannot be recovered.',
+                        'It will be deactivated and removed from active lists. The stored file is retained.',
                     confirmLabel: 'Delete image',
                 }}
                 onConfirm={() => void removeSelected()}

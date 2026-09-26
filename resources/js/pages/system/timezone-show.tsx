@@ -2,10 +2,8 @@ import { Clock3, Pencil, Trash2 } from 'lucide-react';
 import { ActionLink } from '@/components/action-link';
 import { DetailsActionForm, DetailsPage } from '@/components/details-page';
 import { DetailsView } from '@/components/details-view';
-import {
-    RecordStatusSwitch,
-    formatDate,
-} from '@/features/system/reference-data-table-model';
+import { RecordStatusControl } from '@/components/ui/record-status-control';
+import { formatDate } from '@/features/system/reference-data-table-model';
 import type { AuditActor, Timezone } from '@/features/system/types';
 import { dashboard } from '@/routes';
 import {
@@ -20,13 +18,15 @@ function actorLabel(actor: AuditActor): string {
 
 export default function TimezoneShowPage({
     timezone,
-    canEdit = false,
+    canUpdate = false,
     canDelete = false,
+    canUpdateDeleted = false,
     isCurrent = false,
 }: {
     timezone: Timezone;
-    canEdit?: boolean;
+    canUpdate?: boolean;
     canDelete?: boolean;
+    canUpdateDeleted?: boolean;
     isCurrent?: boolean;
 }) {
     return (
@@ -37,7 +37,7 @@ export default function TimezoneShowPage({
             backLabel="Back to timezones"
             actions={
                 <>
-                    {canEdit ? (
+                    {canUpdate ? (
                         <ActionLink href={editTimezone.url(timezone.id)}>
                             <Pencil />
                             Edit
@@ -107,9 +107,11 @@ export default function TimezoneShowPage({
                             'The lifecycle state used to keep this record available or retained for audit.',
                         content: (
                             <div className="space-y-4">
-                                <RecordStatusSwitch
+                                <RecordStatusControl
                                     recordStatus={timezone.recordStatus}
                                     label={timezone.name}
+                                    recordStatusUrl={timezone.recordStatusUrl}
+                                    canUpdateDeleted={canUpdateDeleted}
                                 />
                                 <p className="text-xs leading-5 text-muted-foreground">
                                     {isCurrent
@@ -157,7 +159,7 @@ export default function TimezoneShowPage({
                                 cell: (record) =>
                                     record.recordStatus === 1
                                         ? 'Active record'
-                                        : 'Deleted record',
+                                        : 'Inactive record',
                                 span: 1,
                             },
                         ],

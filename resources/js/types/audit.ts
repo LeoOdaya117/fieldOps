@@ -17,4 +17,5 @@ export type AuditTableFilters = {
     to?: string;
     sort?: string;
     direction?: 'asc' | 'desc';
+    recordStatus?: string | string[];
 };
