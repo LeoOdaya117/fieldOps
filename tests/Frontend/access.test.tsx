@@ -198,14 +198,17 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
         expect(
             screen.getAllByRole('button', { name: /Filter/ }),
-        ).toHaveLength(2);
+        ).toHaveLength(1);
         await user.click(screen.getAllByRole('button', { name: /Filter/ })[0]);
-        expect(screen.getByLabelText('Created by')).toBeInTheDocument();
-        expect(screen.getByLabelText('Updated by')).toBeInTheDocument();
+        expect(screen.getByLabelText('Date range')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Created by')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Updated by')).not.toBeInTheDocument();
         expect(
-            screen.getByRole('group', { name: 'Record status' }),
-        ).toBeInTheDocument();
-        expect(screen.getByLabelText('Updated date range')).toBeInTheDocument();
+            screen.queryByRole('group', { name: 'Record status' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByLabelText('Updated date range'),
+        ).not.toBeInTheDocument();
         await user.keyboard('{Escape}');
         expect(screen.getByRole('link', { name: 'Add user' })).toHaveAttribute(
             'href',
@@ -327,6 +330,14 @@ describe('access administration pages', () => {
                 name: /^Sort Created by ascending$/,
             }),
         ).toBeInTheDocument();
+        expect(
+            within(invitationTable).getByRole('link', {
+                name: 'Sort Created by ascending',
+            }),
+        ).toHaveAttribute(
+            'href',
+            '/access/users?invitation_sort=created_by&invitation_direction=asc',
+        );
         expect(
             within(invitationTable).getByRole('columnheader', {
                 name: /^Sort Updated by ascending$/,
@@ -820,6 +831,9 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('heading', { name: 'Pending registrations' }),
         ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /Filter/ }),
+        ).not.toBeInTheDocument();
         expect(screen.getByText('pending@example.com')).toBeInTheDocument();
         const registrationsTable = screen.getByRole('table', {
             name: 'Pending user registrations',

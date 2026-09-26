@@ -210,25 +210,28 @@ class BlockedIpAddressTest extends TestCase
                 ->has('blockedIpAddresses.data.0.updatedAt'));
     }
 
-    public function test_ip_block_index_filters_audit_metadata_and_deleted_records(): void
+    public function test_ip_block_index_sorts_audit_columns_without_audit_filters(): void
     {
         $owner = $this->owner();
         $this->actingAs($owner);
-        $deleted = BlockedIpAddress::query()->create([
+        $rule = BlockedIpAddress::query()->create([
             'ip_address' => '192.0.2.20',
             'is_active' => false,
             'blocked_at' => now(),
         ]);
-        $deleted->delete();
 
         $this->get(route('access.ip-blocks.index', [
             'record_status' => 'inactive',
             'created_by' => $owner->email,
+            'sort' => 'created_by',
+            'direction' => 'desc',
         ]))->assertInertia(fn (Assert $page) => $page
-            ->where('blockedIpAddresses.data.0.id', $deleted->id)
-            ->where('blockedIpAddresses.data.0.recordStatus', 0)
-            ->where('filters.createdBy', $owner->email)
-            ->where('filters.recordStatus', 'inactive'));
+            ->where('blockedIpAddresses.data.0.id', $rule->id)
+            ->where('blockedIpAddresses.data.0.recordStatus', 1)
+            ->where('filters.sort', 'created_by')
+            ->where('filters.direction', 'desc')
+            ->missing('filters.createdBy')
+            ->missing('filters.recordStatus'));
     }
 
     private function owner(): User

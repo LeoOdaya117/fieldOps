@@ -1,10 +1,10 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ActionLink } from '@/components/action-link';
-import { AuditFilterFields } from '@/components/audit-filter-fields';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { AdaptiveSelect } from '@/components/ui/adaptive-select';
 import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/ui/data-table';
@@ -14,7 +14,6 @@ import type {
     Role,
     RoleTableFilters,
 } from '@/features/access/role-table-model';
-import { auditFilterCount, auditFilterQuery } from '@/types/audit';
 import { dashboard } from '@/routes';
 import { index as rolesIndex } from '@/routes/access/roles';
 
@@ -39,7 +38,6 @@ export default function RolesPage({
         type: '',
         assigned: '',
         permissionsMin: '',
-        status: '',
     },
 }: {
     roles: PaginatedRoles | Role[];
@@ -111,7 +109,9 @@ export default function RolesPage({
                         filters.type,
                         filters.assigned,
                         filters.permissionsMin,
-                    ].filter(Boolean).length + auditFilterCount(filters)
+                        filters.from,
+                        filters.to,
+                    ].filter(Boolean).length
                 }
                 pageSize={pageSize}
                 keyword={
@@ -131,28 +131,25 @@ export default function RolesPage({
                         />
                     </div>
                 }
+                dateRange={
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="role-date-range"
+                            className="text-sm font-medium"
+                        >
+                            Date range
+                        </label>
+                        <DateRangePicker
+                            id="role-date-range"
+                            from={filters.from}
+                            to={filters.to}
+                            fromName="from"
+                            toName="to"
+                            label="Role date range"
+                        />
+                    </div>
+                }
             >
-                <AuditFilterFields filters={filters} idPrefix="role" />
-                <div className="grid gap-2">
-                    <label
-                        htmlFor="role-status"
-                        className="text-sm font-medium"
-                    >
-                        Status
-                    </label>
-                    <AdaptiveSelect
-                        id="role-status"
-                        name="status"
-                        multiple
-                        defaultValue={filters.status}
-                        placeholder="All statuses"
-                        options={[
-                            { value: '', label: 'All statuses' },
-                            { value: 'active', label: 'Active' },
-                            { value: 'inactive', label: 'Inactive' },
-                        ]}
-                    />
-                </div>
                 <div className="grid gap-2">
                     <label htmlFor="role-type" className="text-sm font-medium">
                         Role type
@@ -252,8 +249,8 @@ export default function RolesPage({
                             type: filters.type,
                             assigned: filters.assigned,
                             permissions_min: filters.permissionsMin,
-                            status: filters.status,
-                            ...auditFilterQuery(filters),
+                            from: filters.from,
+                            to: filters.to,
                         },
                     }}
                     toolbar={

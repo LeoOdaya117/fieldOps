@@ -31,14 +31,8 @@ class RoleController extends Controller
         $types = $this->filterValues($request->input('type'), ['system', 'custom']);
         $assignedValues = $this->filterValues($request->input('assigned'), ['assigned', 'unassigned']);
         $permissionsMin = trim((string) $request->input('permissions_min', ''));
-        $statuses = $this->filterValues($request->input('status'), ['active', 'inactive']);
         $from = $this->parseDate($request->input('from'));
         $to = $this->parseDate($request->input('to'));
-        $updatedFrom = $this->parseDate($request->input('updated_from'));
-        $updatedTo = $this->parseDate($request->input('updated_to'));
-        $createdBy = trim((string) $request->input('created_by', ''));
-        $updatedBy = trim((string) $request->input('updated_by', ''));
-        $recordStatuses = $this->filterValues($request->input('record_status'), ['active', 'inactive']);
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
@@ -65,22 +59,8 @@ class RoleController extends Controller
             ->when(count($assignedValues) === 1 && $assignedValues[0] === 'assigned', static fn ($query) => $query->has('users'))
             ->when(count($assignedValues) === 1 && $assignedValues[0] === 'unassigned', static fn ($query) => $query->doesntHave('users'))
             ->when(ctype_digit($permissionsMin), static fn ($query) => $query->has('permissions', '>=', (int) $permissionsMin))
-            ->when($statuses !== [], static fn ($query) => $query->whereIn('status', $statuses))
-            ->when(in_array('inactive', $recordStatuses, true), static fn ($query) => $query->withTrashed())
-            ->when($recordStatuses !== [], static fn ($query) => $query->whereIn(
-                'record_status',
-                array_map(static fn (string $status): int => $status === 'active' ? 1 : 0, $recordStatuses),
-            ))
             ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
             ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
-            ->when($updatedFrom !== null, static fn ($query) => $query->where('updated_at', '>=', $updatedFrom->startOfDay()))
-            ->when($updatedTo !== null, static fn ($query) => $query->where('updated_at', '<=', $updatedTo->endOfDay()))
-            ->when($createdBy !== '', static fn ($query) => $query->whereHas('createdBy', static fn ($actorQuery) => $actorQuery
-                ->where('name', 'like', "%{$createdBy}%")
-                ->orWhere('email', 'like', "%{$createdBy}%")))
-            ->when($updatedBy !== '', static fn ($query) => $query->whereHas('updatedBy', static fn ($actorQuery) => $actorQuery
-                ->where('name', 'like', "%{$updatedBy}%")
-                ->orWhere('email', 'like', "%{$updatedBy}%")))
             ->when(
                 $sort === 'created_by',
                 static fn ($query) => $query->orderBy(
@@ -134,14 +114,8 @@ class RoleController extends Controller
                 'type' => $this->filterValue($types),
                 'assigned' => $this->filterValue($assignedValues),
                 'permissionsMin' => $permissionsMin,
-                'status' => $this->filterValue($statuses),
                 'from' => $from?->format('Y-m-d') ?? '',
                 'to' => $to?->format('Y-m-d') ?? '',
-                'updatedFrom' => $updatedFrom?->format('Y-m-d') ?? '',
-                'updatedTo' => $updatedTo?->format('Y-m-d') ?? '',
-                'createdBy' => $createdBy,
-                'updatedBy' => $updatedBy,
-                'recordStatus' => $this->filterValue($recordStatuses),
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,

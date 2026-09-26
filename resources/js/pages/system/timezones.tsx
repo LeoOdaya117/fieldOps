@@ -1,9 +1,9 @@
 import { Plus } from 'lucide-react';
 import { ActionLink } from '@/components/action-link';
-import { AuditFilterFields } from '@/components/audit-filter-fields';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { DataTable } from '@/components/ui/data-table';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
@@ -14,7 +14,6 @@ import type {
     Timezone,
 } from '@/features/system/types';
 import { dashboard } from '@/routes';
-import { auditFilterCount, auditFilterQuery } from '@/types/audit';
 import {
     create as createTimezone,
     index as timezonesIndex,
@@ -47,8 +46,8 @@ export default function TimezonesPage({
                 title="Search and filter timezones"
                 description="Find a timezone identifier."
                 activeFilterCount={
-                    [filters.search].filter(Boolean).length +
-                    auditFilterCount(filters)
+                    [filters.search, filters.from, filters.to].filter(Boolean)
+                        .length
                 }
                 pageSize={pageSize}
                 keyword={
@@ -63,9 +62,20 @@ export default function TimezonesPage({
                         />
                     </div>
                 }
-            >
-                <AuditFilterFields filters={filters} idPrefix="timezone" />
-            </SearchFilterSheet>
+                dateRange={
+                    <div className="grid gap-2">
+                        <Label htmlFor="timezone-date-range">Date range</Label>
+                        <DateRangePicker
+                            id="timezone-date-range"
+                            from={filters.from}
+                            to={filters.to}
+                            fromName="from"
+                            toName="to"
+                            label="Timezone date range"
+                        />
+                    </div>
+                }
+            />
             {canCreate ? (
                 <ActionLink href={createTimezone.url()}>
                     <Plus />
@@ -108,7 +118,8 @@ export default function TimezonesPage({
                         direction: filters.direction,
                         hidden: {
                             search: filters.search,
-                            ...auditFilterQuery(filters),
+                            from: filters.from,
+                            to: filters.to,
                         },
                     }}
                     columnVisibility={{

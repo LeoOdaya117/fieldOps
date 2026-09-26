@@ -1,7 +1,6 @@
 import { Plus } from 'lucide-react';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import { ActionLink } from '@/components/action-link';
-import { AuditFilterFields } from '@/components/audit-filter-fields';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { DataTable } from '@/components/ui/data-table';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -14,7 +13,6 @@ import type {
     BlockedIpAddress,
     BlockedIpTableFilters,
 } from '@/features/access/ip-block-table-model';
-import { auditFilterCount, auditFilterQuery } from '@/types/audit';
 import { dashboard } from '@/routes';
 import {
     create as createIpBlock,
@@ -62,8 +60,12 @@ export default function IpBlocksPage({
                 title="Search and filter IP addresses"
                 description="Find an address, user, or reason and narrow the list by access status."
                 activeFilterCount={
-                    [filters.search, filters.status].filter(Boolean).length +
-                    auditFilterCount(filters)
+                    [
+                        filters.search,
+                        filters.status,
+                        filters.from,
+                        filters.to,
+                    ].filter(Boolean).length
                 }
                 pageSize={pageSize}
                 keyword={
@@ -92,12 +94,6 @@ export default function IpBlocksPage({
                     </div>
                 }
             >
-                <AuditFilterFields
-                    filters={filters}
-                    idPrefix="ip-block-audit"
-                    createdFromName="created_from"
-                    createdToName="created_to"
-                />
                 <div className="grid gap-2">
                     <Label htmlFor="ip-block-status">Status</Label>
                     <AdaptiveSelect
@@ -157,7 +153,8 @@ export default function IpBlocksPage({
                         hidden: {
                             search: filters.search,
                             status: filters.status,
-                            ...auditFilterQuery(filters),
+                            from: filters.from,
+                            to: filters.to,
                         },
                     }}
                     columnVisibility={{

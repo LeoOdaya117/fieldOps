@@ -29,13 +29,6 @@ class BlockedIpAddressController extends Controller
         $statuses = $this->filterValues($request->input('status'), ['active', 'inactive']);
         $from = $this->parseDate($request->input('from'));
         $to = $this->parseDate($request->input('to'));
-        $createdFrom = $this->parseDate($request->input('created_from'));
-        $createdTo = $this->parseDate($request->input('created_to'));
-        $updatedFrom = $this->parseDate($request->input('updated_from'));
-        $updatedTo = $this->parseDate($request->input('updated_to'));
-        $createdBy = trim((string) $request->input('created_by', ''));
-        $updatedBy = trim((string) $request->input('updated_by', ''));
-        $recordStatuses = $this->filterValues($request->input('record_status'), ['active', 'inactive']);
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
@@ -65,23 +58,8 @@ class BlockedIpAddressController extends Controller
                         ->orWhere('email', 'like', "%{$search}%"));
             }))
             ->when($statuses !== [], static fn ($query) => $query->whereIn('is_active', array_map(static fn (string $status): bool => $status === 'active', $statuses)))
-            ->when(in_array('inactive', $recordStatuses, true), static fn ($query) => $query->withTrashed())
-            ->when($recordStatuses !== [], static fn ($query) => $query->whereIn(
-                'record_status',
-                array_map(static fn (string $status): int => $status === 'active' ? 1 : 0, $recordStatuses),
-            ))
             ->when($from !== null, static fn ($query) => $query->where('blocked_at', '>=', $from->startOfDay()))
             ->when($to !== null, static fn ($query) => $query->where('blocked_at', '<=', $to->endOfDay()))
-            ->when($createdFrom !== null, static fn ($query) => $query->where('created_at', '>=', $createdFrom->startOfDay()))
-            ->when($createdTo !== null, static fn ($query) => $query->where('created_at', '<=', $createdTo->endOfDay()))
-            ->when($updatedFrom !== null, static fn ($query) => $query->where('updated_at', '>=', $updatedFrom->startOfDay()))
-            ->when($updatedTo !== null, static fn ($query) => $query->where('updated_at', '<=', $updatedTo->endOfDay()))
-            ->when($createdBy !== '', static fn ($query) => $query->whereHas('createdBy', static fn ($actorQuery) => $actorQuery
-                ->where('name', 'like', "%{$createdBy}%")
-                ->orWhere('email', 'like', "%{$createdBy}%")))
-            ->when($updatedBy !== '', static fn ($query) => $query->whereHas('updatedBy', static fn ($actorQuery) => $actorQuery
-                ->where('name', 'like', "%{$updatedBy}%")
-                ->orWhere('email', 'like', "%{$updatedBy}%")))
             ->when(
                 $sort === 'created_by',
                 static fn ($query) => $query->orderBy(
@@ -148,13 +126,6 @@ class BlockedIpAddressController extends Controller
                 'status' => $this->filterValue($statuses),
                 'from' => $from?->format('Y-m-d') ?? '',
                 'to' => $to?->format('Y-m-d') ?? '',
-                'createdFrom' => $createdFrom?->format('Y-m-d') ?? '',
-                'createdTo' => $createdTo?->format('Y-m-d') ?? '',
-                'updatedFrom' => $updatedFrom?->format('Y-m-d') ?? '',
-                'updatedTo' => $updatedTo?->format('Y-m-d') ?? '',
-                'createdBy' => $createdBy,
-                'updatedBy' => $updatedBy,
-                'recordStatus' => $this->filterValue($recordStatuses),
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,

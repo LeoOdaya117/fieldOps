@@ -3,7 +3,6 @@ import { SortableColumn } from '@/components/sortable-column';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { DataTableColumn } from '@/components/ui/data-table';
-import { auditFilterQuery } from '@/types/audit';
 import type { AuditTableFilters, StandardAuditFields } from '@/types/audit';
 import {
     TableActionForm,
@@ -28,7 +27,6 @@ export type RoleTableFilters = AuditTableFilters & {
     type: string | string[];
     assigned: string | string[];
     permissionsMin: string;
-    status: string | string[];
     perPage?: number;
     sort?: string;
     direction?: 'asc' | 'desc';
@@ -64,8 +62,8 @@ export function roleTableColumns({
         type: filters.type,
         assigned: filters.assigned,
         permissions_min: filters.permissionsMin,
-        status: filters.status,
-        ...auditFilterQuery(filters),
+        from: filters.from,
+        to: filters.to,
     };
 
     return [

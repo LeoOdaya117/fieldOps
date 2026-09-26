@@ -753,7 +753,11 @@ describe('reusable data table components', () => {
                     action: '/access/users',
                     sort: 'updated_at',
                     direction: 'asc',
-                    hidden: { status: 'active' },
+                    hidden: {
+                        status: 'active',
+                        from: '2030-01-01',
+                        to: '2030-01-31',
+                    },
                 }}
                 getRowKey={(row) => row.id}
             />,
@@ -763,13 +767,13 @@ describe('reusable data table components', () => {
             screen.getByRole('link', { name: 'Sort Updated descending' }),
         ).toHaveAttribute(
             'href',
-            '/access/users?status=active&sort=updated_at&direction=desc',
+            '/access/users?status=active&from=2030-01-01&to=2030-01-31&sort=updated_at&direction=desc',
         );
         expect(
             screen.getByRole('link', { name: 'Sort Created by ascending' }),
         ).toHaveAttribute(
             'href',
-            '/access/users?status=active&sort=created_by&direction=asc',
+            '/access/users?status=active&from=2030-01-01&to=2030-01-31&sort=created_by&direction=asc',
         );
     });
 

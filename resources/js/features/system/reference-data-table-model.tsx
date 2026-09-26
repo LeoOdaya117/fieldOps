@@ -24,7 +24,6 @@ import type {
     Timezone,
 } from '@/features/system/types';
 import { formatDateTime } from '@/lib/format-date';
-import { auditFilterQuery } from '@/types/audit';
 
 type RecordStatusSwitchProps = {
     recordStatus: number;
@@ -62,14 +61,16 @@ function formatDate(value: string | null): string {
 function countryFilters(filters: ReferenceDataFilters) {
     return {
         search: filters.search,
-        ...auditFilterQuery(filters),
+        from: filters.from,
+        to: filters.to,
     };
 }
 
 function timezoneFilters(filters: ReferenceDataFilters) {
     return {
         search: filters.search,
-        ...auditFilterQuery(filters),
+        from: filters.from,
+        to: filters.to,
     };
 }
 

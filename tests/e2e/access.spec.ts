@@ -37,11 +37,12 @@ test('an administrator can manage audit columns across access tables and themes'
         userTableContainer.getByRole('button', { name: /Filter/ }),
     ).toBeVisible();
     await userTableContainer.getByRole('button', { name: /Filter/ }).click();
-    await expect(page.getByLabel('Created by')).toBeVisible();
-    await expect(page.getByLabel('Updated by')).toBeVisible();
+    await expect(page.getByLabel('Date range')).toBeVisible();
+    await expect(page.getByLabel('Created by')).toHaveCount(0);
+    await expect(page.getByLabel('Updated by')).toHaveCount(0);
     await expect(
         page.getByRole('group', { name: 'Record status' }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(
         userTableContainer.getByRole('link', { name: 'Add user' }),
@@ -95,6 +96,10 @@ test('an administrator can manage audit columns across access tables and themes'
     await expect(
         userTable.getByRole('columnheader', { name: 'Record status' }),
     ).toBeVisible();
+    await userTable
+        .getByRole('link', { name: 'Sort Created by ascending' })
+        .click();
+    await expect(page).toHaveURL(/\/access\/users\?sort=created_by&direction=asc/);
 
     await page.reload();
     const reloadedUserTable = page.getByRole('table', {
@@ -169,12 +174,22 @@ test('an administrator can manage audit columns across access tables and themes'
                 table.getByRole('columnheader', { name: 'Record status' }),
             ).toBeVisible();
 
+            await table
+                .getByRole('link', { name: 'Sort Updated ascending' })
+                .click();
+            await expect(page).toHaveURL(
+                new RegExp(
+                    `${surface.path.replace('/', '\\/')}\\?sort=updated_at&direction=asc`,
+                ),
+            );
+
             await page.getByRole('button', { name: /Filter/ }).click();
-            await expect(page.getByLabel('Created by')).toBeVisible();
-            await expect(page.getByLabel('Updated by')).toBeVisible();
+            await expect(page.getByLabel('Date range')).toBeVisible();
+            await expect(page.getByLabel('Created by')).toHaveCount(0);
+            await expect(page.getByLabel('Updated by')).toHaveCount(0);
             await expect(
                 page.getByRole('group', { name: 'Record status' }),
-            ).toBeVisible();
+            ).toHaveCount(0);
             await page.keyboard.press('Escape');
 
             const scrollContainer = table.locator(

@@ -132,7 +132,8 @@ describe('system reference data UI', () => {
         formState.errors = {};
     });
 
-    it('places reference-data list actions inside their table containers', () => {
+    it('restores the original reference-data filters without audit search fields', async () => {
+        const user = userEvent.setup();
         const { unmount } = render(
             <CountriesPage
                 countries={countryPageData}
@@ -154,6 +155,18 @@ describe('system reference data UI', () => {
                 name: /Filter/,
             }),
         ).toBeInTheDocument();
+        await user.click(
+            within(countryTableContainer).getByRole('button', {
+                name: /Filter/,
+            }),
+        );
+        expect(screen.getByLabelText('Date range')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Created by')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Updated by')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('group', { name: 'Record status' }),
+        ).not.toBeInTheDocument();
+        await user.keyboard('{Escape}');
         expect(
             within(countryTableContainer).getByRole('link', {
                 name: 'Create country',

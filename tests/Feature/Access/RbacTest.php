@@ -90,7 +90,7 @@ class RbacTest extends TestCase
                 ->has('roles.data.0.updatedAt'));
     }
 
-    public function test_access_indexes_filter_by_audit_actor_and_record_status(): void
+    public function test_access_indexes_sort_audit_columns_without_audit_filters(): void
     {
         $owner = User::factory()->create(['name' => 'Audit owner']);
         $owner->syncRoles(RoleName::Owner->value);
@@ -100,8 +100,6 @@ class RbacTest extends TestCase
             'name' => 'Filterable user',
             'email' => 'filterable-user@example.com',
         ]);
-        $deletedUser = User::factory()->create(['name' => 'Deleted user']);
-        $deletedUser->delete();
         $role = Role::query()->create([
             'name' => 'filterable_role',
             'guard_name' => 'web',
@@ -120,30 +118,37 @@ class RbacTest extends TestCase
         $this->get(route('access.users.index', [
             'search' => 'Filterable user',
             'created_by' => $owner->email,
+            'sort' => 'created_by',
+            'direction' => 'desc',
         ]))->assertInertia(fn (Assert $page) => $page
             ->where('users.data.0.id', $user->id)
-            ->where('filters.createdBy', $owner->email));
-
-        $this->get(route('access.users.index', [
-            'search' => 'Deleted user',
-            'record_status' => 'inactive',
-        ]))->assertInertia(fn (Assert $page) => $page
-            ->where('users.data.0.id', $deletedUser->id)
-            ->where('users.data.0.recordStatus', 0));
+            ->where('filters.sort', 'created_by')
+            ->where('filters.direction', 'desc')
+            ->missing('filters.createdBy')
+            ->missing('filters.recordStatus'));
 
         $this->get(route('access.users.index', [
             'invitation_search' => 'filterable-invitation@example.com',
             'invitation_created_by' => $owner->email,
+            'invitation_sort' => 'created_by',
+            'invitation_direction' => 'desc',
         ]))->assertInertia(fn (Assert $page) => $page
             ->where('invitations.0.email', 'filterable-invitation@example.com')
-            ->where('invitationFilters.createdBy', $owner->email));
+            ->where('invitationFilters.sort', 'created_by')
+            ->where('invitationFilters.direction', 'desc')
+            ->missing('invitationFilters.createdBy'));
 
         $this->get(route('access.roles.index', [
             'search' => 'Filterable role',
             'created_by' => $owner->email,
+            'sort' => 'created_by',
+            'direction' => 'desc',
         ]))->assertInertia(fn (Assert $page) => $page
             ->where('roles.data.0.id', $role->id)
-            ->where('filters.createdBy', $owner->email));
+            ->where('filters.sort', 'created_by')
+            ->where('filters.direction', 'desc')
+            ->missing('filters.createdBy')
+            ->missing('filters.recordStatus'));
     }
 
     public function test_owner_can_view_audit_history(): void

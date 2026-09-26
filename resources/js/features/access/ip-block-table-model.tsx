@@ -11,7 +11,6 @@ import { SortableColumn } from '@/components/sortable-column';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import type { DataTableColumn } from '@/components/ui/data-table';
-import { auditFilterQuery } from '@/types/audit';
 import type { AuditTableFilters, StandardAuditFields } from '@/types/audit';
 import {
     TableActionForm,
@@ -83,7 +82,8 @@ export function blockedIpTableColumns({
     const hidden = {
         search: filters.search,
         status: filters.status,
-        ...auditFilterQuery(filters),
+        from: filters.from,
+        to: filters.to,
     };
 
     return [

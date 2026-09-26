@@ -39,8 +39,7 @@ class ReferenceDataTest extends TestCase
         $this->actingAs($admin)
             ->get(route('system.countries.index', [
                 'search' => 'Quality Zone',
-                'created_by' => $admin->email,
-                'updated_from' => now()->subDay()->format('Y-m-d'),
+                'from' => now()->subDay()->format('Y-m-d'),
             ]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
@@ -48,8 +47,9 @@ class ReferenceDataTest extends TestCase
                 ->where('canManage', true)
                 ->where('canCreate', true)
                 ->has('filters')
-                ->where('filters.createdBy', $admin->email)
-                ->where('filters.updatedFrom', now()->subDay()->format('Y-m-d'))
+                ->where('filters.from', now()->subDay()->format('Y-m-d'))
+                ->missing('filters.createdBy')
+                ->missing('filters.updatedFrom')
                 ->missing('filters.status')
                 ->has('countries.data', 1, fn (Assert $data) => $data
                     ->where('id', $country->id)

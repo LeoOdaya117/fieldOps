@@ -274,7 +274,7 @@ class UserManagementTest extends TestCase
                 ->missing('registrations.0.recordStatus'));
     }
 
-    public function test_registration_index_filters_by_updated_timestamp(): void
+    public function test_registration_index_sorts_by_updated_timestamp_without_audit_filters(): void
     {
         $registration = UserRegistration::query()->create([
             'name' => 'Old Applicant',
@@ -285,15 +285,24 @@ class UserManagementTest extends TestCase
             'created_at' => now()->subDays(5),
             'updated_at' => now()->subDays(5),
         ])->saveQuietly();
+        UserRegistration::query()->create([
+            'name' => 'Recent Applicant',
+            'email' => 'recent-applicant@example.com',
+            'password' => Hash::make('password'),
+        ]);
         $admin = $this->admin();
 
         $this->actingAs($admin)
             ->get(route('access.users.registrations', [
+                'sort' => 'updated_at',
+                'direction' => 'asc',
                 'updated_from' => now()->format('Y-m-d'),
             ]))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('filters.updatedFrom', now()->format('Y-m-d'))
-                ->where('registrations', []));
+                ->where('filters.sort', 'updated_at')
+                ->where('filters.direction', 'asc')
+                ->missing('filters.updatedFrom')
+                ->where('registrations.0.id', $registration->id));
     }
 
     public function test_admin_can_reject_a_pending_registration_without_creating_a_user(): void

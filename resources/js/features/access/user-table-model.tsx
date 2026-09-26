@@ -13,7 +13,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { DataTableColumn } from '@/components/ui/data-table';
-import { auditFilterQuery } from '@/types/audit';
 import type { AuditTableFilters, StandardAuditFields } from '@/types/audit';
 import {
     TableActionForm,
@@ -76,9 +75,7 @@ export type UserTableFilters = AuditTableFilters & {
     direction?: 'asc' | 'desc';
 };
 
-export type InvitationTableFilters = AuditTableFilters & {
-    search: string;
-    status: string | string[];
+export type InvitationTableFilters = {
     sort?: string;
     direction?: 'asc' | 'desc';
 };
@@ -278,7 +275,8 @@ export function userTableColumns({
     const hidden = {
         search: filters.search,
         status: filters.status,
-        ...auditFilterQuery(filters),
+        from: filters.from,
+        to: filters.to,
     };
 
     return [
