@@ -162,7 +162,7 @@ export default function SystemSettings({
                                     title="Defaults"
                                     description="Everyday list and session behavior."
                                 />
-                                <div className="grid gap-5 sm:grid-cols-2">
+                                <div className="grid items-start gap-5 sm:grid-cols-2">
                                     <div className="grid gap-2">
                                         <Label htmlFor="pagination-size">
                                             Rows per page
@@ -229,7 +229,7 @@ export default function SystemSettings({
                                                 defaultValue={
                                                     settings.idle_timeout_seconds
                                                 }
-                                                className="pr-20 tabular-nums"
+                                                className="h-11 pr-20 tabular-nums"
                                                 aria-invalid={Boolean(
                                                     errors.idle_timeout_seconds,
                                                 )}

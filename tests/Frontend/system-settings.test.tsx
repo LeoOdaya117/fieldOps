@@ -57,6 +57,19 @@ describe('system settings page', () => {
         expect(screen.queryByText('Interface theme')).not.toBeInTheDocument();
         expect(screen.getByLabelText('System name')).toHaveValue('FieldOps');
 
+        const defaultsSection = screen
+            .getByRole('heading', { name: 'Defaults' })
+            .closest('section');
+        expect(
+            defaultsSection?.querySelector(':scope > .grid'),
+        ).toHaveClass('items-start');
+        expect(
+            screen.getByRole('combobox', { name: 'Rows per page' }),
+        ).toHaveClass('min-h-11');
+        expect(screen.getByLabelText('Log out after inactivity')).toHaveClass(
+            'h-11',
+        );
+
         await user.click(screen.getByRole('combobox', { name: 'Time zone' }));
         await user.click(screen.getByRole('option', { name: 'Asia/Manila' }));
         expect(container.querySelector('input[name="timezone"]')).toHaveValue(
