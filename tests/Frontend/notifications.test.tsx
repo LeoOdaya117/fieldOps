@@ -128,7 +128,7 @@ describe('notifications', () => {
             });
             fireEvent.click(trigger);
             expect(await screen.findByRole('dialog')).toBeVisible();
-            expect(screen.getByText(item.title)).toBeVisible();
+            expect(await screen.findByText(item.title)).toBeVisible();
             expect(screen.getByText('Unread', { exact: true })).toBeVisible();
             expect(
                 screen.getByRole('link', { name: 'View all notifications' }),
@@ -142,6 +142,85 @@ describe('notifications', () => {
             await waitFor(() => expect(trigger).toHaveFocus());
         },
     );
+
+    it('shows a skeleton while refreshing the notification preview', async () => {
+        let resolveSummary: (value: {
+            ok: boolean;
+            status: number;
+            json: () => Promise<NotificationSummary>;
+        }) => void = () => {};
+        fetched.mockReturnValue(
+            new Promise((resolve) => {
+                resolveSummary = resolve;
+            }),
+        );
+        bell();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Notifications, 1 unread' }),
+        );
+
+        expect(
+            await screen.findByRole('status', {
+                name: 'Loading notifications',
+            }),
+        ).toBeVisible();
+        expect(
+            screen.getByRole('heading', { name: 'Notifications' }),
+        ).toBeVisible();
+        expect(
+            screen.getByRole('link', { name: 'View all notifications' }),
+        ).toBeVisible();
+        expect(screen.queryByText(item.title)).not.toBeInTheDocument();
+
+        await act(async () => {
+            resolveSummary({
+                ok: true,
+                status: 200,
+                json: async () => ({ total: 1, unread: 1, items: [item] }),
+            });
+        });
+
+        expect(await screen.findByText(item.title)).toBeVisible();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    it('keeps the empty state hidden until an empty refresh completes', async () => {
+        mocks.page.props.notifications = { total: 0, unread: 0, items: [] };
+        let resolveSummary: (value: {
+            ok: boolean;
+            status: number;
+            json: () => Promise<NotificationSummary>;
+        }) => void = () => {};
+        fetched.mockReturnValue(
+            new Promise((resolve) => {
+                resolveSummary = resolve;
+            }),
+        );
+        bell();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Notifications, 0 unread' }),
+        );
+
+        expect(
+            await screen.findByRole('status', {
+                name: 'Loading notifications',
+            }),
+        ).toBeVisible();
+        expect(
+            screen.queryByText('No notifications here'),
+        ).not.toBeInTheDocument();
+
+        await act(async () => {
+            resolveSummary({
+                ok: true,
+                status: 200,
+                json: async () => ({ total: 0, unread: 0, items: [] }),
+            });
+        });
+
+        expect(await screen.findByText('No notifications here')).toBeVisible();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
 
     it('polls only while visible and stops after expiry', async () => {
         vi.useFakeTimers();

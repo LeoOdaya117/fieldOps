@@ -29,6 +29,20 @@
     }
 }
 
+#page-loading-fallback {
+    display: none;
+}
+
+#app:empty + #page-loading-fallback {
+    display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .page-boot-skeleton .animate-pulse {
+        animation: none !important;
+    }
+}
+
 @keyframes landing-orbit {
     0%,
     100% {

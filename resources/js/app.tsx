@@ -6,6 +6,10 @@ import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
 import SystemSettingsLayout from '@/layouts/settings/system-layout';
+import {
+    PageLoadingBoundary,
+    PageLoadingProvider,
+} from '@/features/page-loading/page-loading-provider';
 
 const appName = document.documentElement.dataset.platformName || 'FieldOps';
 
@@ -14,30 +18,30 @@ createInertiaApp({
     layout: (name) => {
         switch (true) {
             case name === 'welcome':
-                return null;
+                return PageLoadingBoundary;
             case name.startsWith('auth/'):
-                return AuthLayout;
+                return [AuthLayout, PageLoadingBoundary];
             case name === 'settings/system' ||
                 name.startsWith('settings/system/'):
-                return [AppLayout, SystemSettingsLayout];
+                return [AppLayout, SystemSettingsLayout, PageLoadingBoundary];
             case name.startsWith('settings/'):
-                return [AppLayout, SettingsLayout];
+                return [AppLayout, SettingsLayout, PageLoadingBoundary];
             default:
-                return AppLayout;
+                return [AppLayout, PageLoadingBoundary];
         }
     },
     strictMode: true,
     withApp(app) {
         return (
             <TooltipProvider delayDuration={0}>
-                {app}
-                <Toaster />
+                <PageLoadingProvider>
+                    {app}
+                    <Toaster />
+                </PageLoadingProvider>
             </TooltipProvider>
         );
     },
-    progress: {
-        color: 'var(--primary)',
-    },
+    progress: false,
 });
 
 // This will set light / dark mode on load...

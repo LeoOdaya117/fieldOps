@@ -8,6 +8,7 @@ Detected repository context, refreshed 2026-09-26 with `$project-init`. This is 
 - Frontend dependencies include React `^19.2.0`, TypeScript `^5.7.2`, Vite `^8.0.0`, and Tailwind CSS `^4.0.0`.
 - These are manifest constraints, not resolved-version claims; consult lockfiles for exact installed versions.
 - Laravel owns routes, authorization, validation, persistence, and page data; React owns presentation and local interaction state.
+- Page navigation loading is centralized under `resources/js/features/page-loading/`: Inertia GET visits use route-family skeletons inside the resolved layout chain, and `resources/views/app.blade.php` supplies a mount-root fallback before client rendering.
 - Native Laragon on Windows is the primary workflow; Docker Compose is optional. CI config uses PHP 8.3 and Node 22.
 
 ## Request and application flow
@@ -47,4 +48,4 @@ Refresh this list from manifests and current project instructions when commands 
 
 ## Verification status
 
-This context was verified against `AGENTS.md`, `docs/architecture.md`, Composer/npm manifests, `bootstrap/app.php`, `routes/web.php`, `routes/settings.php`, `resources/js/app.tsx`, test configs, CI workflow, and the current directory layout. Package versions are reported as declared constraints. Re-run `$project-init` after significant architecture or tooling changes.
+This context was verified against `AGENTS.md`, `docs/architecture.md`, Composer/npm manifests, `bootstrap/app.php`, `routes/web.php`, `routes/settings.php`, `resources/js/app.tsx`, `resources/js/features/page-loading/`, `resources/views/app.blade.php`, test configs, CI workflow, and the current directory layout on 2026-09-27. Package versions are reported as declared constraints. Re-run `$project-init` after significant architecture or tooling changes.

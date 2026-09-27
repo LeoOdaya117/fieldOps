@@ -6,6 +6,7 @@ Use this file for durable conventions confirmed from source or canonical project
 - Laravel owns routing, authentication, authorization, validation, persistence, and Inertia page data; React owns presentation and local interaction state.
 - Keep controllers thin; use Form Requests for input validation and request authorization, Policies for resource authorization, and Actions for reusable or multi-step operations.
 - Frontend code uses strict TypeScript, Inertia state, Wayfinder-generated routes, shared UI primitives, semantic theme tokens, and responsive light/dark behavior.
+- Page-level loading uses route-family skeletons from `resources/js/features/page-loading/` for delayed, non-prefetch GET visits; an empty-root Blade fallback covers the initial client mount. Local operation loading remains owned by each action/widget.
 - The repository's test guidance requires success, authorization, validation/failure, side-effect, and relevant UI theme/responsive coverage.
 - The documented backend request flow is route -> middleware -> Form Request -> controller -> action/model -> Inertia response; policies or other authorization checks guard resource access (`docs/architecture.md`).
 - `bootstrap/app.php` registers `routes/web.php` and `routes/console.php`, the `/up` health path, and project web middleware; `routes/web.php` includes authenticated access-management and system-data groups while `routes/settings.php` defines profile and settings flows.

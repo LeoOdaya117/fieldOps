@@ -25,3 +25,9 @@ Append meaningful architectural or workflow decisions with their date, context, 
 - **Context:** Record-status actions must be assignable in the role editor, and the current role set needed to be reduced to the three requested default roles.
 - **Decision:** Seed only User, Admin, and Super Admin as protected built-in roles. Super Admin is the sole elevated role; custom roles remain supported. Register `view_deleted` and `update_deleted` for every record-status resource namespace, grant both to Admin and Super Admin by default, and grant neither to User.
 - **Rationale:** Resource-scoped actions remain visible and configurable through the existing permission editor while elevated account and system-role safeguards have one consistent authority.
+
+## 2026-09-27 — Use route-family skeletons for page loading
+
+- **Context:** The global Inertia progress bar did not show page structure while visits were pending, and client navigation continued to display the previous page.
+- **Decision:** Use an app-level visit provider for non-prefetch GET requests, render a destination-family skeleton after 200 ms inside the innermost active layout, and retain a Blade boot fallback while the Inertia mount root is empty. Unmapped future pages use a generic skeleton; local operation indicators remain local.
+- **Rationale:** This makes page navigation consistent across existing and future routes, keeps app/auth/settings navigation in place, and avoids replacing useful form, upload, or widget progress states.

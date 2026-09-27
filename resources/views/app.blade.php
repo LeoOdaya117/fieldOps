@@ -32,5 +32,6 @@
     </head>
     <body class="font-sans antialiased">
         <x-inertia::app />
+        @include('components.page-boot-skeleton', ['component' => $page['component'] ?? ''])
     </body>
 </html>
