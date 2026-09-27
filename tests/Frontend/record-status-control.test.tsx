@@ -8,7 +8,6 @@ vi.mock('@inertiajs/react', () => ({
 }));
 
 import { RecordStatusControl } from '@/components/ui/record-status-control';
-import { RecordStatusFilters } from '@/components/record-status-filters';
 
 describe('record status control', () => {
     it('renders a status badge when the user cannot change status', () => {
@@ -72,38 +71,5 @@ describe('record status control', () => {
             'aria-checked',
             'true',
         );
-    });
-});
-
-describe('record status filters', () => {
-    it('omits filter controls without visibility permission', () => {
-        const { container } = render(
-            <RecordStatusFilters canViewDeleted={false} />,
-        );
-        expect(container).toBeEmptyDOMElement();
-    });
-
-    it('defaults to Active and submits the selected values as an array', () => {
-        render(<RecordStatusFilters canViewDeleted />);
-
-        const active = screen.getByRole('checkbox', { name: 'Active' });
-        const inactive = screen.getByRole('checkbox', { name: 'Inactive' });
-        expect(active).toBeChecked();
-        expect(inactive).not.toBeChecked();
-        expect(active).toHaveAttribute('name', 'record_status[]');
-        expect(inactive).toHaveAttribute('name', 'record_status[]');
-        expect(active).toHaveProperty('value', 'active');
-        expect(inactive).toHaveProperty('value', 'inactive');
-    });
-
-    it('restores the server-selected inactive filter after navigation', () => {
-        render(<RecordStatusFilters canViewDeleted value="inactive" />);
-
-        expect(
-            screen.getByRole('checkbox', { name: 'Active' }),
-        ).not.toBeChecked();
-        expect(
-            screen.getByRole('checkbox', { name: 'Inactive' }),
-        ).toBeChecked();
     });
 });

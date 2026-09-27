@@ -176,6 +176,31 @@ describe('system reference data UI', () => {
 
         unmount();
 
+        const { unmount: unmountDeletedFilter } = render(
+            <CountriesPage
+                countries={countryPageData}
+                canViewDeleted
+                filters={{ search: '' }}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: /Filter/ }));
+        const recordStatusGroup = screen.getByRole('group', {
+            name: 'Record status',
+        });
+        expect(
+            within(recordStatusGroup).getByRole('checkbox', {
+                name: 'Active',
+            }),
+        ).toBeChecked();
+        expect(
+            within(recordStatusGroup).getByRole('checkbox', {
+                name: 'Inactive',
+            }),
+        ).not.toBeChecked();
+
+        unmountDeletedFilter();
+
         render(
             <TimezonesPage
                 timezones={timezonePageData}

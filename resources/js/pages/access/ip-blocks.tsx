@@ -2,7 +2,6 @@ import { Plus } from 'lucide-react';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import { ActionLink } from '@/components/action-link';
 import SearchFilterSheet from '@/components/search-filter-sheet';
-import { RecordStatusFilters } from '@/components/record-status-filters';
 import { DataTable } from '@/components/ui/data-table';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { AdaptiveSelect } from '@/components/ui/adaptive-select';
@@ -117,10 +116,22 @@ export default function IpBlocksPage({
                         ]}
                     />
                 </div>
-                <RecordStatusFilters
-                    canViewDeleted={canViewDeleted}
-                    value={filters.recordStatus}
-                />
+                {canViewDeleted && (
+                    <div className="grid gap-2">
+                        <Label>Record status</Label>
+                        <AdaptiveSelect
+                            id="ip-block-record-status"
+                            name="record_status"
+                            aria-label="Record status"
+                            multiple
+                            defaultValue={filters.recordStatus ?? 'active'}
+                            options={[
+                                { value: 'active', label: 'Active' },
+                                { value: 'inactive', label: 'Inactive' },
+                            ]}
+                        />
+                    </div>
+                )}
             </SearchFilterSheet>
             {canCreate && (
                 <ActionLink href={createIpBlock.url()}>

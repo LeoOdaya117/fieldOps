@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { ActionLink } from '@/components/action-link';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
-import { RecordStatusFilters } from '@/components/record-status-filters';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { AdaptiveSelect } from '@/components/ui/adaptive-select';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { DataTable } from '@/components/ui/data-table';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
 import { roleTableColumns } from '@/features/access/role-table-model';
@@ -212,10 +212,22 @@ export default function RolesPage({
                         placeholder="0"
                     />
                 </div>
-                <RecordStatusFilters
-                    canViewDeleted={canViewDeleted}
-                    value={filters.recordStatus}
-                />
+                {canViewDeleted && (
+                    <div className="grid gap-2">
+                        <Label>Record status</Label>
+                        <AdaptiveSelect
+                            id="role-record-status"
+                            name="record_status"
+                            aria-label="Record status"
+                            multiple
+                            defaultValue={filters.recordStatus ?? 'active'}
+                            options={[
+                                { value: 'active', label: 'Active' },
+                                { value: 'inactive', label: 'Inactive' },
+                            ]}
+                        />
+                    </div>
+                )}
             </SearchFilterSheet>
             {canCreate && (
                 <ActionLink href="/access/roles/create">

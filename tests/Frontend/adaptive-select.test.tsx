@@ -34,6 +34,44 @@ describe('AdaptiveSelect', () => {
         expect(screen.getByRole('checkbox', { name: 'Two' })).toBeChecked();
     });
 
+    it('submits selected checkbox options as repeated form values', async () => {
+        const user = userEvent.setup();
+
+        render(
+            <form aria-label="Record status filters">
+                <AdaptiveSelect
+                    id="record-status"
+                    name="record_status"
+                    aria-label="Record status"
+                    multiple
+                    defaultValue={['active']}
+                    options={[
+                        { value: 'active', label: 'Active' },
+                        { value: 'inactive', label: 'Inactive' },
+                    ]}
+                />
+            </form>,
+        );
+
+        const form = screen.getByRole('form', {
+            name: 'Record status filters',
+        }) as HTMLFormElement;
+        const active = screen.getByRole('checkbox', { name: 'Active' });
+        const inactive = screen.getByRole('checkbox', { name: 'Inactive' });
+
+        expect(active).toBeChecked();
+        expect(inactive).not.toBeChecked();
+        expect(new FormData(form).getAll('record_status[]')).toEqual([
+            'active',
+        ]);
+
+        await user.click(inactive);
+        expect(new FormData(form).getAll('record_status[]')).toEqual([
+            'active',
+            'inactive',
+        ]);
+    });
+
     it('uses a select for options between six and ten', () => {
         render(
             <AdaptiveSelect
