@@ -19,16 +19,16 @@ class TimezonePolicy
 
     public function create(User $user): bool
     {
-        return $user->can('timezones.manage');
+        return $user->can('timezones.create');
     }
 
     public function update(User $user, Timezone $timezone): bool
     {
-        return $user->can('timezones.manage');
+        return $user->can('timezones.update');
     }
 
     public function delete(User $user, Timezone $timezone): bool
     {
-        return $user->can('timezones.manage');
+        return $user->can('timezones.delete');
     }
 }

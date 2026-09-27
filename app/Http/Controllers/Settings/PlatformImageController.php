@@ -44,7 +44,8 @@ class PlatformImageController extends Controller
 
         return Inertia::render('settings/system/platform-images', [
             'slots' => $slots,
-            'canAssign' => $request->user()->isOwner(),
+            'canAssign' => $request->user()->isSuperAdmin(),
+            'canUpdateSettings' => $request->user()->can('settings.update'),
         ]);
     }
 
@@ -65,7 +66,7 @@ class PlatformImageController extends Controller
         abort_unless(
             $request->user()->isActive()
                 && $request->user()->email_verified_at !== null
-                && $request->user()->isOwner(),
+                && $request->user()->isSuperAdmin(),
             403,
         );
         $assign->reset($slot, $request->user());

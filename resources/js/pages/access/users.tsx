@@ -13,7 +13,10 @@ import SearchFilterSheet from '@/components/search-filter-sheet';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { AdaptiveSelect } from '@/components/ui/adaptive-select';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
 import {
     invitationTableColumns as invitationTableColumnsModel,
@@ -21,6 +24,7 @@ import {
 } from '@/features/access/user-table-model';
 import type {
     Invitation,
+    InvitationTableFilters,
     RoleOption,
     Registration,
     UserTableFilters,
@@ -52,7 +56,10 @@ type UsersPageProps = {
     canEdit?: boolean;
     canSuspend?: boolean;
     canReactivate?: boolean;
+    canViewDeleted?: boolean;
+    canUpdateDeleted?: boolean;
     filters: UserTableFilters;
+    invitationFilters?: InvitationTableFilters;
 };
 
 function StatCard({
@@ -117,7 +124,10 @@ export default function UsersPage({
     canEdit = true,
     canSuspend = true,
     canReactivate = true,
+    canViewDeleted = false,
+    canUpdateDeleted = false,
     filters,
+    invitationFilters = {},
 }: UsersPageProps) {
     const previousUrl = users.links?.find((link) =>
         link.label.includes('Previous'),
@@ -163,74 +173,117 @@ export default function UsersPage({
             toggleAllUsers,
         });
 
+    const tableActions = (
+        <>
+            <SearchFilterSheet
+                action="/access/users"
+                resetHref="/access/users"
+                title="Search and filter users"
+                description="Find users by name or email and narrow the list by account status."
+                activeFilterCount={
+                    [
+                        filters.search,
+                        filters.status,
+                        filters.recordStatus,
+                    ].filter(Boolean).length +
+                    [filters.from, filters.to].filter(Boolean).length
+                }
+                pageSize={pageSize}
+                keyword={
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="user-search"
+                            className="text-sm font-medium"
+                        >
+                            Search users
+                        </label>
+                        <Input
+                            id="user-search"
+                            name="search"
+                            defaultValue={filters.search}
+                            placeholder="Name or email"
+                            autoFocus
+                        />
+                    </div>
+                }
+                dateRange={
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="user-date-range"
+                            className="text-sm font-medium"
+                        >
+                            Date range
+                        </label>
+                        <DateRangePicker
+                            id="user-date-range"
+                            from={filters.from}
+                            to={filters.to}
+                            fromName="from"
+                            toName="to"
+                            label="User date range"
+                        />
+                    </div>
+                }
+            >
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="user-status"
+                        className="text-sm font-medium"
+                    >
+                        Account status
+                    </label>
+                    <AdaptiveSelect
+                        id="user-status"
+                        name="status"
+                        multiple
+                        defaultValue={filters.status}
+                        placeholder="All statuses"
+                        options={[
+                            { value: '', label: 'All statuses' },
+                            { value: 'active', label: 'Active' },
+                            { value: 'suspended', label: 'Blocked' },
+                        ]}
+                    />
+                </div>
+                {canViewDeleted && (
+                    <div className="grid gap-2">
+                        <Label>Record status</Label>
+                        <AdaptiveSelect
+                            id="user-record-status"
+                            name="record_status"
+                            aria-label="Record status"
+                            multiple
+                            defaultValue={filters.recordStatus ?? 'active'}
+                            options={[
+                                { value: 'active', label: 'Active' },
+                                { value: 'inactive', label: 'Inactive' },
+                            ]}
+                        />
+                    </div>
+                )}
+            </SearchFilterSheet>
+            {canCreate && (
+                <ActionLink href="/access/users/create">
+                    <Plus />
+                    Add user
+                </ActionLink>
+            )}
+            {canInvite && (
+                <ActionLink href="/access/users/invite" variant="outline">
+                    <Send />
+                    Invite user
+                </ActionLink>
+            )}
+            <ActionLink href="/access/roles" variant="outline">
+                Manage roles
+            </ActionLink>
+        </>
+    );
+
     return (
         <IndexPage
             title="Users"
             description="Invite people, assign one role, and control account access."
-            actions={
-                <>
-                    <SearchFilterSheet
-                        action="/access/users"
-                        resetHref="/access/users"
-                        title="Search and filter users"
-                        description="Find users by name or email and narrow the list by account status."
-                        activeFilterCount={
-                            [filters.search, filters.status].filter(Boolean)
-                                .length
-                        }
-                        pageSize={pageSize}
-                    >
-                        <div className="grid gap-2">
-                            <label
-                                htmlFor="user-search"
-                                className="text-sm font-medium"
-                            >
-                                Search users
-                            </label>
-                            <Input
-                                id="user-search"
-                                name="search"
-                                defaultValue={filters.search}
-                                placeholder="Name or email"
-                                autoFocus
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <label
-                                htmlFor="user-status"
-                                className="text-sm font-medium"
-                            >
-                                Account status
-                            </label>
-                            <select
-                                id="user-status"
-                                name="status"
-                                defaultValue={filters.status}
-                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">All statuses</option>
-                                <option value="active">Active</option>
-                                <option value="suspended">Blocked</option>
-                            </select>
-                        </div>
-                    </SearchFilterSheet>
-                    {canCreate && (
-                        <ActionLink href="/access/users/create">
-                            <Plus />
-                            Add user
-                        </ActionLink>
-                    )}
-                    {canInvite && (
-                        <ActionLink
-                            href="/access/users/invite"
-                            variant="outline"
-                        >
-                            <Send />
-                            Invite user
-                        </ActionLink>
-                    )}
-                </>
-            }
         >
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 <StatCard
@@ -280,9 +333,28 @@ export default function UsersPage({
                         scrollContainerClassName="px-4"
                         data={invitations}
                         tableColumns={invitationTableColumns}
+                        addDefaultColumns
+                        canUpdateDeleted={canUpdateDeleted}
+                        defaultColumnSort={{
+                            action: usersIndex.url(),
+                            sort: invitationFilters.sort,
+                            direction: invitationFilters.direction,
+                            sortParam: 'invitation_sort',
+                            directionParam: 'invitation_direction',
+                        }}
                         columnVisibility={{
-                            storageKey: 'access.invitations',
-                            defaultVisibleKeys: ['email', 'role', 'expires'],
+                            storageKey: 'access.invitations.v2',
+                            defaultVisibleKeys: [
+                                'email',
+                                'role',
+                                'expires',
+                                'created_at',
+                                'updated_at',
+                                'created_by',
+                                'updated_by',
+                                'status',
+                                'record_status',
+                            ],
                         }}
                         getRowKey={(invitation) => invitation.id}
                     />
@@ -292,108 +364,117 @@ export default function UsersPage({
             <IndexPageSection
                 title="User accounts"
                 description="Every account has exactly one role."
-                actions={
-                    <ActionLink
-                        href="/access/roles"
-                        variant="link"
-                        size="sm"
-                        className="px-0"
-                    >
-                        Manage roles
-                    </ActionLink>
-                }
             >
-                {users.data.length === 0 ? (
-                    <p className="px-6 py-12 text-center text-sm text-muted-foreground">
-                        No users found.
-                    </p>
-                ) : (
-                    <DataTable
-                        caption="FieldOps user accounts"
-                        className="min-w-max"
-                        containerClassName="rounded-none border-0 shadow-none ring-0"
-                        scrollContainerClassName="px-4"
-                        data={users.data}
-                        tableColumns={userTableColumns}
-                        toolbar={
-                            (canSuspend || canReactivate) &&
-                            selectedUserIds.length > 0 ? (
-                                <div
-                                    data-slot="bulk-actions-row"
-                                    className="min-w-0"
+                <DataTable
+                    caption="FieldOps user accounts"
+                    className="min-w-max"
+                    containerClassName="rounded-none border-0 shadow-none ring-0"
+                    scrollContainerClassName="px-4"
+                    data={users.data}
+                    tableColumns={userTableColumns}
+                    actions={tableActions}
+                    emptyState={
+                        <p className="text-sm text-muted-foreground">
+                            No users found.
+                        </p>
+                    }
+                    addDefaultColumns
+                    canUpdateDeleted={canUpdateDeleted}
+                    excludeDefaultColumns={['created_at', 'status']}
+                    defaultColumnSort={{
+                        action: usersIndex.url(),
+                        sort: filters.sort,
+                        direction: filters.direction,
+                        hidden: {
+                            search: filters.search,
+                            status: filters.status,
+                            from: filters.from,
+                            to: filters.to,
+                            record_status: filters.recordStatus,
+                        },
+                    }}
+                    toolbar={
+                        (canSuspend || canReactivate) &&
+                        selectedUserIds.length > 0 ? (
+                            <div
+                                data-slot="bulk-actions-row"
+                                className="min-w-0"
+                            >
+                                <BulkActions
+                                    selectedIds={selectedUserIds}
+                                    onClear={() => setSelectedUserIds([])}
+                                    className="justify-start"
                                 >
-                                    <BulkActions
-                                        selectedIds={selectedUserIds}
-                                        onClear={() => setSelectedUserIds([])}
-                                        className="justify-start"
-                                    >
-                                        {canSuspend && (
-                                            <BulkActionForm
-                                                action="/access/users/bulk/suspend"
-                                                method="patch"
-                                                ids={selectedUserIds}
-                                                destructive
-                                                confirmation={{
-                                                    title: `Block ${selectedUserIds.length} selected user(s)?`,
-                                                    description:
-                                                        'These accounts will lose access immediately. You can unblock them later.',
-                                                    confirmLabel: 'Block',
-                                                }}
-                                                onSuccess={() =>
-                                                    setSelectedUserIds([])
-                                                }
-                                            >
-                                                <ShieldCheck />
-                                                Block selected
-                                            </BulkActionForm>
-                                        )}
-                                        {canReactivate && (
-                                            <BulkActionForm
-                                                action="/access/users/bulk/reactivate"
-                                                method="patch"
-                                                ids={selectedUserIds}
-                                                confirmation={{
-                                                    title: `Unblock ${selectedUserIds.length} selected user(s)?`,
-                                                    description:
-                                                        'These accounts will regain access immediately.',
-                                                    confirmLabel: 'Unblock',
-                                                }}
-                                                onSuccess={() =>
-                                                    setSelectedUserIds([])
-                                                }
-                                            >
-                                                <ShieldCheck />
-                                                Unblock selected
-                                            </BulkActionForm>
-                                        )}
-                                    </BulkActions>
-                                </div>
-                            ) : null
-                        }
-                        columnVisibility={{
-                            storageKey: 'access.users',
-                            defaultVisibleKeys: [
-                                'user',
-                                'status',
-                                'role',
-                                'created',
-                            ],
-                        }}
-                        getRowKey={(user) => user.id}
-                        pagination={{
-                            currentPage: users.current_page,
-                            lastPage: users.last_page,
-                            total: users.total,
-                            from: users.from,
-                            to: users.to,
-                            pageSize,
-                            links: users.links,
-                            itemLabel: 'users',
-                            previousUrl,
-                            nextUrl,
-                        }}
-                    />
-                )}
+                                    {canSuspend && (
+                                        <BulkActionForm
+                                            action="/access/users/bulk/suspend"
+                                            method="patch"
+                                            ids={selectedUserIds}
+                                            destructive
+                                            confirmation={{
+                                                title: `Block ${selectedUserIds.length} selected user(s)?`,
+                                                description:
+                                                    'These accounts will lose access immediately. You can unblock them later.',
+                                                confirmLabel: 'Block',
+                                            }}
+                                            onSuccess={() =>
+                                                setSelectedUserIds([])
+                                            }
+                                        >
+                                            <ShieldCheck />
+                                            Block selected
+                                        </BulkActionForm>
+                                    )}
+                                    {canReactivate && (
+                                        <BulkActionForm
+                                            action="/access/users/bulk/reactivate"
+                                            method="patch"
+                                            ids={selectedUserIds}
+                                            confirmation={{
+                                                title: `Unblock ${selectedUserIds.length} selected user(s)?`,
+                                                description:
+                                                    'These accounts will regain access immediately.',
+                                                confirmLabel: 'Unblock',
+                                            }}
+                                            onSuccess={() =>
+                                                setSelectedUserIds([])
+                                            }
+                                        >
+                                            <ShieldCheck />
+                                            Unblock selected
+                                        </BulkActionForm>
+                                    )}
+                                </BulkActions>
+                            </div>
+                        ) : null
+                    }
+                    columnVisibility={{
+                        storageKey: 'access.users.v2',
+                        defaultVisibleKeys: [
+                            'user',
+                            'status',
+                            'role',
+                            'created',
+                            'updated_at',
+                            'created_by',
+                            'updated_by',
+                            'record_status',
+                        ],
+                    }}
+                    getRowKey={(user) => user.id}
+                    pagination={{
+                        currentPage: users.current_page,
+                        lastPage: users.last_page,
+                        total: users.total,
+                        from: users.from,
+                        to: users.to,
+                        pageSize,
+                        links: users.links,
+                        itemLabel: 'users',
+                        previousUrl,
+                        nextUrl,
+                    }}
+                />
             </IndexPageSection>
         </IndexPage>
     );

@@ -10,9 +10,12 @@ use App\Http\Requests\Access\DeleteBlockedIpAddressRequest;
 use App\Http\Requests\Access\StoreBlockedIpAddressRequest;
 use App\Http\Requests\Access\UpdateBlockedIpAddressRequest;
 use App\Models\BlockedIpAddress;
+use App\Models\User;
 use App\Support\Pagination\PageSize;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,7 +26,14 @@ class BlockedIpAddressController extends Controller
         $this->authorize('viewAny', BlockedIpAddress::class);
 
         $search = trim((string) $request->input('search', ''));
-        $status = (string) $request->input('status', '');
+        $canViewDeleted = $request->user()?->can('ip_blocks.view_deleted') === true;
+        $recordStatuses = $canViewDeleted
+            ? $this->filterValues($request->input('record_status', ['active']), ['active', 'inactive'])
+            : ['active'];
+        $recordStatuses = $recordStatuses === [] ? ['active'] : $recordStatuses;
+        $statuses = $this->filterValues($request->input('status'), ['active', 'inactive']);
+        $from = $this->parseDate($request->input('from'));
+        $to = $this->parseDate($request->input('to'));
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
@@ -32,10 +42,19 @@ class BlockedIpAddressController extends Controller
             'is_active' => 'is_active',
             'blocked_at' => 'blocked_at',
             'last_seen_at' => 'last_seen_at',
+            'created_at' => 'created_at',
+            'updated_at' => 'updated_at',
+            'record_status' => 'record_status',
         ];
 
-        $rules = BlockedIpAddress::query()
-            ->with(['user:id,name,email', 'blockedBy:id,name,email', 'unblockedBy:id,name,email'])
+        $rules = ($canViewDeleted ? BlockedIpAddress::withTrashed() : BlockedIpAddress::query())
+            ->with([
+                'user:id,name,email',
+                'blockedBy:id,name,email',
+                'unblockedBy:id,name,email',
+                'createdBy:id,name,email',
+                'updatedBy:id,name,email',
+            ])
             ->when($search !== '', static fn ($query) => $query->where(static function ($query) use ($search): void {
                 $query->where('ip_address', 'like', "%{$search}%")
                     ->orWhere('reason', 'like', "%{$search}%")
@@ -43,15 +62,39 @@ class BlockedIpAddressController extends Controller
                         ->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%"));
             }))
-            ->when(in_array($status, ['active', 'inactive'], true), static fn ($query) => $query->where('is_active', $status === 'active'))
+            ->when($statuses !== [], static fn ($query) => $query->whereIn('is_active', array_map(static fn (string $status): bool => $status === 'active', $statuses)))
+            ->when($recordStatuses !== ['active', 'inactive'], static fn ($query) => $query->whereIn('record_status', array_map(static fn (string $value): int => $value === 'active' ? 1 : 0, $recordStatuses)))
+            ->when($from !== null, static fn ($query) => $query->where('blocked_at', '>=', $from->startOfDay()))
+            ->when($to !== null, static fn ($query) => $query->where('blocked_at', '<=', $to->endOfDay()))
             ->when(
-                isset($sortColumns[$sort]),
-                static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
-                static fn ($query) => $query->orderByDesc('is_active')->orderByDesc('last_seen_at')->orderByDesc('blocked_at'),
+                $sort === 'created_by',
+                static fn ($query) => $query->orderBy(
+                    DB::table('users as created_actors')
+                        ->select('created_actors.name')
+                        ->whereColumn('created_actors.id', 'blocked_ip_addresses.created_by'),
+                    $direction,
+                ),
+            )
+            ->when(
+                $sort === 'updated_by',
+                static fn ($query) => $query->orderBy(
+                    DB::table('users as updated_actors')
+                        ->select('updated_actors.name')
+                        ->whereColumn('updated_actors.id', 'blocked_ip_addresses.updated_by'),
+                    $direction,
+                ),
+            )
+            ->when(
+                $sort !== 'created_by' && $sort !== 'updated_by',
+                static fn ($query) => $query->when(
+                    isset($sortColumns[$sort]),
+                    static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
+                    static fn ($query) => $query->orderByDesc('is_active')->orderByDesc('last_seen_at')->orderByDesc('blocked_at'),
+                ),
             )
             ->paginate($pageSize)
             ->appends(PageSize::query($request, $pageSize))
-            ->through(static fn (BlockedIpAddress $rule): array => [
+            ->through(fn (BlockedIpAddress $rule): array => [
                 'id' => $rule->id,
                 'ipAddress' => $rule->ip_address,
                 'user' => $rule->user === null ? null : [
@@ -75,18 +118,31 @@ class BlockedIpAddressController extends Controller
                     'name' => $rule->unblockedBy->name,
                     'email' => $rule->unblockedBy->email,
                 ],
+                'createdAt' => $rule->created_at?->toIso8601String(),
+                'updatedAt' => $rule->updated_at?->toIso8601String(),
+                'createdBy' => $this->actor($rule->createdBy),
+                'updatedBy' => $this->actor($rule->updatedBy),
+                'recordStatus' => (int) $rule->record_status,
+                'recordStatusUrl' => route('access.ip-blocks.record-status', $rule->getKey()),
             ]);
 
         return Inertia::render('access/ip-blocks', [
             'blockedIpAddresses' => $rules,
             'filters' => [
                 'search' => $search,
-                'status' => $status,
+                'status' => $this->filterValue($statuses),
+                'from' => $from?->format('Y-m-d') ?? '',
+                'to' => $to?->format('Y-m-d') ?? '',
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
+                'recordStatus' => $this->filterValue($recordStatuses),
             ],
-            'canManage' => $request->user()?->can('ip_blocks.manage') === true,
+            'canCreate' => $request->user()?->can('ip_blocks.create') === true,
+            'canUpdate' => $request->user()?->can('ip_blocks.update') === true,
+            'canDelete' => $request->user()?->can('ip_blocks.delete') === true,
+            'canViewDeleted' => $canViewDeleted,
+            'canUpdateDeleted' => $request->user()?->can('ip_blocks.update_deleted') === true,
         ]);
     }
 
@@ -99,14 +155,19 @@ class BlockedIpAddressController extends Controller
         ]);
     }
 
-    public function show(BlockedIpAddress $blockedIpAddress): Response
+    public function show(int $blockedIpAddress): Response
     {
+        $canViewDeleted = request()->user()?->can('ip_blocks.view_deleted') === true;
+        $blockedIpAddress = ($canViewDeleted ? BlockedIpAddress::withTrashed() : BlockedIpAddress::query())->findOrFail($blockedIpAddress);
         $this->authorize('view', $blockedIpAddress);
         $blockedIpAddress->load(['user:id,name,email', 'blockedBy:id,name,email', 'unblockedBy:id,name,email']);
 
         return Inertia::render('access/ip-block-show', [
             'blockedIpAddress' => $this->details($blockedIpAddress),
-            'canManage' => request()->user()?->can('update', $blockedIpAddress) === true,
+            'canUpdate' => request()->user()?->can('update', $blockedIpAddress) === true,
+            'canDelete' => request()->user()?->can('delete', $blockedIpAddress) === true,
+            'canViewDeleted' => $canViewDeleted,
+            'canUpdateDeleted' => request()->user()?->can('ip_blocks.update_deleted') === true,
         ]);
     }
 
@@ -193,6 +254,8 @@ class BlockedIpAddressController extends Controller
     {
         return [
             'id' => $rule->id,
+            'recordStatus' => (int) $rule->record_status,
+            'recordStatusUrl' => route('access.ip-blocks.record-status', $rule->getKey()),
             'ipAddress' => $rule->ip_address,
             'user' => $rule->user === null ? null : [
                 'id' => $rule->user->id,
@@ -215,6 +278,56 @@ class BlockedIpAddressController extends Controller
                 'name' => $rule->unblockedBy->name,
                 'email' => $rule->unblockedBy->email,
             ],
+        ];
+    }
+
+    private function parseDate(mixed $value): ?CarbonImmutable
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::createFromFormat('Y-m-d', $value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /** @param array<int, string> $allowed
+     * @return array<int, string>
+     */
+    private function filterValues(mixed $value, array $allowed): array
+    {
+        $values = is_array($value) ? $value : [$value];
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $item): string => (string) $item, $values),
+            static fn (string $item): bool => in_array($item, $allowed, true),
+        )));
+    }
+
+    /** @param array<int, string> $values
+     * @return string|array<int, string>
+     */
+    private function filterValue(array $values): string|array
+    {
+        return match (count($values)) {
+            0 => '',
+            1 => $values[0],
+            default => $values,
+        };
+    }
+
+    /** @return array{id: int, name: string, email: string}|null */
+    private function actor(?User $actor): ?array
+    {
+        return $actor === null ? null : [
+            'id' => (int) $actor->getKey(),
+            'name' => (string) $actor->name,
+            'email' => (string) $actor->email,
         ];
     }
 }

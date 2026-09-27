@@ -196,9 +196,20 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('heading', { name: 'Users' }),
         ).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: /Filter/ })).toHaveLength(
+            1,
+        );
+        await user.click(screen.getAllByRole('button', { name: /Filter/ })[0]);
+        expect(screen.getByLabelText('Date range')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Created by')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Updated by')).not.toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: /Search & filter/ }),
-        ).toBeInTheDocument();
+            screen.queryByRole('group', { name: 'Record status' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByLabelText('Updated date range'),
+        ).not.toBeInTheDocument();
+        await user.keyboard('{Escape}');
         expect(screen.getByRole('link', { name: 'Add user' })).toHaveAttribute(
             'href',
             '/access/users/create',
@@ -226,9 +237,9 @@ describe('access administration pages', () => {
             screen.getByRole('link', { name: 'Review all' }),
         ).toHaveAttribute('href', '/access/users/registrations');
         expect(screen.getAllByRole('table')).toHaveLength(2);
-        expect(
-            screen.getAllByRole('button', { name: 'Manage columns' }),
-        ).toHaveLength(2);
+        expect(screen.getAllByRole('button', { name: 'Columns' })).toHaveLength(
+            2,
+        );
         const userTable = screen.getByRole('table', {
             name: 'FieldOps user accounts',
         });
@@ -236,9 +247,48 @@ describe('access administration pages', () => {
             '[data-slot="data-table-container"]',
         ) as HTMLElement;
 
+        expect(
+            within(userTableContainer).getByRole('button', {
+                name: /Filter/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(userTableContainer).getByRole('link', {
+                name: 'Add user',
+            }),
+        ).toHaveAttribute('href', '/access/users/create');
+        expect(
+            within(userTableContainer).getByRole('link', {
+                name: 'Manage roles',
+            }),
+        ).toHaveAttribute('href', '/access/roles');
+        expect(
+            within(userTable).getByRole('columnheader', {
+                name: /^Sort Updated ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(userTable).getAllByRole('columnheader', { name: /Status/ }),
+        ).toHaveLength(1);
+        expect(
+            within(userTable).getByRole('columnheader', {
+                name: /^Sort Created by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(userTable).getByRole('columnheader', {
+                name: /^Sort Updated by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(userTable).getByRole('columnheader', {
+                name: /^Sort Record status ascending$/,
+            }),
+        ).toBeInTheDocument();
+
         await user.click(
             within(userTableContainer).getByRole('button', {
-                name: 'Manage columns',
+                name: 'Columns',
             }),
         );
         await user.click(
@@ -246,7 +296,7 @@ describe('access administration pages', () => {
         );
         await user.keyboard('{Escape}');
         expect(
-            screen.queryByRole('columnheader', { name: /Created/ }),
+            within(userTable).queryByRole('columnheader', { name: 'Created' }),
         ).not.toBeInTheDocument();
         expect(
             screen.getByRole('checkbox', { name: 'Select Alex' }),
@@ -255,7 +305,7 @@ describe('access administration pages', () => {
             screen.getByRole('button', { name: 'Actions for Alex' }),
         ).toBeInTheDocument();
         expect(
-            localStorage.getItem('fieldops:data-table-columns:access.users'),
+            localStorage.getItem('fieldops:data-table-columns:access.users.v2'),
         ).toContain('user');
 
         const invitationTable = screen.getByRole('table', {
@@ -265,9 +315,48 @@ describe('access administration pages', () => {
             '[data-slot="data-table-container"]',
         ) as HTMLElement;
 
+        expect(
+            within(invitationTable).getByRole('columnheader', {
+                name: /^Sort Created ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(invitationTable).getByRole('columnheader', {
+                name: /^Sort Updated ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(invitationTable).getByRole('columnheader', {
+                name: /^Sort Created by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(invitationTable).getByRole('link', {
+                name: 'Sort Created by ascending',
+            }),
+        ).toHaveAttribute(
+            'href',
+            '/access/users?invitation_sort=created_by&invitation_direction=asc',
+        );
+        expect(
+            within(invitationTable).getByRole('columnheader', {
+                name: /^Sort Updated by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(invitationTable).getByRole('columnheader', {
+                name: /^Sort Status ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(invitationTable).getByRole('columnheader', {
+                name: /^Sort Record status ascending$/,
+            }),
+        ).toBeInTheDocument();
+
         await user.click(
             within(invitationTableContainer).getByRole('button', {
-                name: 'Manage columns',
+                name: 'Columns',
             }),
         );
         expect(
@@ -275,7 +364,7 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
         expect(
             localStorage.getItem(
-                'fieldops:data-table-columns:access.invitations',
+                'fieldops:data-table-columns:access.invitations.v2',
             ),
         ).toContain('email');
         await user.keyboard('{Escape}');
@@ -287,7 +376,7 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
         const userManageColumns = within(userTableContainer).getByRole(
             'button',
-            { name: 'Manage columns' },
+            { name: 'Columns' },
         );
         const userBulkActions = within(userTableContainer).getByRole('button', {
             name: 'Bulk actions',
@@ -342,6 +431,79 @@ describe('access administration pages', () => {
             'href',
             '/access/users/1',
         );
+    }, 10_000);
+
+    it('hides create and invite actions without the corresponding permissions', () => {
+        const { unmount } = render(
+            <RolesPage
+                roles={[]}
+                canCreate={false}
+                filters={{
+                    search: '',
+                    type: '',
+                    assigned: '',
+                    permissionsMin: '',
+                }}
+            />,
+        );
+
+        const roleTable = screen.getByRole('table', {
+            name: 'FieldOps role catalog',
+        });
+        const roleTableContainer = roleTable.closest(
+            '[data-slot="data-table-container"]',
+        ) as HTMLElement;
+
+        expect(
+            within(roleTableContainer).getByRole('button', {
+                name: /Filter/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: 'Create role' }),
+        ).not.toBeInTheDocument();
+
+        unmount();
+
+        render(
+            <UsersPage
+                users={{
+                    data: [],
+                    current_page: 1,
+                    last_page: 1,
+                    total: 0,
+                    from: null,
+                    to: null,
+                }}
+                invitations={[]}
+                roles={[]}
+                canCreate={false}
+                canInvite={false}
+                canEdit={false}
+                canSuspend={false}
+                canReactivate={false}
+                filters={{ search: '', status: '' }}
+            />,
+        );
+
+        const userTable = screen.getByRole('table', {
+            name: 'FieldOps user accounts',
+        });
+        const userTableContainer = userTable.closest(
+            '[data-slot="data-table-container"]',
+        ) as HTMLElement;
+
+        expect(
+            within(userTableContainer).getByRole('button', {
+                name: /Filter/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: 'Add user' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: 'Invite user' }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders a role catalog table with actions for custom roles', async () => {
@@ -373,7 +535,7 @@ describe('access administration pages', () => {
 
         expect(screen.getAllByText('Protected').length).toBeGreaterThan(0);
         expect(
-            screen.getByRole('button', { name: /Search & filter/ }),
+            screen.getByRole('button', { name: /Filter/ }),
         ).toBeInTheDocument();
         expect(screen.getByRole('table')).toBeInTheDocument();
         await user.click(
@@ -388,7 +550,7 @@ describe('access administration pages', () => {
         ) as HTMLElement;
         expect(
             within(roleTableContainer)
-                .getByRole('button', { name: 'Manage columns' })
+                .getByRole('button', { name: 'Columns' })
                 .closest('[data-slot="data-table-toolbar"]'),
         ).toContainElement(
             within(roleTableContainer).getByRole('button', {
@@ -420,7 +582,59 @@ describe('access administration pages', () => {
             { id: 2, name: 'dashboard.view' },
             { id: 3, name: 'roles.create' },
             { id: 4, name: 'users.view' },
+            { id: 5, name: 'users.view_deleted' },
+            { id: 6, name: 'users.update_deleted' },
+            { id: 7, name: 'roles.view_deleted' },
+            { id: 8, name: 'roles.update_deleted' },
+            { id: 9, name: 'countries.view_deleted' },
+            { id: 10, name: 'countries.update_deleted' },
+            { id: 11, name: 'timezones.view_deleted' },
+            { id: 12, name: 'timezones.update_deleted' },
+            { id: 13, name: 'ip_blocks.view_deleted' },
+            { id: 14, name: 'ip_blocks.update_deleted' },
+            { id: 15, name: 'organization_locations.view_deleted' },
+            { id: 16, name: 'organization_locations.update_deleted' },
+            { id: 17, name: 'media_assets.view_deleted' },
+            { id: 18, name: 'media_assets.update_deleted' },
+            { id: 19, name: 'countries.create' },
+            { id: 20, name: 'countries.update' },
+            { id: 21, name: 'countries.delete' },
+            { id: 22, name: 'settings.view' },
+            { id: 23, name: 'settings.update' },
+            { id: 24, name: 'visit_logs.view' },
         ];
+        const recordStatusResources = [
+            { label: 'Users', key: 'users' },
+            { label: 'Roles', key: 'roles' },
+            { label: 'Countries', key: 'countries' },
+            { label: 'Timezones', key: 'timezones' },
+            { label: 'Ip Blocks', key: 'ip_blocks' },
+            { label: 'Organization Locations', key: 'organization_locations' },
+            { label: 'Media Assets', key: 'media_assets' },
+        ];
+
+        function expandAndCheckRecordStatusPermissions() {
+            for (const { label, key } of recordStatusResources) {
+                fireEvent.click(
+                    screen.getByRole('button', {
+                        name: `Expand ${label} permissions`,
+                    }),
+                );
+
+                const group = screen.getByRole('region', { name: label });
+
+                expect(
+                    within(group).getByRole('checkbox', {
+                        name: new RegExp(`${key}\\.view_deleted`),
+                    }),
+                ).toBeInTheDocument();
+                expect(
+                    within(group).getByRole('checkbox', {
+                        name: new RegExp(`${key}\\.update_deleted`),
+                    }),
+                ).toBeInTheDocument();
+            }
+        }
 
         render(<RoleCreatePage permissions={permissions} />);
 
@@ -443,6 +657,38 @@ describe('access administration pages', () => {
             screen.getByRole('heading', { name: 'Users' }),
         ).toBeInTheDocument();
         expect(screen.getByText('roles.create')).toBeInTheDocument();
+        expandAndCheckRecordStatusPermissions();
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Expand Countries permissions',
+            }),
+        );
+        const countriesPermissions = screen.getByRole('region', {
+            name: 'Countries',
+        });
+
+        for (const action of ['Create', 'Update', 'Delete']) {
+            expect(
+                within(countriesPermissions).getByText(action, {
+                    exact: true,
+                }),
+            ).toBeInTheDocument();
+        }
+
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Expand Settings permissions',
+            }),
+        );
+        const settingsPermissions = screen.getByRole('region', {
+            name: 'Settings',
+        });
+        expect(
+            within(settingsPermissions).getByText('View', { exact: true }),
+        ).toBeInTheDocument();
+        expect(
+            within(settingsPermissions).getByText('Update', { exact: true }),
+        ).toBeInTheDocument();
 
         cleanup();
 
@@ -454,7 +700,12 @@ describe('access administration pages', () => {
                     name: 'reviewer',
                     displayName: 'Reviewer',
                     description: 'Custom',
-                    permissions: ['dashboard.view'],
+                    permissions: [
+                        'dashboard.view',
+                        'users.view_deleted',
+                        'organization_locations.view_deleted',
+                        'media_assets.update_deleted',
+                    ],
                 }}
             />,
         );
@@ -485,6 +736,76 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('button', { name: 'Collapse Audit permissions' }),
         ).toBeInTheDocument();
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Expand Users permissions',
+            }),
+        );
+        expect(
+            within(screen.getByRole('region', { name: 'Users' })).getByRole(
+                'checkbox',
+                { name: /users\.view_deleted/ },
+            ),
+        ).toBeChecked();
+        expect(
+            within(screen.getByRole('region', { name: 'Users' })).getByRole(
+                'checkbox',
+                { name: /users\.update_deleted/ },
+            ),
+        ).not.toBeChecked();
+        expect(
+            within(screen.getByRole('region', { name: 'Users' })).getByText(
+                'View Deleted',
+            ),
+        ).toBeInTheDocument();
+        expect(
+            within(screen.getByRole('region', { name: 'Users' })).getByText(
+                'Update Deleted',
+            ),
+        ).toBeInTheDocument();
+
+        for (const key of [
+            'audit.create',
+            'audit.update',
+            'audit.delete',
+            'visit_logs.create',
+            'visit_logs.update',
+            'visit_logs.delete',
+            'dashboard.create',
+            'dashboard.update',
+            'dashboard.delete',
+        ]) {
+            expect(
+                screen.queryByRole('checkbox', {
+                    name: new RegExp(key.replace('.', '\\.')),
+                }),
+            ).not.toBeInTheDocument();
+        }
+
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Expand Organization Locations permissions',
+            }),
+        );
+        expect(
+            within(
+                screen.getByRole('region', {
+                    name: 'Organization Locations',
+                }),
+            ).getByRole('checkbox', {
+                name: /organization_locations\.view_deleted/,
+            }),
+        ).toBeChecked();
+        await user.click(
+            screen.getByRole('button', {
+                name: 'Expand Media Assets permissions',
+            }),
+        );
+        expect(
+            within(
+                screen.getByRole('region', { name: 'Media Assets' }),
+            ).getByRole('checkbox', { name: /media_assets\.update_deleted/ }),
+        ).toBeChecked();
 
         await user.click(
             screen.getByRole('button', {
@@ -535,7 +856,7 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('checkbox', { name: /roles\.create/ }),
         ).not.toBeChecked();
-    });
+    }, 10_000);
 
     it('keeps user creation and invitations on dedicated pages', () => {
         render(
@@ -615,7 +936,12 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
         expect(screen.getByLabelText('Position')).toHaveValue('Supervisor');
         expect(screen.getByLabelText('Department')).toHaveValue('Operations');
-        expect(screen.getByLabelText('Role')).toHaveValue('1');
+        expect(
+            screen.getByRole('combobox', { name: 'Role' }),
+        ).toHaveTextContent('Technician');
+        expect(document.querySelector('input[name="role_id"]')).toHaveValue(
+            '1',
+        );
         expect(
             screen.getByRole('heading', { name: 'Basic information' }),
         ).toBeInTheDocument();
@@ -664,7 +990,38 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('heading', { name: 'Pending registrations' }),
         ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: /Filter/ }),
+        ).not.toBeInTheDocument();
         expect(screen.getByText('pending@example.com')).toBeInTheDocument();
+        const registrationsTable = screen.getByRole('table', {
+            name: 'Pending user registrations',
+        });
+        expect(
+            within(registrationsTable).getByRole('columnheader', {
+                name: /^Sort Created ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(registrationsTable).getByRole('columnheader', {
+                name: /^Sort Updated ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(registrationsTable).getAllByRole('columnheader', {
+                name: 'Status',
+            }),
+        ).toHaveLength(1);
+        expect(
+            within(registrationsTable).queryByRole('columnheader', {
+                name: 'Created by',
+            }),
+        ).not.toBeInTheDocument();
+        expect(
+            within(registrationsTable).queryByRole('columnheader', {
+                name: 'Record status',
+            }),
+        ).not.toBeInTheDocument();
         await user.click(
             screen.getByRole('button', {
                 name: 'Actions for Pending applicant',
@@ -703,7 +1060,7 @@ describe('access administration pages', () => {
         ).toBeInTheDocument();
     });
 
-    it('shows system role actions to owner-level administrators', async () => {
+    it('shows system role actions to Super Admins', async () => {
         const user = userEvent.setup();
         render(
             <RolesPage
@@ -731,6 +1088,34 @@ describe('access administration pages', () => {
             document.querySelector('[data-slot="data-table-scroll-container"]'),
         ).toHaveClass('px-4');
         expect(screen.getByText('System')).toBeInTheDocument();
+        const roleTable = screen.getByRole('table', {
+            name: 'FieldOps role catalog',
+        });
+        expect(
+            within(roleTable).getByRole('columnheader', {
+                name: /^Sort Created ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(roleTable).getByRole('columnheader', {
+                name: /^Sort Updated ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(roleTable).getByRole('columnheader', {
+                name: /^Sort Created by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(roleTable).getByRole('columnheader', {
+                name: /^Sort Updated by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(roleTable).getByRole('columnheader', {
+                name: /^Sort Record status ascending$/,
+            }),
+        ).toBeInTheDocument();
         await user.click(
             screen.getByRole('button', { name: 'Actions for Super Admin' }),
         );
@@ -786,7 +1171,7 @@ describe('access administration pages', () => {
             screen.getByRole('heading', { name: 'Access audit' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: /Search & filter/ }),
+            screen.getByRole('button', { name: /Filter/ }),
         ).toBeInTheDocument();
         expect(screen.getByRole('table')).toBeInTheDocument();
         expect(
@@ -841,7 +1226,8 @@ describe('access administration pages', () => {
                     to: 1,
                 }}
                 filters={{ search: '', status: '' }}
-                canManage
+                canUpdate
+                canDelete
             />,
         );
 
@@ -859,6 +1245,37 @@ describe('access administration pages', () => {
             screen.getByText('Blocked', { selector: '[data-slot="badge"]' }),
         ).toBeInTheDocument();
         expect(screen.getByText('Last seen')).toBeInTheDocument();
+        const ipTable = screen.getByRole('table', {
+            name: 'IP address access records',
+        });
+        expect(
+            within(ipTable).getByRole('columnheader', {
+                name: /^Sort Created ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(ipTable).getByRole('columnheader', {
+                name: /^Sort Updated ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(ipTable).getAllByRole('columnheader', { name: /Status/ }),
+        ).toHaveLength(1);
+        expect(
+            within(ipTable).getByRole('columnheader', {
+                name: /^Sort Created by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(ipTable).getByRole('columnheader', {
+                name: /^Sort Updated by ascending$/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            within(ipTable).getByRole('columnheader', {
+                name: /^Sort Record status ascending$/,
+            }),
+        ).toBeInTheDocument();
         await user.click(
             screen.getByRole('button', {
                 name: 'Actions for 203.0.113.10',
@@ -967,11 +1384,8 @@ describe('access administration pages', () => {
                     to: 2,
                 }}
                 eventTypes={['login', 'logout']}
-                outcomes={['success']}
                 filters={{
-                    ip: '',
-                    user: '',
-                    location: '',
+                    keyword: '',
                     event: '',
                     outcome: '',
                     statusCode: '',
@@ -996,8 +1410,24 @@ describe('access administration pages', () => {
             'text-destructive',
         );
         expect(
-            screen.getByRole('button', { name: /Search & filter/ }),
+            screen.getByRole('button', { name: /Filter/ }),
         ).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: /Filter/ }));
+        expect(screen.getByLabelText('Keyword')).toHaveAttribute(
+            'name',
+            'keyword',
+        );
+        const filterDialog = screen.getByRole('dialog');
+        expect(
+            within(filterDialog).getByText('Event', { exact: true }),
+        ).toBeInTheDocument();
+        expect(
+            within(filterDialog).queryByLabelText('Outcome'),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('IP address')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Location')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('User')).not.toBeInTheDocument();
+        await user.keyboard('{Escape}');
         await user.click(
             screen.getByRole('button', { name: 'Actions for visit log 1' }),
         );
@@ -1036,6 +1466,15 @@ describe('access administration pages', () => {
         expect(screen.getAllByRole('heading', { name: 'Alex' })).toHaveLength(
             2,
         );
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            document.querySelectorAll('[data-slot="details-section"]'),
+        ).toHaveLength(3);
+        expect(
+            document.querySelector('[data-slot="details-page"]'),
+        ).toHaveClass('pt-0', 'sm:pt-0', 'lg:pt-0');
         expect(screen.getByText('Operations')).toBeInTheDocument();
         expect(
             document.querySelector('[data-slot="details-toolbar"]'),
@@ -1078,6 +1517,12 @@ describe('access administration pages', () => {
         expect(
             screen.getAllByRole('heading', { name: 'Technician' }),
         ).toHaveLength(2);
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            document.querySelectorAll('[data-slot="details-section"]'),
+        ).toHaveLength(4);
         expect(screen.getByText('dashboard.view')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
             'href',
@@ -1103,12 +1548,19 @@ describe('access administration pages', () => {
                     unblockedAt: null,
                     unblockedBy: null,
                 }}
-                canManage
+                canUpdate
+                canDelete
             />,
         );
         expect(
             screen.getByRole('heading', { name: '203.0.113.10' }),
         ).toBeInTheDocument();
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            document.querySelectorAll('[data-slot="details-section"]'),
+        ).toHaveLength(3);
         expect(screen.getByText('Repeated abuse')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
             'href',
@@ -1150,6 +1602,12 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('heading', { name: 'Visit log details' }),
         ).toBeInTheDocument();
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            document.querySelectorAll('[data-slot="details-section"]'),
+        ).toHaveLength(2);
         expect(screen.getByText('/login')).toBeInTheDocument();
 
         cleanup();
@@ -1172,6 +1630,12 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('heading', { name: 'Audit event details' }),
         ).toBeInTheDocument();
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            document.querySelectorAll('[data-slot="details-section"]'),
+        ).toHaveLength(3);
         expect(screen.getByText(/"name": "Old name"/)).toBeInTheDocument();
     });
 });

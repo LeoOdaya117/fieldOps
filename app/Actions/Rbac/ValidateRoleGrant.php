@@ -15,11 +15,11 @@ class ValidateRoleGrant
             return;
         }
 
-        if (in_array($role->name, RoleName::ownerRoleNames(), true) && ! $actor->isOwner()) {
-            throw ValidationException::withMessages(['role_id' => 'Only an owner-level administrator can grant this role.']);
+        if (in_array($role->name, RoleName::elevatedRoleNames(), true) && ! $actor->isSuperAdmin()) {
+            throw ValidationException::withMessages(['role_id' => 'Only a Super Admin can grant this role.']);
         }
 
-        if ($actor->isOwner()) {
+        if ($actor->isSuperAdmin()) {
             return;
         }
 

@@ -2,16 +2,19 @@
 
 namespace App\Actions\Rbac;
 
+use App\Actions\Security\InvalidateUserSessions;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class ChangeUserStatus
 {
-    public function __construct(private readonly RecordAccessAudit $audit) {}
+    public function __construct(
+        private readonly RecordAccessAudit $audit,
+        private readonly InvalidateUserSessions $invalidateSessions,
+    ) {}
 
     public function suspend(User $target, User $actor): void
     {
@@ -36,28 +39,32 @@ class ChangeUserStatus
                 return;
             }
 
-            if ($status === UserStatus::Suspended && $target->isOwner()) {
-                $remainingOwners = User::query()
+            if ($status === UserStatus::Suspended && $target->isSuperAdmin()) {
+                if (! $actor->isSuperAdmin()) {
+                    throw ValidationException::withMessages(['status' => 'Only a Super Admin can suspend a Super Admin.']);
+                }
+
+                $remainingSuperAdmins = User::query()
                     ->where('status', UserStatus::Active->value)
                     ->where('users.id', '<>', $target->getKey())
-                    ->role(RoleName::ownerRoleNames())
+                    ->role(RoleName::elevatedRoleNames())
                     ->lockForUpdate()
                     ->count();
 
-                if ($remainingOwners < 1) {
-                    throw ValidationException::withMessages(['status' => 'The enterprise must retain at least one active Owner.']);
+                if ($remainingSuperAdmins < 1) {
+                    throw ValidationException::withMessages(['status' => 'The enterprise must retain at least one active Super Admin.']);
                 }
             }
 
             $before = ['status' => $target->status->value];
+            if ($status === UserStatus::Suspended) {
+                $this->invalidateSessions->execute($target);
+            }
+
             $target->status = $status;
             $target->suspended_at = $status === UserStatus::Suspended ? now() : null;
             $target->suspended_by = $status === UserStatus::Suspended ? $actor->getKey() : null;
             $target->save();
-
-            if ($status === UserStatus::Suspended && Schema::hasTable('sessions')) {
-                DB::table('sessions')->where('user_id', $target->getKey())->delete();
-            }
 
             $this->audit->record(
                 'user.'.($status === UserStatus::Suspended ? 'suspended' : 'reactivated'),

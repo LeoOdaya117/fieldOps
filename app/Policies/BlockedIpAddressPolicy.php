@@ -19,26 +19,26 @@ class BlockedIpAddressPolicy
 
     public function create(User $user): bool
     {
-        return $user->can('ip_blocks.manage');
+        return $user->can('ip_blocks.create');
     }
 
     public function activate(User $user, BlockedIpAddress $rule): bool
     {
-        return $user->can('ip_blocks.manage');
+        return $user->can('ip_blocks.update');
     }
 
     public function deactivate(User $user, BlockedIpAddress $rule): bool
     {
-        return $user->can('ip_blocks.manage');
+        return $user->can('ip_blocks.update');
     }
 
     public function update(User $user, BlockedIpAddress $rule): bool
     {
-        return $user->can('ip_blocks.manage');
+        return $user->can('ip_blocks.update');
     }
 
     public function delete(User $user, BlockedIpAddress $rule): bool
     {
-        return $user->can('ip_blocks.manage');
+        return $user->can('ip_blocks.delete');
     }
 }

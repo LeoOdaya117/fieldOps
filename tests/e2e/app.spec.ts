@@ -1,20 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { e2eAccounts, login } from './support/auth';
 
-const e2eUser = {
-    email: process.env.E2E_USER_EMAIL ?? 'user@example.com',
-    password: process.env.E2E_USER_PASSWORD ?? 'password',
-};
-
-async function login(page: Page) {
-    await page.goto('/login');
-    await page.getByLabel('Email address').fill(e2eUser.email);
-    await page
-        .getByRole('textbox', { name: 'Password' })
-        .fill(e2eUser.password);
-    await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 60_000 });
+async function loginAsUser(page: Page) {
+    await login(page, e2eAccounts.user);
     await expect(
         page.getByRole('heading', { name: 'Good morning, team.' }),
     ).toBeVisible();
@@ -162,7 +152,7 @@ test('login and invitation links keep the landing visual language', async ({
 test('an authenticated user can use the dashboard and theme settings', async ({
     page,
 }) => {
-    await login(page);
+    await loginAsUser(page);
 
     const dashboardAccessibility = await new AxeBuilder({ page }).analyze();
     expect(dashboardAccessibility.violations).toEqual([]);

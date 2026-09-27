@@ -40,9 +40,29 @@ type RoleFormProps = {
 function permissionLabel(name: string): string {
     const [, ...actions] = name.split('.');
 
-    return actions.length > 0
-        ? actions.join(' · ').replace(/[-_]/g, ' ')
-        : name;
+    const action = actions.join('_');
+    const labels: Record<string, string> = {
+        view: 'View',
+        create: 'Create',
+        update: 'Update',
+        delete: 'Delete',
+        invite: 'Invite',
+        assign: 'Assign',
+        suspend: 'Suspend',
+        review_registrations: 'Review registrations',
+        view_deleted: 'View Deleted',
+        update_deleted: 'Update Deleted',
+        manage_system: 'Manage system settings',
+        manage: 'Manage',
+    };
+
+    if (action in labels) {
+        return labels[action];
+    }
+
+    return action
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function permissionGroup(name: string): string {

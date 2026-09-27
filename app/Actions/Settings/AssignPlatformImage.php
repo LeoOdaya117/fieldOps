@@ -82,6 +82,6 @@ class AssignPlatformImage
     private function guard(string $slot, User $actor): void
     {
         abort_unless(PlatformImageRegistry::has($slot), 404);
-        abort_unless($actor->isActive() && $actor->email_verified_at !== null && $actor->isOwner(), 403);
+        abort_unless($actor->isActive() && $actor->email_verified_at !== null && $actor->isSuperAdmin(), 403);
     }
 }

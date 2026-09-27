@@ -11,7 +11,10 @@ class StoreMediaAssetRequest extends FormRequest
     {
         $user = $this->user();
 
-        return $user !== null && $user->isActive() && $user->email_verified_at !== null;
+        return $user !== null
+            && $user->isActive()
+            && $user->email_verified_at !== null
+            && $user->can('media_assets.create');
     }
 
     /** @return array<string, mixed> */

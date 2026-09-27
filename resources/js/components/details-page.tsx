@@ -4,7 +4,6 @@ import type { FormComponentRef } from '@inertiajs/core';
 import { useRef, useState } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
 import { ActionLink } from '@/components/action-link';
-import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { ConfirmationOptions } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -16,19 +15,6 @@ type DetailsPageProps = {
     backHref: string;
     backLabel: string;
     actions?: ReactNode;
-    children: ReactNode;
-    className?: string;
-};
-
-type DetailsSectionProps = {
-    title: string;
-    description?: string;
-    children: ReactNode;
-    className?: string;
-};
-
-type DetailFieldProps = {
-    label: string;
     children: ReactNode;
     className?: string;
 };
@@ -58,7 +44,10 @@ function DetailsPage({
             <Head title={title} />
             <div
                 data-slot="details-page"
-                className={cn('space-y-6 p-4 sm:p-6 lg:p-8', className)}
+                className={cn(
+                    'space-y-6 px-4 pt-0 pb-4 sm:px-6 sm:pt-0 sm:pb-6 lg:px-8 lg:pt-0 lg:pb-8',
+                    className,
+                )}
             >
                 <div
                     data-slot="details-toolbar"
@@ -98,42 +87,6 @@ function DetailsPage({
                 {children}
             </div>
         </>
-    );
-}
-
-function DetailsSection({
-    title,
-    description,
-    children,
-    className,
-}: DetailsSectionProps) {
-    return (
-        <section className={cn('space-y-3', className)}>
-            <div className="px-1">
-                <h2 className="text-base font-semibold tracking-tight">
-                    {title}
-                </h2>
-                {description ? (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        {description}
-                    </p>
-                ) : null}
-            </div>
-            <Card className="overflow-hidden">{children}</Card>
-        </section>
-    );
-}
-
-function DetailField({ label, children, className }: DetailFieldProps) {
-    return (
-        <div className={cn('min-w-0', className)}>
-            <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                {label}
-            </dt>
-            <dd className="mt-1.5 min-w-0 text-sm text-foreground">
-                {children}
-            </dd>
-        </div>
     );
 }
 
@@ -182,4 +135,4 @@ function DetailsActionForm({
     );
 }
 
-export { DetailField, DetailsActionForm, DetailsPage, DetailsSection };
+export { DetailsActionForm, DetailsPage };

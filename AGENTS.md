@@ -43,6 +43,7 @@ Do not add repositories, generic services, or a separate domain layer by default
 - Put input validation and request-level authorization in Form Requests.
 - Use Policies for resource-level authorization and test authorization independently from authentication.
 - Use Actions for reusable, multi-step, transactional, or externally integrated operations.
+- For resources using `HasRecordStatus`, expose `canViewDeleted` and `canUpdateDeleted` capabilities consistently on list/detail pages, filter inactive rows only when `view_deleted` is authorized, and handle status changes through an explicit resource route backed by the shared `ChangeRecordStatus` action. Keep route authorization and model-specific safeguards server-side; never rely on hidden UI controls alone.
 - Use Eloquent relationships, scopes, casts, factories, and database constraints for persistence behavior.
 - Use transactions for multi-record writes and make operations idempotent where retries are possible.
 - Use `validated()` data only. Do not mass-assign untrusted request input.
@@ -147,3 +148,15 @@ Do not commit generated Wayfinder files, build output, `.env` files, dependency 
 - [ ] No new raw application colors were introduced outside `resources/css/theme.css`.
 - [ ] Formatting, linting, type checks, static analysis, tests, and build pass.
 - [ ] Documentation and Inertia prop/route contracts are updated when needed.
+
+## Codex specialist workflow
+
+- Project-local Codex skills live in `.agents/skills/`; custom subagents live in `.codex/agents/`.
+- Read `.codex/knowledge/PROJECT_CONTEXT.md`, `PROJECT_NOTES.md`, and `DECISIONS.md` when present before substantial work. Treat context as detected clues, notes as verified project facts, and decisions as dated choices with rationale.
+- Use `$project-init` to inspect or refresh architecture knowledge. Record only facts verified from the repository, preserve existing notes and decisions, and never record secrets.
+- Use `$feature-plan` when a feature needs a durable implementation plan. Save a new dated plan under `.codex/plans/`; do not overwrite earlier plans.
+- Use `$feature-build` to implement a selected saved plan. Keep its goal and acceptance criteria intact, update its progress and verification evidence, and reconcile verified knowledge when the work changes architecture or conventions.
+- For substantial cross-layer work, the main agent owns scope and integration. Have architecture and QA map the design and test scenarios first; then delegate bounded backend and frontend work only after their contract is clear. Assign non-overlapping write scopes, integrate centrally, and run QA against the combined result.
+- Use independent code, security, or release review when the change warrants that specialty. Keep reviews read-only; report actionable findings with file references. A focused security review is not a substitute for the dedicated security-audit workflow.
+- Keep small localized tasks single-agent. Delegation is for independent work that materially improves coverage or speed, not a requirement to use every role on every task.
+- Report only checks actually run and observed. Include failures, skipped checks, and anything that could not be verified.

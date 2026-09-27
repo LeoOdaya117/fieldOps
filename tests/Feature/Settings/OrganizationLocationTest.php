@@ -8,6 +8,8 @@ use App\Models\User;
 use Database\Seeders\PsgcReferenceSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\Fluent\AssertableJson as Assert;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class OrganizationLocationTest extends TestCase
@@ -108,10 +110,86 @@ class OrganizationLocationTest extends TestCase
         ]);
     }
 
+    public function test_primary_location_can_be_soft_deleted_restored_and_reused_without_a_duplicate(): void
+    {
+        $admin = $this->administrator();
+        $this->referenceRows();
+        $session = ['auth.password_confirmed_at' => now()->timestamp];
+
+        $this->actingAs($admin)->withSession($session)
+            ->patch(route('system-settings.address.update'), [
+                'region_code' => '0100000000',
+                'province_code' => '0102800000',
+                'locality_code' => '0102801000',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $location = OrganizationLocation::query()->sole();
+        $this->actingAs($admin)->delete(route('system-settings.organization-locations.destroy', $location))
+            ->assertRedirect(route('system-settings.address.edit'));
+        $this->assertDatabaseHas('organization_locations', ['id' => $location->id, 'record_status' => 0]);
+
+        $this->get(route('system-settings.address.edit'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('locationId', $location->id)
+                ->where('recordStatus', 0)
+                ->where('canUpdateDeleted', true)
+                ->where('canCreate', false)
+                ->where('canUpdate', false)
+                ->has('recordStatusUrl'));
+
+        $this->patch(route('system-settings.organization-locations.record-status', $location), ['record_status' => 1])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->patch(route('system-settings.map.update'), [
+            'latitude' => 14.5995,
+            'longitude' => 120.9842,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('organization_locations', 1);
+        $this->assertSame(1, OrganizationLocation::query()->sole()->record_status);
+    }
+
+    public function test_inactive_location_fields_stay_hidden_and_a_crafted_save_cannot_edit_or_duplicate_it(): void
+    {
+        $actor = User::factory()->create();
+        $actor->givePermissionTo(
+            Permission::findOrCreate('settings.view', 'web'),
+            Permission::findOrCreate('settings.update', 'web'),
+            Permission::findOrCreate('organization_locations.view', 'web'),
+            Permission::findOrCreate('organization_locations.create', 'web'),
+            Permission::findOrCreate('organization_locations.update', 'web'),
+        );
+        $this->referenceRows();
+        $location = OrganizationLocation::query()->create(['scope' => 'primary', 'locality_code' => '0102801000']);
+        OrganizationLocation::withoutGlobalScope('record_status')->whereKey($location->id)->update(['record_status' => 0]);
+
+        $this->actingAs($actor)->get(route('system-settings.address.edit'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('locationId', null)
+                ->where('recordStatus', null)
+                ->where('canViewDeleted', false)
+                ->where('canCreate', false)
+                ->where('canUpdate', false));
+
+        $this->withSession(['auth.password_confirmed_at' => now()->timestamp])
+            ->patch(route('system-settings.address.update'), [
+                'region_code' => '0100000000',
+                'province_code' => '0102800000',
+                'locality_code' => '0102801000',
+            ])->assertForbidden();
+
+        $this->assertDatabaseCount('organization_locations', 1);
+        $this->assertDatabaseHas('organization_locations', ['id' => $location->id, 'record_status' => 0]);
+    }
+
     private function administrator(): User
     {
         $admin = User::factory()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
 
         return $admin;
     }

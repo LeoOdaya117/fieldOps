@@ -12,6 +12,7 @@ use App\Http\Controllers\Media\MediaAssetContentController;
 use App\Http\Controllers\Media\MediaAssetController;
 use App\Http\Controllers\Media\PlatformAssetContentController;
 use App\Http\Controllers\Notifications\NotificationController;
+use App\Http\Controllers\RecordStatus\RecordStatusController;
 use App\Http\Controllers\System\CountryController;
 use App\Http\Controllers\System\TimezoneController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -39,21 +40,32 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::patch('notifications/{notification}', [NotificationController::class, 'update'])->whereUuid('notification')->name('notifications.update');
 
     Route::post('session/activity', SessionActivityController::class)->name('session.activity');
-    Route::get('media-assets', [MediaAssetController::class, 'index'])->name('media-assets.index');
+    Route::get('media-assets', [MediaAssetController::class, 'index'])->middleware('can:media_assets.view')->name('media-assets.index');
     Route::post('media-assets', [MediaAssetController::class, 'store'])
-        ->middleware('throttle:media-uploads')
+        ->middleware(['can:media_assets.create', 'throttle:media-uploads'])
         ->name('media-assets.store');
+    Route::patch('media-assets/{asset}/record-status', [RecordStatusController::class, 'mediaAsset'])
+        ->middleware('can:media_assets.update_deleted')
+        ->name('media-assets.record-status');
+    Route::patch('media-assets/{asset}', [MediaAssetController::class, 'update'])
+        ->middleware('can:media_assets.update')
+        ->name('media-assets.update');
     Route::get('media-assets/{asset}/content', [MediaAssetContentController::class, 'content'])
+        ->middleware('can:media_assets.view')
         ->name('media-assets.content');
     Route::get('media-assets/{asset}/thumbnail', [MediaAssetContentController::class, 'thumbnail'])
+        ->middleware('can:media_assets.view')
         ->name('media-assets.thumbnail');
     Route::delete('media-assets/{asset}', [MediaAssetController::class, 'destroy'])
+        ->middleware('can:media_assets.delete')
         ->name('media-assets.destroy');
 
     Route::inertia('dashboard', 'dashboard')->middleware('can:dashboard.view')->name('dashboard');
 
     Route::prefix('access')->name('access.')->group(function () {
         Route::get('users', [UserController::class, 'index'])->middleware('can:users.view')->name('users.index');
+        Route::patch('users/{user}/record-status', [RecordStatusController::class, 'user'])->middleware('can:users.update_deleted')->name('users.record-status');
+        Route::patch('users/invitations/{invitation}/record-status', [RecordStatusController::class, 'invitation'])->middleware('can:users.update_deleted')->name('users.invitations.record-status');
         Route::get('users/create', [UserController::class, 'create'])->middleware('can:users.create')->name('users.create');
         Route::post('users', [UserController::class, 'store'])->middleware([RequirePassword::class, 'can:users.create'])->name('users.store');
         Route::get('users/invite', [UserController::class, 'inviteCreate'])->middleware('can:users.invite')->name('users.invite.create');
@@ -75,6 +87,7 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::get('users/{user}', [UserController::class, 'show'])->middleware('can:users.view')->name('users.show');
 
         Route::get('roles', [RoleController::class, 'index'])->middleware('can:roles.view')->name('roles.index');
+        Route::patch('roles/{role}/record-status', [RecordStatusController::class, 'role'])->middleware('can:roles.update_deleted')->name('roles.record-status');
         Route::get('roles/create', [RoleController::class, 'create'])->middleware('can:roles.create')->name('roles.create');
         Route::post('roles', [RoleController::class, 'store'])->middleware([RequirePassword::class, 'can:roles.create'])->name('roles.store');
         Route::delete('roles/bulk', [RoleController::class, 'bulkDestroy'])->middleware([RequirePassword::class, 'can:roles.delete'])->name('roles.bulk.destroy');
@@ -86,34 +99,37 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::get('audit', [AuditController::class, 'index'])->middleware('can:audit.view')->name('audit.index');
         Route::get('audit/{accessAuditEvent}', [AuditController::class, 'show'])->middleware('can:audit.view')->name('audit.show');
         Route::get('ip-blocks', [BlockedIpAddressController::class, 'index'])->middleware('can:ip_blocks.view')->name('ip-blocks.index');
-        Route::get('ip-blocks/create', [BlockedIpAddressController::class, 'create'])->middleware('can:ip_blocks.manage')->name('ip-blocks.create');
-        Route::post('ip-blocks', [BlockedIpAddressController::class, 'store'])->middleware([RequirePassword::class, 'can:ip_blocks.manage'])->name('ip-blocks.store');
+        Route::patch('ip-blocks/{blockedIpAddress}/record-status', [RecordStatusController::class, 'ipBlock'])->middleware('can:ip_blocks.update_deleted')->name('ip-blocks.record-status');
+        Route::get('ip-blocks/create', [BlockedIpAddressController::class, 'create'])->middleware('can:ip_blocks.create')->name('ip-blocks.create');
+        Route::post('ip-blocks', [BlockedIpAddressController::class, 'store'])->middleware([RequirePassword::class, 'can:ip_blocks.create'])->name('ip-blocks.store');
         Route::get('ip-blocks/{blockedIpAddress}', [BlockedIpAddressController::class, 'show'])->middleware('can:ip_blocks.view')->name('ip-blocks.show');
-        Route::get('ip-blocks/{blockedIpAddress}/edit', [BlockedIpAddressController::class, 'edit'])->middleware('can:ip_blocks.manage')->name('ip-blocks.edit');
-        Route::delete('ip-blocks/{blockedIpAddress}', [BlockedIpAddressController::class, 'destroy'])->middleware([RequirePassword::class, 'can:ip_blocks.manage'])->name('ip-blocks.destroy');
-        Route::patch('ip-blocks/{blockedIpAddress}', [BlockedIpAddressController::class, 'update'])->middleware([RequirePassword::class, 'can:ip_blocks.manage'])->name('ip-blocks.update');
-        Route::patch('ip-blocks/{blockedIpAddress}/activate', [BlockedIpAddressController::class, 'activate'])->middleware([RequirePassword::class, 'can:ip_blocks.manage'])->name('ip-blocks.activate');
-        Route::patch('ip-blocks/{blockedIpAddress}/deactivate', [BlockedIpAddressController::class, 'deactivate'])->middleware([RequirePassword::class, 'can:ip_blocks.manage'])->name('ip-blocks.deactivate');
+        Route::get('ip-blocks/{blockedIpAddress}/edit', [BlockedIpAddressController::class, 'edit'])->middleware('can:ip_blocks.update')->name('ip-blocks.edit');
+        Route::delete('ip-blocks/{blockedIpAddress}', [BlockedIpAddressController::class, 'destroy'])->middleware([RequirePassword::class, 'can:ip_blocks.delete'])->name('ip-blocks.destroy');
+        Route::patch('ip-blocks/{blockedIpAddress}', [BlockedIpAddressController::class, 'update'])->middleware([RequirePassword::class, 'can:ip_blocks.update'])->name('ip-blocks.update');
+        Route::patch('ip-blocks/{blockedIpAddress}/activate', [BlockedIpAddressController::class, 'activate'])->middleware([RequirePassword::class, 'can:ip_blocks.update'])->name('ip-blocks.activate');
+        Route::patch('ip-blocks/{blockedIpAddress}/deactivate', [BlockedIpAddressController::class, 'deactivate'])->middleware([RequirePassword::class, 'can:ip_blocks.update'])->name('ip-blocks.deactivate');
         Route::get('visit-logs', [VisitLogController::class, 'index'])->middleware('can:visit_logs.view')->name('visit-logs.index');
         Route::get('visit-logs/{visitLog}', [VisitLogController::class, 'show'])->middleware('can:visit_logs.view')->name('visit-logs.show');
     });
 
     Route::prefix('system')->name('system.')->group(function () {
         Route::get('countries', [CountryController::class, 'index'])->middleware('can:countries.view')->name('countries.index');
-        Route::get('countries/create', [CountryController::class, 'create'])->middleware('can:countries.manage')->name('countries.create');
-        Route::post('countries', [CountryController::class, 'store'])->middleware([RequirePassword::class, 'can:countries.manage'])->name('countries.store');
-        Route::get('countries/{country}/edit', [CountryController::class, 'edit'])->middleware('can:countries.manage')->name('countries.edit');
+        Route::patch('countries/{country}/record-status', [RecordStatusController::class, 'country'])->middleware('can:countries.update_deleted')->name('countries.record-status');
+        Route::get('countries/create', [CountryController::class, 'create'])->middleware('can:countries.create')->name('countries.create');
+        Route::post('countries', [CountryController::class, 'store'])->middleware([RequirePassword::class, 'can:countries.create'])->name('countries.store');
+        Route::get('countries/{country}/edit', [CountryController::class, 'edit'])->middleware('can:countries.update')->name('countries.edit');
         Route::get('countries/{country}', [CountryController::class, 'show'])->middleware('can:countries.view')->name('countries.show');
-        Route::patch('countries/{country}', [CountryController::class, 'update'])->middleware([RequirePassword::class, 'can:countries.manage'])->name('countries.update');
-        Route::delete('countries/{country}', [CountryController::class, 'destroy'])->middleware([RequirePassword::class, 'can:countries.manage'])->name('countries.destroy');
+        Route::patch('countries/{country}', [CountryController::class, 'update'])->middleware([RequirePassword::class, 'can:countries.update'])->name('countries.update');
+        Route::delete('countries/{country}', [CountryController::class, 'destroy'])->middleware([RequirePassword::class, 'can:countries.delete'])->name('countries.destroy');
 
         Route::get('timezones', [TimezoneController::class, 'index'])->middleware('can:timezones.view')->name('timezones.index');
-        Route::get('timezones/create', [TimezoneController::class, 'create'])->middleware('can:timezones.manage')->name('timezones.create');
-        Route::post('timezones', [TimezoneController::class, 'store'])->middleware([RequirePassword::class, 'can:timezones.manage'])->name('timezones.store');
-        Route::get('timezones/{timezone}/edit', [TimezoneController::class, 'edit'])->middleware('can:timezones.manage')->name('timezones.edit');
+        Route::patch('timezones/{timezone}/record-status', [RecordStatusController::class, 'timezone'])->middleware('can:timezones.update_deleted')->name('timezones.record-status');
+        Route::get('timezones/create', [TimezoneController::class, 'create'])->middleware('can:timezones.create')->name('timezones.create');
+        Route::post('timezones', [TimezoneController::class, 'store'])->middleware([RequirePassword::class, 'can:timezones.create'])->name('timezones.store');
+        Route::get('timezones/{timezone}/edit', [TimezoneController::class, 'edit'])->middleware('can:timezones.update')->name('timezones.edit');
         Route::get('timezones/{timezone}', [TimezoneController::class, 'show'])->middleware('can:timezones.view')->name('timezones.show');
-        Route::patch('timezones/{timezone}', [TimezoneController::class, 'update'])->middleware([RequirePassword::class, 'can:timezones.manage'])->name('timezones.update');
-        Route::delete('timezones/{timezone}', [TimezoneController::class, 'destroy'])->middleware([RequirePassword::class, 'can:timezones.manage'])->name('timezones.destroy');
+        Route::patch('timezones/{timezone}', [TimezoneController::class, 'update'])->middleware([RequirePassword::class, 'can:timezones.update'])->name('timezones.update');
+        Route::delete('timezones/{timezone}', [TimezoneController::class, 'destroy'])->middleware([RequirePassword::class, 'can:timezones.delete'])->name('timezones.destroy');
     });
 });
 

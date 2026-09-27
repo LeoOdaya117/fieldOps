@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Support\SystemSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
+use Laravel\Fortify\LoginRateLimiter;
 use Tests\TestCase;
 
 class SystemSettingsTest extends TestCase
@@ -19,7 +19,7 @@ class SystemSettingsTest extends TestCase
     public function test_an_administrator_can_view_and_update_system_settings(): void
     {
         $admin = User::factory()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
 
         $this->actingAs($admin)
             ->get(route('system-settings.edit'))
@@ -67,13 +67,23 @@ class SystemSettingsTest extends TestCase
         $audit = AccessAuditEvent::query()->where('event', 'settings.system.updated')->sole();
         $this->assertArrayNotHasKey('theme', $audit->after);
 
-        $loginLimiter = RateLimiter::limiter('login');
-        $limit = $loginLimiter(Request::create('/login', 'POST', [
+        $loginLimiter = app(LoginRateLimiter::class);
+        $loginRequest = Request::create('/login', 'POST', [
             'email' => 'ADMIN@EXAMPLE.COM',
-        ], server: ['REMOTE_ADDR' => '127.0.0.1']));
-        $this->assertSame(7, $limit->maxAttempts);
-        $this->assertSame(45 * 60, $limit->decaySeconds);
-        $this->assertStringStartsWith('7:45|', (string) $limit->key);
+        ], server: ['REMOTE_ADDR' => '127.0.0.1']);
+
+        for ($attempt = 0; $attempt < 6; $attempt++) {
+            $loginLimiter->increment($loginRequest);
+        }
+
+        $this->assertFalse($loginLimiter->tooManyAttempts($loginRequest));
+        $this->assertSame(45 * 60, $loginLimiter->availableIn($loginRequest));
+
+        $loginLimiter->increment($loginRequest);
+        $this->assertTrue($loginLimiter->tooManyAttempts($loginRequest));
+
+        $loginLimiter->clear($loginRequest);
+        $this->assertFalse($loginLimiter->tooManyAttempts($loginRequest));
 
         $this->actingAs($admin)
             ->get(route('access.users.index'))
@@ -108,7 +118,7 @@ class SystemSettingsTest extends TestCase
     public function test_system_settings_require_recent_password_confirmation_and_validate_policy_bounds(): void
     {
         $admin = User::factory()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
         $payload = [
             'name' => 'FieldOps',
             'timezone' => 'UTC',
@@ -142,7 +152,7 @@ class SystemSettingsTest extends TestCase
     public function test_an_administrator_can_compare_and_apply_a_layout_theme(): void
     {
         $admin = User::factory()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
 
         $this->actingAs($admin)
             ->get(route('system-settings.layout.edit'))
@@ -175,7 +185,7 @@ class SystemSettingsTest extends TestCase
     public function test_layout_theme_requires_confirmation_permission_and_a_known_value(): void
     {
         $admin = User::factory()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
 
         $this->actingAs($admin)
             ->patch(route('system-settings.layout.update'), ['theme' => 'atlas'])
@@ -211,7 +221,7 @@ class SystemSettingsTest extends TestCase
     public function test_unverified_administrators_cannot_read_or_change_system_settings(): void
     {
         $admin = User::factory()->unverified()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
 
         $read = $this->actingAs($admin)->get(route('system-settings.edit'));
         $write = $this->actingAs($admin)->patch(route('system-settings.update'));

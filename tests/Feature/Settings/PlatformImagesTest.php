@@ -14,11 +14,11 @@ class PlatformImagesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_owner_can_assign_serve_and_reset_a_platform_image(): void
+    public function test_super_admin_can_assign_serve_and_reset_a_platform_image(): void
     {
         Storage::fake('local');
         $owner = User::factory()->create();
-        $owner->syncRoles(RoleName::Owner->value);
+        $owner->syncRoles(RoleName::SuperAdmin->value);
         $asset = $this->asset($owner);
         Storage::disk('local')->put($asset->path, 'normalized-image');
         $session = ['auth.password_confirmed_at' => now()->timestamp];
@@ -49,7 +49,7 @@ class PlatformImagesTest extends TestCase
     {
         $this->withoutVite();
         $admin = User::factory()->create();
-        $admin->syncRoles(RoleName::Administrator->value);
+        $admin->syncRoles(RoleName::Admin->value);
         $asset = $this->asset($admin);
         $session = ['auth.password_confirmed_at' => now()->timestamp];
 
@@ -68,7 +68,7 @@ class PlatformImagesTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_owner_cannot_assign_another_users_asset_or_an_unknown_slot(): void
+    public function test_super_admin_cannot_assign_another_users_asset_or_an_unknown_slot(): void
     {
         $owner = User::factory()->create();
         $owner->syncRoles(RoleName::SuperAdmin->value);

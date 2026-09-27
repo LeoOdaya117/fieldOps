@@ -92,7 +92,7 @@ class BlockedIpAddressTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_owner_can_create_deactivate_and_reactivate_an_ip_block_with_audit_events(): void
+    public function test_super_admin_can_create_deactivate_and_reactivate_an_ip_block_with_audit_events(): void
     {
         $owner = $this->owner();
 
@@ -191,24 +191,54 @@ class BlockedIpAddressTest extends TestCase
     {
         $owner = $this->owner();
         $observedUser = User::factory()->create();
+        $this->actingAs($owner);
         BlockedIpAddress::query()->create(['ip_address' => '192.0.2.10', 'user_id' => $observedUser->id, 'is_active' => true, 'blocked_at' => now(), 'reason' => 'Active']);
         BlockedIpAddress::query()->create(['ip_address' => '192.0.2.11', 'is_active' => false, 'blocked_at' => now(), 'reason' => 'Inactive']);
 
-        $this->actingAs($owner)
-            ->get(route('access.ip-blocks.index', ['status' => 'active']))
+        $this->get(route('access.ip-blocks.index', ['status' => 'active']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('filters.status', 'active')
                 ->has('blockedIpAddresses.data', 1)
                 ->where('blockedIpAddresses.data.0.ipAddress', '192.0.2.10')
                 ->where('blockedIpAddresses.data.0.user.id', $observedUser->id)
-                ->where('blockedIpAddresses.data.0.user.name', $observedUser->name));
+                ->where('blockedIpAddresses.data.0.user.name', $observedUser->name)
+                ->where('blockedIpAddresses.data.0.recordStatus', 1)
+                ->where('blockedIpAddresses.data.0.createdBy.id', $owner->id)
+                ->where('blockedIpAddresses.data.0.updatedBy.id', $owner->id)
+                ->has('blockedIpAddresses.data.0.createdAt')
+                ->has('blockedIpAddresses.data.0.updatedAt'));
+    }
+
+    public function test_ip_block_index_sorts_audit_columns_without_audit_filters(): void
+    {
+        $owner = $this->owner();
+        $this->actingAs($owner);
+        $rule = BlockedIpAddress::query()->create([
+            'ip_address' => '192.0.2.20',
+            'is_active' => false,
+            'blocked_at' => now(),
+        ]);
+        $rule->delete();
+
+        $this->get(route('access.ip-blocks.index', [
+            'record_status' => 'inactive',
+            'created_by' => $owner->email,
+            'sort' => 'created_by',
+            'direction' => 'desc',
+        ]))->assertInertia(fn (Assert $page) => $page
+            ->where('blockedIpAddresses.data.0.id', $rule->id)
+            ->where('blockedIpAddresses.data.0.recordStatus', 0)
+            ->where('filters.sort', 'created_by')
+            ->where('filters.direction', 'desc')
+            ->missing('filters.createdBy')
+            ->where('filters.recordStatus', 'inactive'));
     }
 
     private function owner(): User
     {
         $owner = User::factory()->create();
-        $owner->syncRoles(RoleName::Owner->value);
+        $owner->syncRoles(RoleName::SuperAdmin->value);
 
         return $owner;
     }

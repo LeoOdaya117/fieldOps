@@ -21,6 +21,8 @@ class MediaAssetResource extends JsonResource
         return [
             'id' => $asset->id,
             'name' => $asset->original_name,
+            'recordStatus' => (int) $asset->record_status,
+            'recordStatusUrl' => route('media-assets.record-status', $asset->getKey(), false),
             'mimeType' => $asset->mime_type,
             'extension' => $asset->extension,
             'sizeBytes' => $asset->size_bytes,

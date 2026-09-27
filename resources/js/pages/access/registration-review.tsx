@@ -5,6 +5,7 @@ import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FormSelect } from '@/components/ui/form-select';
 import {
     Card,
     CardContent,
@@ -23,6 +24,7 @@ type Registration = {
     email: string;
     status: 'pending' | 'approved' | 'rejected';
     createdAt: string | null;
+    updatedAt: string | null;
 };
 
 export default function RegistrationReviewPage({
@@ -112,26 +114,25 @@ export default function RegistrationReviewPage({
                                                     <Label htmlFor="registration-role">
                                                         Role
                                                     </Label>
-                                                    <select
+                                                    <FormSelect
                                                         id="registration-role"
                                                         name="role_id"
                                                         required
-                                                        className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                                                    >
-                                                        <option value="">
-                                                            Choose a role
-                                                        </option>
-                                                        {roles.map((role) => (
-                                                            <option
-                                                                key={role.id}
-                                                                value={role.id}
-                                                            >
-                                                                {
-                                                                    role.display_name
-                                                                }
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                                        options={[
+                                                            {
+                                                                value: '',
+                                                                label: 'Choose a role',
+                                                            },
+                                                            ...roles.map(
+                                                                (role) => ({
+                                                                    value: String(
+                                                                        role.id,
+                                                                    ),
+                                                                    label: role.display_name,
+                                                                }),
+                                                            ),
+                                                        ]}
+                                                    />
                                                     <InputError
                                                         message={errors.role_id}
                                                     />

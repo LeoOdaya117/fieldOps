@@ -10,7 +10,7 @@ class ActivateBlockedIpAddressRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->route('blockedIpAddress') instanceof BlockedIpAddress
-            && $this->user()?->can('ip_blocks.manage') === true;
+            && $this->user()?->can('ip_blocks.update') === true;
     }
 
     /** @return array<string, mixed> */

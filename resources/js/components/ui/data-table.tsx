@@ -1,5 +1,5 @@
 import type { ComponentProps, Key, ReactNode } from 'react';
-import { Badge } from '@/components/ui/badge';
+import { SortableColumn } from '@/components/sortable-column';
 import {
     DataTableColumnVisibility,
     useDataTableColumnVisibility,
@@ -9,7 +9,9 @@ import type {
 } from '@/components/ui/data-table-column-visibility';
 import { TablePagination } from '@/components/ui/table-pagination';
 import type { TablePaginationProps } from '@/components/ui/table-pagination';
+import { formatDateTime } from '@/lib/format-date';
 import { cn } from '@/lib/utils';
+import { RecordStatusControl } from '@/components/ui/record-status-control';
 
 type DataTableColumn<T> = {
     key: string;
@@ -22,11 +24,21 @@ type DataTableColumn<T> = {
     cell?: (row: T, index: number) => ReactNode;
 };
 
+type DefaultColumnSortOptions = {
+    action: string;
+    sort?: string;
+    direction?: 'asc' | 'desc';
+    sortParam?: string;
+    directionParam?: string;
+    hidden?: Record<string, string | readonly string[] | undefined>;
+};
+
 type DataTableProps<T = unknown> = ComponentProps<'table'> & {
     caption?: ReactNode;
     data?: readonly T[];
     addDefaultColumns?: boolean;
     excludeDefaultColumns?: readonly string[];
+    defaultColumnSort?: DefaultColumnSortOptions;
     containerClassName?: string;
     scrollContainerClassName?: string;
     tableColumns?:
@@ -34,12 +46,15 @@ type DataTableProps<T = unknown> = ComponentProps<'table'> & {
         | (() => readonly DataTableColumn<T>[]);
     columnVisibility?: DataTableColumnVisibilityOptions;
     toolbar?: ReactNode;
+    actions?: ReactNode;
+    emptyState?: ReactNode;
     pagination?: TablePaginationProps | null;
     getRowKey?: (row: T, index: number) => Key;
     getRowProps?: (
         row: T,
         index: number,
     ) => Omit<ComponentProps<'tr'>, 'children' | 'key'>;
+    canUpdateDeleted?: boolean;
 };
 
 function DataTable<T>({
@@ -49,14 +64,18 @@ function DataTable<T>({
     data,
     addDefaultColumns = false,
     excludeDefaultColumns = [],
+    defaultColumnSort,
     containerClassName,
     scrollContainerClassName,
     tableColumns,
     columnVisibility,
     toolbar,
+    actions,
+    emptyState,
     pagination,
     getRowKey,
     getRowProps,
+    canUpdateDeleted = false,
     ...props
 }: DataTableProps<T>) {
     const configuredColumns =
@@ -65,7 +84,12 @@ function DataTable<T>({
         configuredColumns === undefined && children !== undefined
               ? undefined
             : addDefaultColumns
-              ? mergeDefaultColumns(configuredColumns ?? [], excludeDefaultColumns)
+              ? mergeDefaultColumns(
+                    configuredColumns ?? [],
+                    excludeDefaultColumns,
+                    defaultColumnSort,
+                    canUpdateDeleted,
+                )
               : configuredColumns;
     const hideableColumns =
         columns?.filter((column) => column.hideable !== false) ?? [];
@@ -89,7 +113,10 @@ function DataTable<T>({
     const isDeclarative = columns !== undefined;
     const hasToolbarContent =
         toolbar !== undefined && toolbar !== null && toolbar !== false;
-    const hasDataTableToolbar = hasToolbarContent || canManageColumns;
+    const hasActionsContent =
+        actions !== undefined && actions !== null && actions !== false;
+    const hasDataTableToolbar =
+        hasToolbarContent || hasActionsContent || canManageColumns;
 
     return (
         <div
@@ -110,24 +137,27 @@ function DataTable<T>({
                     {hasToolbarContent ? (
                         <div className="min-w-0 flex-1">{toolbar}</div>
                     ) : null}
-                    {canManageColumns ? (
-                        <div className="shrink-0">
-                            <DataTableColumnVisibility
-                                columns={hideableColumns.map((column) => ({
-                                    key: column.key,
-                                    label: getColumnLabel(column),
-                                }))}
-                                visibleKeys={
-                                    columnVisibilityState.visibleKeys
-                                }
-                                defaultVisibleKeys={
-                                    columnVisibilityState.defaultVisibleKeys
-                                }
-                                onVisibleKeysChange={
-                                    columnVisibilityState.setVisibleKeys
-                                }
-                                onReset={columnVisibilityState.reset}
-                            />
+                    {hasActionsContent || canManageColumns ? (
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                            {actions}
+                            {canManageColumns ? (
+                                <DataTableColumnVisibility
+                                    columns={hideableColumns.map((column) => ({
+                                        key: column.key,
+                                        label: getColumnLabel(column),
+                                    }))}
+                                    visibleKeys={
+                                        columnVisibilityState.visibleKeys
+                                    }
+                                    defaultVisibleKeys={
+                                        columnVisibilityState.defaultVisibleKeys
+                                    }
+                                    onVisibleKeysChange={
+                                        columnVisibilityState.setVisibleKeys
+                                    }
+                                    onReset={columnVisibilityState.reset}
+                                />
+                            ) : null}
                         </div>
                     ) : null}
                 </DataTableToolbar>
@@ -164,45 +194,78 @@ function DataTable<T>({
                                 </DataTableRow>
                             </DataTableHeader>
                             <DataTableBody>
-                                {(data ?? []).map((row, index) => {
-                                    const rowProps = getRowProps?.(row, index);
+                                {(data ?? []).length > 0
+                                    ? (data ?? []).map((row, index) => {
+                                          const rowProps = getRowProps?.(
+                                              row,
+                                              index,
+                                          );
 
-                                    return (
-                                        <DataTableRow
-                                            key={getRowKey?.(row, index) ?? index}
-                                            {...rowProps}
-                                        >
-                                            {renderedColumns?.map((column) => (
-                                                <DataTableCell
-                                                    key={column.key}
-                                                    className={column.cellClassName}
-                                                >
-                                                    {column.cell
-                                                        ? column.cell(row, index)
-                                                        : typeof column.accessor ===
-                                                            'function'
-                                                          ? column.accessor(
-                                                                row,
-                                                                index,
-                                                            )
-                                                        : column.accessor
-                                                          ? (() => {
-                                                                const value =
-                                                                    row[
-                                                                        column
-                                                                            .accessor
-                                                                    ];
+                                          return (
+                                              <DataTableRow
+                                                  key={
+                                                      getRowKey?.(row, index) ??
+                                                      index
+                                                  }
+                                                  {...rowProps}
+                                              >
+                                                  {renderedColumns?.map(
+                                                      (column) => (
+                                                          <DataTableCell
+                                                              key={column.key}
+                                                              className={
+                                                                  column.cellClassName
+                                                              }
+                                                          >
+                                                              {column.cell
+                                                                  ? column.cell(
+                                                                        row,
+                                                                        index,
+                                                                    )
+                                                                  : typeof column.accessor ===
+                                                                      'function'
+                                                                    ? column.accessor(
+                                                                          row,
+                                                                          index,
+                                                                      )
+                                                                    : column.accessor
+                                                                      ? (() => {
+                                                                            const value =
+                                                                                row[
+                                                                                    column
+                                                                                        .accessor
+                                                                                ];
 
-                                                                return value == null
-                                                                    ? null
-                                                                    : String(value);
-                                                            })()
-                                                          : null}
-                                                </DataTableCell>
-                                            ))}
-                                        </DataTableRow>
-                                    );
-                                })}
+                                                                            return value ==
+                                                                                null
+                                                                                ? null
+                                                                                : String(
+                                                                                      value,
+                                                                                  );
+                                                                        })()
+                                                                      : null}
+                                                          </DataTableCell>
+                                                      ),
+                                                  )}
+                                              </DataTableRow>
+                                          );
+                                      })
+                                    : emptyState !== undefined && (
+                                          <DataTableRow>
+                                              <DataTableCell
+                                                  colSpan={
+                                                      Math.max(
+                                                          renderedColumns?.length ??
+                                                              1,
+                                                          1,
+                                                      )
+                                                  }
+                                                  className="px-6 py-12 text-center"
+                                              >
+                                                  {emptyState}
+                                              </DataTableCell>
+                                          </DataTableRow>
+                                      )}
                             </DataTableBody>
                         </>
                     ) : (
@@ -245,13 +308,7 @@ function getColumnLabel<T>(column: DataTableColumn<T>): string {
 }
 
 function formatDefaultDate(value: unknown) {
-    if (!value) {
-        return '—';
-    }
-
-    const date = new Date(String(value));
-
-    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString();
+    return formatDateTime(value);
 }
 
 function formatActor(value: unknown) {
@@ -276,72 +333,92 @@ function formatDefaultValue(value: unknown) {
     return String(value);
 }
 
-function formatRecordStatus(value: unknown) {
-    const isDeleted = value === 0 || value === '0' || value === false;
-
-    return (
-        <Badge
-            variant="outline"
-            className={
-                isDeleted
-                    ? 'border-destructive/30 bg-destructive/10 text-destructive'
-                    : 'border-success/30 bg-success/10 text-success'
-            }
-        >
-            <span className="size-1.5 rounded-full bg-current" />
-            {isDeleted ? 'Deleted' : 'Active'}
-        </Badge>
+function defaultColumnHeader(
+    label: string,
+    sortKey: string,
+    sortOptions?: DefaultColumnSortOptions,
+) {
+    return sortOptions ? (
+        <SortableColumn
+            {...sortOptions}
+            label={label}
+            sortKey={sortKey}
+        />
+    ) : (
+        label
     );
 }
 
-function defaultTableColumns(): DataTableColumn<unknown>[] {
+function defaultTableColumns(
+    sortOptions?: DefaultColumnSortOptions,
+    canUpdateDeleted = false,
+): DataTableColumn<unknown>[] {
     return [
         {
             key: 'created_at',
-            header: 'Created',
+            header: defaultColumnHeader('Created', 'created_at', sortOptions),
             label: 'Created',
             cell: (row) => formatDefaultDate(readDefaultValue(row, 'created_at')),
         },
         {
             key: 'updated_at',
-            header: 'Updated',
+            header: defaultColumnHeader('Updated', 'updated_at', sortOptions),
             label: 'Updated',
             cell: (row) => formatDefaultDate(readDefaultValue(row, 'updated_at')),
         },
         {
             key: 'created_by',
-            header: 'Created by',
+            header: defaultColumnHeader('Created by', 'created_by', sortOptions),
             label: 'Created by',
             cell: (row) => formatActor(readDefaultValue(row, 'created_by')),
         },
         {
             key: 'updated_by',
-            header: 'Updated by',
+            header: defaultColumnHeader('Updated by', 'updated_by', sortOptions),
             label: 'Updated by',
             cell: (row) => formatActor(readDefaultValue(row, 'updated_by')),
         },
         {
             key: 'status',
-            header: 'Status',
+            header: defaultColumnHeader('Status', 'status', sortOptions),
             label: 'Status',
             cell: (row) => formatDefaultValue(readDefaultValue(row, 'status')),
         },
         {
             key: 'record_status',
-            header: 'Record status',
+            header: defaultColumnHeader(
+                'Record status',
+                'record_status',
+                sortOptions,
+            ),
             label: 'Record status',
-            cell: (row) => formatRecordStatus(readDefaultValue(row, 'record_status')),
+            cell: (row) => (
+                <RecordStatusControl
+                    recordStatus={Number(readDefaultValue(row, 'record_status') ?? 0)}
+                    label={String(readDefaultValue(row, 'name') ?? readDefaultValue(row, 'email') ?? readDefaultValue(row, 'display_name') ?? 'record')}
+                    recordStatusUrl={readDefaultString(row, 'record_status_url') ?? readDefaultString(row, 'recordStatusUrl')}
+                    canUpdateDeleted={canUpdateDeleted}
+                />
+            ),
         },
     ];
+}
+
+function readDefaultString(row: unknown, key: string): string | undefined {
+    const value = readDefaultValue(row, key);
+
+    return typeof value === 'string' ? value : undefined;
 }
 
 function mergeDefaultColumns<T>(
     columns: readonly DataTableColumn<T>[],
     excludeDefaultColumns: readonly string[],
+    sortOptions?: DefaultColumnSortOptions,
+    canUpdateDeleted = false,
 ) {
     const keys = new Set(columns.map((column) => column.key));
     const excludedKeys = new Set(excludeDefaultColumns);
-    const defaults = defaultTableColumns().filter(
+    const defaults = defaultTableColumns(sortOptions, canUpdateDeleted).filter(
         (column) => !keys.has(column.key) && !excludedKeys.has(column.key),
     );
 

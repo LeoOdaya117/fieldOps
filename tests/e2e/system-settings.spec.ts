@@ -2,23 +2,17 @@ import path from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-
-const owner = {
-    email: process.env.E2E_OWNER_EMAIL ?? 'superadmin@example.com',
-    password: process.env.E2E_OWNER_PASSWORD ?? 'password',
-};
+import { e2eAccounts, login } from './support/auth';
 
 async function loginAsOwner(page: Page) {
-    await page.goto('/login');
-    await page.getByLabel('Email address').fill(owner.email);
-    await page.getByRole('textbox', { name: 'Password' }).fill(owner.password);
-    await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 60_000 });
+    await login(page, e2eAccounts.owner);
 }
 
 async function confirmOwnerPassword(page: Page) {
     await page.goto('/user/confirm-password');
-    await page.getByRole('textbox', { name: 'Password' }).fill(owner.password);
+    await page
+        .getByRole('textbox', { name: 'Password' })
+        .fill(e2eAccounts.owner.password);
     await page.getByRole('button', { name: 'Confirm password' }).click();
     await expect(page).toHaveURL(/\/dashboard$/, { timeout: 60_000 });
 }
@@ -119,7 +113,7 @@ test('the settings starter kit is responsive, accessible, and complete', async (
         '/settings/system/platform-images',
         'Platform images',
     );
-    await expect(page.getByText('Owner controls enabled')).toBeVisible();
+    await expect(page.getByText('Super Admin controls enabled')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Change' })).toHaveCount(5);
     await page.getByRole('button', { name: 'Change' }).first().click();
     const gallery = page.getByRole('dialog', {

@@ -2,12 +2,12 @@
 
 namespace App\Actions\Rbac;
 
+use App\Actions\Security\InvalidateUserSessions;
 use App\Enums\UserStatus;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -18,6 +18,7 @@ class UpdateUser
         private readonly AssignRoleToUser $assignRole,
         private readonly ChangeUserStatus $changeStatus,
         private readonly RecordAccessAudit $audit,
+        private readonly InvalidateUserSessions $invalidateSessions,
     ) {}
 
     /**
@@ -121,9 +122,7 @@ class UpdateUser
                 }
 
                 if ($passwordChanged) {
-                    if (Schema::hasTable('sessions')) {
-                        DB::table('sessions')->where('user_id', $target->getKey())->delete();
-                    }
+                    $this->invalidateSessions->execute($target);
 
                     $this->audit->record(
                         'user.password_changed',

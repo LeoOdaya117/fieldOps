@@ -4,7 +4,10 @@ import { ActionLink } from '@/components/action-link';
 import { IndexPage, IndexPageSection } from '@/components/index-page';
 import SearchFilterSheet from '@/components/search-filter-sheet';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { AdaptiveSelect } from '@/components/ui/adaptive-select';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { DataTable } from '@/components/ui/data-table';
 import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
 import { roleTableColumns } from '@/features/access/role-table-model';
@@ -29,12 +32,23 @@ type PaginatedRoles = {
 export default function RolesPage({
     roles,
     canManageSystemRoles = false,
+    canCreate = false,
     canDeleteRoles = true,
-    filters = { search: '', type: '', assigned: '', permissionsMin: '' },
+    canViewDeleted = false,
+    canUpdateDeleted = false,
+    filters = {
+        search: '',
+        type: '',
+        assigned: '',
+        permissionsMin: '',
+    },
 }: {
     roles: PaginatedRoles | Role[];
     canManageSystemRoles?: boolean;
+    canCreate?: boolean;
     canDeleteRoles?: boolean;
+    canViewDeleted?: boolean;
+    canUpdateDeleted?: boolean;
     filters?: RoleTableFilters;
 }) {
     const roleRows = Array.isArray(roles) ? roles : roles.data;
@@ -87,182 +101,246 @@ export default function RolesPage({
             toggleAllRoles,
         });
 
+    const tableActions = (
+        <>
+            <SearchFilterSheet
+                action="/access/roles"
+                resetHref="/access/roles"
+                title="Search and filter roles"
+                description="Find a role by name or narrow the catalog by type."
+                activeFilterCount={
+                    [
+                        filters.search,
+                        filters.type,
+                        filters.assigned,
+                        filters.permissionsMin,
+                        filters.from,
+                        filters.to,
+                        filters.recordStatus,
+                    ].filter(Boolean).length
+                }
+                pageSize={pageSize}
+                keyword={
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="role-search"
+                            className="text-sm font-medium"
+                        >
+                            Search roles
+                        </label>
+                        <Input
+                            id="role-search"
+                            name="search"
+                            defaultValue={filters.search}
+                            placeholder="Name, key, or description"
+                            autoFocus
+                        />
+                    </div>
+                }
+                dateRange={
+                    <div className="grid gap-2">
+                        <label
+                            htmlFor="role-date-range"
+                            className="text-sm font-medium"
+                        >
+                            Date range
+                        </label>
+                        <DateRangePicker
+                            id="role-date-range"
+                            from={filters.from}
+                            to={filters.to}
+                            fromName="from"
+                            toName="to"
+                            label="Role date range"
+                        />
+                    </div>
+                }
+            >
+                <div className="grid gap-2">
+                    <label htmlFor="role-type" className="text-sm font-medium">
+                        Role type
+                    </label>
+                    <AdaptiveSelect
+                        id="role-type"
+                        name="type"
+                        multiple
+                        defaultValue={filters.type}
+                        placeholder="All roles"
+                        options={[
+                            { value: '', label: 'All roles' },
+                            { value: 'system', label: 'System roles' },
+                            { value: 'custom', label: 'Custom roles' },
+                        ]}
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="role-assigned"
+                        className="text-sm font-medium"
+                    >
+                        Assignment
+                    </label>
+                    <AdaptiveSelect
+                        id="role-assigned"
+                        name="assigned"
+                        multiple
+                        defaultValue={filters.assigned}
+                        placeholder="Any assignment"
+                        options={[
+                            { value: '', label: 'Any assignment' },
+                            {
+                                value: 'assigned',
+                                label: 'Assigned to users',
+                            },
+                            { value: 'unassigned', label: 'Unassigned' },
+                        ]}
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="role-permissions-min"
+                        className="text-sm font-medium"
+                    >
+                        Minimum permissions
+                    </label>
+                    <Input
+                        id="role-permissions-min"
+                        name="permissions_min"
+                        type="number"
+                        min="0"
+                        defaultValue={filters.permissionsMin}
+                        placeholder="0"
+                    />
+                </div>
+                {canViewDeleted && (
+                    <div className="grid gap-2">
+                        <Label>Record status</Label>
+                        <AdaptiveSelect
+                            id="role-record-status"
+                            name="record_status"
+                            aria-label="Record status"
+                            multiple
+                            defaultValue={filters.recordStatus ?? 'active'}
+                            options={[
+                                { value: 'active', label: 'Active' },
+                                { value: 'inactive', label: 'Inactive' },
+                            ]}
+                        />
+                    </div>
+                )}
+            </SearchFilterSheet>
+            {canCreate && (
+                <ActionLink href="/access/roles/create">
+                    <Plus />
+                    Create role
+                </ActionLink>
+            )}
+        </>
+    );
+
     return (
         <IndexPage
             title="Roles"
             description="Manage system templates and custom role definitions."
-            actions={
-                <>
-                    <SearchFilterSheet
-                        action="/access/roles"
-                        resetHref="/access/roles"
-                        title="Search and filter roles"
-                        description="Find a role by name or narrow the catalog by type."
-                        activeFilterCount={
-                            [
-                                filters.search,
-                                filters.type,
-                                filters.assigned,
-                                filters.permissionsMin,
-                            ].filter(Boolean).length
-                        }
-                        pageSize={pageSize}
-                    >
-                        <div className="grid gap-2">
-                            <label
-                                htmlFor="role-search"
-                                className="text-sm font-medium"
-                            >
-                                Search roles
-                            </label>
-                            <Input
-                                id="role-search"
-                                name="search"
-                                defaultValue={filters.search}
-                                placeholder="Name, key, or description"
-                                autoFocus
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <label
-                                htmlFor="role-type"
-                                className="text-sm font-medium"
-                            >
-                                Role type
-                            </label>
-                            <select
-                                id="role-type"
-                                name="type"
-                                defaultValue={filters.type}
-                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">All roles</option>
-                                <option value="system">System roles</option>
-                                <option value="custom">Custom roles</option>
-                            </select>
-                        </div>
-                        <div className="grid gap-2">
-                            <label
-                                htmlFor="role-assigned"
-                                className="text-sm font-medium"
-                            >
-                                Assignment
-                            </label>
-                            <select
-                                id="role-assigned"
-                                name="assigned"
-                                defaultValue={filters.assigned}
-                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">Any assignment</option>
-                                <option value="assigned">
-                                    Assigned to users
-                                </option>
-                                <option value="unassigned">Unassigned</option>
-                            </select>
-                        </div>
-                        <div className="grid gap-2">
-                            <label
-                                htmlFor="role-permissions-min"
-                                className="text-sm font-medium"
-                            >
-                                Minimum permissions
-                            </label>
-                            <Input
-                                id="role-permissions-min"
-                                name="permissions_min"
-                                type="number"
-                                min="0"
-                                defaultValue={filters.permissionsMin}
-                                placeholder="0"
-                            />
-                        </div>
-                    </SearchFilterSheet>
-                    <ActionLink href="/access/roles/create">
-                        <Plus />
-                        Create role
-                    </ActionLink>
-                </>
-            }
         >
             <IndexPageSection>
-                {roleRows.length === 0 ? (
-                    <div className="px-6 py-12 text-center">
-                        <p className="font-medium">No roles found</p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            Create a custom role to define a focused access
-                            profile.
-                        </p>
-                    </div>
-                ) : (
-                    <DataTable
-                        caption="FieldOps role catalog"
-                        className="min-w-max"
-                        containerClassName="rounded-none border-0 shadow-none ring-0"
-                        scrollContainerClassName="px-4"
-                        data={roleRows}
-                        tableColumns={tableColumns}
-                        toolbar={
-                            canDeleteRoles && selectedRoleIds.length > 0 ? (
-                                <div
-                                    data-slot="bulk-actions-row"
-                                    className="min-w-0"
+                <DataTable
+                    caption="FieldOps role catalog"
+                    className="min-w-max"
+                    containerClassName="rounded-none border-0 shadow-none ring-0"
+                    scrollContainerClassName="px-4"
+                    data={roleRows}
+                    tableColumns={tableColumns}
+                    actions={tableActions}
+                    emptyState={
+                        <>
+                            <p className="font-medium">No roles found</p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Create a custom role to define a focused access
+                                profile.
+                            </p>
+                        </>
+                    }
+                    addDefaultColumns
+                    canUpdateDeleted={canUpdateDeleted}
+                    defaultColumnSort={{
+                        action: rolesIndex.url(),
+                        sort: filters.sort,
+                        direction: filters.direction,
+                        hidden: {
+                            search: filters.search,
+                            type: filters.type,
+                            assigned: filters.assigned,
+                            permissions_min: filters.permissionsMin,
+                            from: filters.from,
+                            to: filters.to,
+                            record_status: filters.recordStatus,
+                        },
+                    }}
+                    toolbar={
+                        canDeleteRoles && selectedRoleIds.length > 0 ? (
+                            <div
+                                data-slot="bulk-actions-row"
+                                className="min-w-0"
+                            >
+                                <BulkActions
+                                    selectedIds={selectedRoleIds}
+                                    onClear={() => setSelectedRoleIds([])}
+                                    className="justify-start"
                                 >
-                                    <BulkActions
-                                        selectedIds={selectedRoleIds}
-                                        onClear={() => setSelectedRoleIds([])}
-                                        className="justify-start"
+                                    <BulkActionForm
+                                        action="/access/roles/bulk"
+                                        method="delete"
+                                        ids={selectedRoleIds}
+                                        destructive
+                                        confirmation={{
+                                            title: `Delete ${selectedRoleIds.length} selected role(s)?`,
+                                            description:
+                                                'This action cannot be undone.',
+                                            confirmLabel: 'Delete',
+                                        }}
+                                        onSuccess={() => setSelectedRoleIds([])}
                                     >
-                                        <BulkActionForm
-                                            action="/access/roles/bulk"
-                                            method="delete"
-                                            ids={selectedRoleIds}
-                                            destructive
-                                            confirmation={{
-                                                title: `Delete ${selectedRoleIds.length} selected role(s)?`,
-                                                description:
-                                                    'This action cannot be undone.',
-                                                confirmLabel: 'Delete',
-                                            }}
-                                            onSuccess={() =>
-                                                setSelectedRoleIds([])
-                                            }
-                                        >
-                                            <Trash2 />
-                                            Delete selected
-                                        </BulkActionForm>
-                                    </BulkActions>
-                                </div>
-                            ) : null
-                        }
-                        columnVisibility={{
-                            storageKey: 'access.roles',
-                            defaultVisibleKeys: [
-                                'role',
-                                'type',
-                                'assigned',
-                                'permissions',
-                            ],
-                        }}
-                        getRowKey={(role) => role.id}
-                        pagination={
-                            pagination
-                                ? {
-                                      currentPage: pagination.current_page,
-                                      lastPage: pagination.last_page,
-                                      total: pagination.total,
-                                      from: pagination.from,
-                                      to: pagination.to,
-                                      pageSize,
-                                      links: pagination.links,
-                                      itemLabel: 'roles',
-                                      previousUrl,
-                                      nextUrl,
-                                  }
-                                : null
-                        }
-                    />
-                )}
+                                        <Trash2 />
+                                        Delete selected
+                                    </BulkActionForm>
+                                </BulkActions>
+                            </div>
+                        ) : null
+                    }
+                    columnVisibility={{
+                        storageKey: 'access.roles.v2',
+                        defaultVisibleKeys: [
+                            'role',
+                            'type',
+                            'assigned',
+                            'permissions',
+                            'created_at',
+                            'updated_at',
+                            'created_by',
+                            'updated_by',
+                            'status',
+                            'record_status',
+                        ],
+                    }}
+                    getRowKey={(role) => role.id}
+                    pagination={
+                        pagination
+                            ? {
+                                  currentPage: pagination.current_page,
+                                  lastPage: pagination.last_page,
+                                  total: pagination.total,
+                                  from: pagination.from,
+                                  to: pagination.to,
+                                  pageSize,
+                                  links: pagination.links,
+                                  itemLabel: 'roles',
+                                  previousUrl,
+                                  nextUrl,
+                              }
+                            : null
+                    }
+                />
             </IndexPageSection>
         </IndexPage>
     );

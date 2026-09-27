@@ -45,7 +45,7 @@ class NotificationTest extends TestCase
     public function test_read_mutations_are_idempotent_and_isolated_even_for_owners(): void
     {
         $user = User::factory()->create();
-        $user->syncRoles(RoleName::Owner->value);
+        $user->syncRoles(RoleName::SuperAdmin->value);
         $other = User::factory()->create();
         foreach ([$user, $other] as $recipient) {
             $recipient->notify(new AccessNotification('test', 'Update', 'Body'));
@@ -77,14 +77,14 @@ class NotificationTest extends TestCase
     public function test_registration_notifies_only_eligible_reviewers_and_rechecks_links(): void
     {
         $owner = User::factory()->create();
-        $owner->syncRoles(RoleName::Owner->value);
+        $owner->syncRoles(RoleName::SuperAdmin->value);
         $reviewer = User::factory()->create();
         $reviewer->givePermissionTo('users.review_registrations');
         $ordinary = User::factory()->create();
         $unverified = User::factory()->unverified()->create();
-        $unverified->syncRoles(RoleName::Owner->value);
+        $unverified->syncRoles(RoleName::SuperAdmin->value);
         $suspended = User::factory()->create(['status' => UserStatus::Suspended]);
-        $suspended->syncRoles(RoleName::Owner->value);
+        $suspended->syncRoles(RoleName::SuperAdmin->value);
         $registration = app(SubmitRegistration::class)->execute(['name' => 'Applicant', 'email' => 'applicant@example.com', 'password' => 'secret']);
         $this->assertSame(1, $owner->notifications()->count());
         $this->assertSame(1, $reviewer->notifications()->count());
@@ -102,7 +102,7 @@ class NotificationTest extends TestCase
     public function test_duplicate_submission_produces_no_extra_notification(): void
     {
         $owner = User::factory()->create();
-        $owner->syncRoles(RoleName::Owner->value);
+        $owner->syncRoles(RoleName::SuperAdmin->value);
         $data = ['name' => 'Applicant', 'email' => 'applicant@example.com', 'password' => 'secret'];
         app(SubmitRegistration::class)->execute($data);
         try {
@@ -126,9 +126,9 @@ class NotificationTest extends TestCase
     public function test_user_editing_delivers_the_same_role_notification(): void
     {
         $owner = User::factory()->create();
-        $owner->syncRoles(RoleName::Owner->value);
+        $owner->syncRoles(RoleName::SuperAdmin->value);
         $user = User::factory()->create();
-        $role = Role::query()->where('name', RoleName::Dispatcher->value)->firstOrFail();
+        $role = Role::query()->where('name', RoleName::Admin->value)->firstOrFail();
         $this->actingAs($owner)->withSession(['auth.password_confirmed_at' => time()])
             ->patch(route('access.users.update', $user), ['name' => $user->name, 'email' => $user->email, 'role_id' => $role->id, 'blocked' => false])
             ->assertRedirect()->assertSessionHasNoErrors();
@@ -153,16 +153,16 @@ class NotificationTest extends TestCase
     public function test_role_changes_notify_once_and_rollback_with_the_business_transaction(): void
     {
         $owner = User::factory()->create();
-        $owner->syncRoles(RoleName::Owner->value);
+        $owner->syncRoles(RoleName::SuperAdmin->value);
         $user = User::factory()->create();
-        $role = Role::query()->where('name', RoleName::Dispatcher->value)->firstOrFail();
+        $role = Role::query()->where('name', RoleName::Admin->value)->firstOrFail();
         app(AssignRoleToUser::class)->execute($user, $role, $owner);
         app(AssignRoleToUser::class)->execute($user, $role, $owner);
         $this->assertSame(1, $user->notifications()->count());
         $this->assertStringContainsString($role->display_name, $user->notifications()->firstOrFail()->data['body']);
         DB::beginTransaction();
         app(SubmitRegistration::class)->execute(['name' => 'Rollback', 'email' => 'rollback@example.com', 'password' => 'secret']);
-        app(AssignRoleToUser::class)->execute($user, Role::query()->where('name', RoleName::Technician->value)->firstOrFail(), $owner);
+        app(AssignRoleToUser::class)->execute($user, Role::query()->where('name', RoleName::User->value)->firstOrFail(), $owner);
         DB::rollBack();
         $this->assertSame(1, $user->notifications()->count());
         $this->assertSame(0, $owner->notifications()->count());

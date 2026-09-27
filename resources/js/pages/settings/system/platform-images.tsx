@@ -9,6 +9,7 @@ import type { MediaAssetDto, PlatformImageSlot } from '@/types';
 type Props = {
     slots: PlatformImageSlot[];
     canAssign: boolean;
+    canUpdateSettings?: boolean;
 };
 
 function formatBytes(bytes: number): string {
@@ -17,7 +18,12 @@ function formatBytes(bytes: number): string {
         : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function PlatformImages({ slots, canAssign }: Props) {
+export default function PlatformImages({
+    slots,
+    canAssign,
+    canUpdateSettings = false,
+}: Props) {
+    const canMutate = canAssign && canUpdateSettings;
     const [activeSlot, setActiveSlot] = useState<PlatformImageSlot | null>(
         null,
     );
@@ -48,7 +54,9 @@ export default function PlatformImages({ slots, canAssign }: Props) {
                     </div>
                     <span className="inline-flex w-fit items-center gap-2 rounded-md bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
                         <ShieldCheck className="size-3.5" />
-                        {canAssign ? 'Owner controls enabled' : 'View only'}
+                        {canMutate
+                            ? 'Super Admin controls enabled'
+                            : 'View only'}
                     </span>
                 </header>
 
@@ -103,7 +111,7 @@ export default function PlatformImages({ slots, canAssign }: Props) {
                                 </div>
                             </div>
 
-                            {canAssign && (
+                            {canMutate && (
                                 <div className="col-span-2 flex flex-wrap gap-2 sm:col-span-1 sm:justify-end">
                                     {slot.isCustom && (
                                         <Button
@@ -135,18 +143,17 @@ export default function PlatformImages({ slots, canAssign }: Props) {
                     ))}
                 </div>
 
-                {!canAssign && (
+                {!canMutate && (
                     <footer className="border-t border-border bg-muted/35 px-5 py-4 text-sm text-muted-foreground sm:px-7">
-                        Only an Owner or Super Admin can change platform images.
-                        Your personal media library remains private to your
-                        account.
+                        Only a Super Admin can change platform images. Your
+                        personal media library remains private to your account.
                     </footer>
                 )}
             </div>
 
-            {canAssign && (
+            {canMutate && (
                 <ImageGalleryPicker
-                    open={activeSlot !== null}
+                    open={activeSlot !== null && canMutate}
                     onOpenChange={(open) => {
                         if (!open) {
                             setActiveSlot(null);
@@ -174,7 +181,7 @@ export default function PlatformImages({ slots, canAssign }: Props) {
             )}
 
             <ConfirmDialog
-                open={resetSlot !== null}
+                open={resetSlot !== null && canMutate}
                 onOpenChange={(open) => {
                     if (!open) {
                         setResetSlot(null);

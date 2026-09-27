@@ -15,7 +15,7 @@ class UpdateSystemSettingsRequest extends FormRequest
         return $user !== null
             && $user->isActive()
             && $user->email_verified_at !== null
-            && $user->can('settings.manage_system');
+            && $user->can('settings.update');
     }
 
     protected function prepareForValidation(): void

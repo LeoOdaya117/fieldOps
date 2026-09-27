@@ -16,6 +16,8 @@ class AuditController extends Controller
     {
         $this->authorize('viewAny', AccessAuditEvent::class);
 
+        $eventTypes = AccessAuditEvent::query()->distinct()->orderBy('event')->pluck('event')->values()->all();
+        $eventFilters = $this->filterValues($request->input('event'), $eventTypes);
         $actor = trim((string) $request->input('actor', ''));
         $subject = trim((string) $request->input('subject', ''));
         $fromValue = trim((string) $request->input('from', ''));
@@ -42,7 +44,7 @@ class AuditController extends Controller
 
         $events = AccessAuditEvent::query()
             ->with('actor:id,name,email')
-            ->when($request->string('event')->isNotEmpty(), fn ($query) => $query->where('event', $request->string('event')->toString()))
+            ->when($eventFilters !== [], static fn ($query) => $query->whereIn('event', $eventFilters))
             ->when($actor !== '', static fn ($query) => $query->whereHas('actor', static fn ($query) => $query->where('name', 'like', "%{$actor}%")->orWhere('email', 'like', "%{$actor}%")))
             ->when($subject !== '', static fn ($query) => $query->where(static fn ($query) => $query->where('subject_type', 'like', "%{$subject}%")->orWhere('subject_id', $subject)))
             ->when($from !== null, static fn ($query) => $query->where('occurred_at', '>=', $from->startOfDay()))
@@ -76,9 +78,9 @@ class AuditController extends Controller
 
         return Inertia::render('access/audit', [
             'events' => $events,
-            'eventTypes' => AccessAuditEvent::query()->distinct()->orderBy('event')->pluck('event')->values(),
+            'eventTypes' => $eventTypes,
             'filters' => [
-                'event' => $request->string('event')->toString(),
+                'event' => $this->filterValue($eventFilters),
                 'actor' => $actor,
                 'subject' => $subject,
                 'from' => $from?->format('Y-m-d') ?? '',
@@ -113,5 +115,30 @@ class AuditController extends Controller
                 'occurredAt' => $accessAuditEvent->occurred_at->toIso8601String(),
             ],
         ]);
+    }
+
+    /** @param array<int, string> $allowed
+     * @return array<int, string>
+     */
+    private function filterValues(mixed $value, array $allowed): array
+    {
+        $values = is_array($value) ? $value : [$value];
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $item): string => (string) $item, $values),
+            static fn (string $item): bool => in_array($item, $allowed, true),
+        )));
+    }
+
+    /** @param array<int, string> $values
+     * @return string|array<int, string>
+     */
+    private function filterValue(array $values): string|array
+    {
+        return match (count($values)) {
+            0 => '',
+            1 => $values[0],
+            default => $values,
+        };
     }
 }

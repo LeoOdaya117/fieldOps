@@ -50,6 +50,11 @@ export type MediaAssetDto = {
     contentUrl: string;
     thumbnailUrl: string;
     assigned: boolean;
+    recordStatus?: number;
+    recordStatusUrl?: string | null;
+    updateUrl?: string | null;
+    canUpdate?: boolean;
+    canDelete?: boolean;
 };
 
 export type MapCoordinate = {

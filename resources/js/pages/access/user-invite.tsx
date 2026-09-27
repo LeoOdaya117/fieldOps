@@ -5,6 +5,7 @@ import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FormSelect } from '@/components/ui/form-select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { UserRoleOption } from '@/features/access/components/user-form';
@@ -54,24 +55,21 @@ export default function UserInvitePage({ roles }: { roles: UserRoleOption[] }) {
                                         <Label htmlFor="invite-role">
                                             Initial role
                                         </Label>
-                                        <select
+                                        <FormSelect
                                             id="invite-role"
                                             name="role_id"
                                             required
-                                            className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                                        >
-                                            <option value="">
-                                                Choose a role
-                                            </option>
-                                            {roles.map((role) => (
-                                                <option
-                                                    key={role.id}
-                                                    value={role.id}
-                                                >
-                                                    {role.display_name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            options={[
+                                                {
+                                                    value: '',
+                                                    label: 'Choose a role',
+                                                },
+                                                ...roles.map((role) => ({
+                                                    value: String(role.id),
+                                                    label: role.display_name,
+                                                })),
+                                            ]}
+                                        />
                                         <InputError message={errors.role_id} />
                                     </div>
                                     <div className="flex justify-end">

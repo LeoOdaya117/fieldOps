@@ -243,7 +243,7 @@ describe('reusable data table components', () => {
             screen.getByRole('cell', { name: /Regional manager/ }),
         ).toBeInTheDocument();
         expect(
-            screen.queryByRole('button', { name: 'Manage columns' }),
+            screen.queryByRole('button', { name: 'Columns' }),
         ).not.toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'Row actions' }));
         expect(screen.getByRole('menuitem', { name: 'Edit' })).toHaveAttribute(
@@ -253,6 +253,28 @@ describe('reusable data table components', () => {
         expect(
             screen.getByRole('menuitem', { name: 'Delete' }),
         ).toBeInTheDocument();
+    });
+
+    it('renders table-level actions and empty states inside the table container', () => {
+        render(
+            <DataTable
+                caption="Empty records"
+                data={[]}
+                tableColumns={[{ key: 'name', header: 'Name' }]}
+                actions={<button type="button">Filter</button>}
+                emptyState={<p>No records found.</p>}
+            />,
+        );
+
+        const table = screen.getByRole('table', { name: 'Empty records' });
+        const container = table.closest('[data-slot="data-table-container"]');
+
+        expect(container).toBeInTheDocument();
+        expect(container).toContainElement(
+            screen.getByRole('button', { name: 'Filter' }),
+        );
+        expect(screen.getByText('No records found.')).toBeInTheDocument();
+        expect(screen.getByRole('cell')).toHaveAttribute('colspan', '1');
     });
 
     it('opens a confirmation dialog before a destructive row action', async () => {
@@ -342,7 +364,14 @@ describe('reusable data table components', () => {
         render(
             <DataTable
                 caption="Visible records"
-                data={[{ id: 7, name: 'Regional manager', email: 'manager@example.com', status: 'Active' }]}
+                data={[
+                    {
+                        id: 7,
+                        name: 'Regional manager',
+                        email: 'manager@example.com',
+                        status: 'Active',
+                    },
+                ]}
                 tableColumns={[
                     {
                         key: 'selection',
@@ -381,14 +410,26 @@ describe('reusable data table components', () => {
             />,
         );
 
-        expect(screen.getByRole('columnheader', { name: 'Select' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
-        expect(screen.queryByText('manager@example.com')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Select' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Name' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Status' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Actions' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Email' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('manager@example.com'),
+        ).not.toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
+        await user.click(screen.getByRole('button', { name: 'Columns' }));
 
         const checkAll = screen.getByRole('menuitemcheckbox', {
             name: 'Check all columns',
@@ -398,16 +439,20 @@ describe('reusable data table components', () => {
             screen.queryByRole('menuitemcheckbox', { name: 'Select' }),
         ).not.toBeInTheDocument();
 
-        await user.click(screen.getByRole('menuitemcheckbox', { name: 'Name' }));
+        await user.click(
+            screen.getByRole('menuitemcheckbox', { name: 'Name' }),
+        );
 
         expect(checkAll).toHaveAttribute('aria-checked', 'mixed');
 
         await user.keyboard('{Escape}');
 
-        expect(screen.queryByRole('columnheader', { name: 'Name' })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Name' }),
+        ).not.toBeInTheDocument();
         expect(screen.queryByText('Regional manager')).not.toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
+        await user.click(screen.getByRole('button', { name: 'Columns' }));
         const reopenedCheckAll = screen.getByRole('menuitemcheckbox', {
             name: 'Check all columns',
         });
@@ -415,11 +460,17 @@ describe('reusable data table components', () => {
 
         await user.keyboard('{Escape}');
 
-        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Email' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Name' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Email' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Status' }),
+        ).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
+        await user.click(screen.getByRole('button', { name: 'Columns' }));
         await user.click(
             screen.getByRole('menuitemcheckbox', {
                 name: 'Check all columns',
@@ -428,20 +479,38 @@ describe('reusable data table components', () => {
 
         await user.keyboard('{Escape}');
 
-        expect(screen.queryByRole('columnheader', { name: 'Name' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Status' })).not.toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Select' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Name' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Email' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Status' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Select' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Actions' }),
+        ).toBeInTheDocument();
 
-        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
-        await user.click(screen.getByRole('menuitem', { name: 'Reset to defaults' }));
+        await user.click(screen.getByRole('button', { name: 'Columns' }));
+        await user.click(
+            screen.getByRole('menuitem', { name: 'Reset to defaults' }),
+        );
 
         await user.keyboard('{Escape}');
 
-        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Name' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Status' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Email' }),
+        ).not.toBeInTheDocument();
     });
 
     it('persists and safely restores column visibility per table key', async () => {
@@ -449,7 +518,9 @@ describe('reusable data table components', () => {
         const table = (
             <DataTable
                 caption="Persistent records"
-                data={[{ id: 1, name: 'Example', email: 'example@example.com' }]}
+                data={[
+                    { id: 1, name: 'Example', email: 'example@example.com' },
+                ]}
                 tableColumns={[
                     { key: 'name', header: 'Name', accessor: 'name' },
                     { key: 'email', header: 'Email', accessor: 'email' },
@@ -464,18 +535,26 @@ describe('reusable data table components', () => {
 
         const firstRender = render(table);
 
-        await user.click(screen.getByRole('button', { name: 'Manage columns' }));
-        await user.click(screen.getByRole('menuitemcheckbox', { name: 'Name' }));
-
-        expect(localStorage.getItem('fieldops:data-table-columns:tests.persistence')).toBe(
-            JSON.stringify({ visibleKeys: ['email'] }),
+        await user.click(screen.getByRole('button', { name: 'Columns' }));
+        await user.click(
+            screen.getByRole('menuitemcheckbox', { name: 'Name' }),
         );
+
+        expect(
+            localStorage.getItem(
+                'fieldops:data-table-columns:tests.persistence',
+            ),
+        ).toBe(JSON.stringify({ visibleKeys: ['email'] }));
 
         firstRender.unmount();
         render(table);
 
-        expect(screen.queryByRole('columnheader', { name: 'Name' })).not.toBeInTheDocument();
-        expect(screen.getByRole('columnheader', { name: 'Email' })).toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Name' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Email' }),
+        ).toBeInTheDocument();
     });
 
     it('falls back to defaults for malformed or entirely stale visibility data', () => {
@@ -485,7 +564,9 @@ describe('reusable data table components', () => {
         const table = (
             <DataTable
                 caption="Safe records"
-                data={[{ id: 1, name: 'Example', email: 'example@example.com' }]}
+                data={[
+                    { id: 1, name: 'Example', email: 'example@example.com' },
+                ]}
                 tableColumns={[
                     { key: 'name', header: 'Name', accessor: 'name' },
                     { key: 'email', header: 'Email', accessor: 'email' },
@@ -500,15 +581,26 @@ describe('reusable data table components', () => {
 
         const firstRender = render(table);
 
-        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Name' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Email' }),
+        ).not.toBeInTheDocument();
 
         firstRender.unmount();
-        localStorage.setItem(storageKey, JSON.stringify({ visibleKeys: ['removed'] }));
+        localStorage.setItem(
+            storageKey,
+            JSON.stringify({ visibleKeys: ['removed'] }),
+        );
         render(table);
 
-        expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-        expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Name' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('columnheader', { name: 'Email' }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders pagination inside the data table container when configured', () => {
@@ -563,6 +655,16 @@ describe('reusable data table components', () => {
         expect(navigations[0]).toHaveClass('lg:flex-row');
         expect(navigations[0]).not.toHaveClass('border-b');
         expect(navigations[1]).not.toHaveClass('border-t');
+        expect(navigations[1]).toHaveClass('justify-between');
+        expect(navigations[1]).toHaveTextContent('Page 2 of 3');
+        expect(navigations[1]).not.toHaveTextContent('Showing');
+        expect(navigations[1]).not.toContainElement(
+            screen.getByLabelText('Rows per page'),
+        );
+        const nextPageLinks = screen.getAllByRole('link', {
+            name: 'Next page',
+        });
+        expect(navigations[1]).toContainElement(nextPageLinks[1]);
     });
 
     it('adds optional default audit columns to declarative tables', () => {
@@ -599,7 +701,117 @@ describe('reusable data table components', () => {
         expect(screen.getByText('Active')).toBeInTheDocument();
     });
 
-    it('renders reusable numbered pagination controls with arrow navigation', () => {
+    it('formats camelCase audit payloads through the shared default columns', () => {
+        render(
+            <DataTable
+                caption="Camel case audit records"
+                data={[
+                    {
+                        id: 1,
+                        name: 'Example',
+                        createdAt: '2030-01-02T00:00:00Z',
+                        updatedAt: '2030-01-03T00:00:00Z',
+                        createdBy: {
+                            id: 1,
+                            name: 'Owner',
+                            email: 'owner@example.com',
+                        },
+                        updatedBy: {
+                            id: 2,
+                            name: 'Admin',
+                            email: 'admin@example.com',
+                        },
+                        recordStatus: 1,
+                    },
+                ]}
+                tableColumns={[
+                    { key: 'name', header: 'Name', accessor: 'name' },
+                ]}
+                addDefaultColumns
+                getRowKey={(row) => row.id}
+            />,
+        );
+
+        expect(
+            screen.getByRole('columnheader', { name: 'Updated' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Owner')).toBeInTheDocument();
+        expect(screen.getByText('Admin')).toBeInTheDocument();
+        expect(screen.getByText('Active')).toBeInTheDocument();
+    });
+
+    it('activates shared audit sorting and toggles its direction', () => {
+        render(
+            <DataTable
+                caption="Sortable audit records"
+                data={[{ id: 1, name: 'Example' }]}
+                tableColumns={[
+                    { key: 'name', header: 'Name', accessor: 'name' },
+                ]}
+                addDefaultColumns
+                defaultColumnSort={{
+                    action: '/access/users',
+                    sort: 'updated_at',
+                    direction: 'asc',
+                    hidden: {
+                        status: 'active',
+                        from: '2030-01-01',
+                        to: '2030-01-31',
+                    },
+                }}
+                getRowKey={(row) => row.id}
+            />,
+        );
+
+        expect(
+            screen.getByRole('link', { name: 'Sort Updated descending' }),
+        ).toHaveAttribute(
+            'href',
+            '/access/users?status=active&from=2030-01-01&to=2030-01-31&sort=updated_at&direction=desc',
+        );
+        expect(
+            screen.getByRole('link', { name: 'Sort Created by ascending' }),
+        ).toHaveAttribute(
+            'href',
+            '/access/users?status=active&from=2030-01-01&to=2030-01-31&sort=created_by&direction=asc',
+        );
+    });
+
+    it('ignores stale visibility preferences after an affected table key is versioned', () => {
+        localStorage.setItem(
+            'fieldops:data-table-columns:access.roles',
+            JSON.stringify({ visibleKeys: ['role'] }),
+        );
+
+        render(
+            <DataTable
+                caption="Versioned audit records"
+                data={[{ id: 1, name: 'Example' }]}
+                tableColumns={[
+                    { key: 'role', header: 'Role', accessor: 'name' },
+                ]}
+                addDefaultColumns
+                columnVisibility={{
+                    storageKey: 'access.roles.v2',
+                    defaultVisibleKeys: ['role', 'created_at', 'updated_at'],
+                }}
+                getRowKey={(row) => row.id}
+            />,
+        );
+
+        expect(
+            screen.getByRole('columnheader', { name: 'Role' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Created' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('columnheader', { name: 'Updated' }),
+        ).toBeInTheDocument();
+    });
+
+    it('renders reusable numbered pagination controls with arrow navigation', async () => {
+        const user = userEvent.setup();
         inertiaRouter.get.mockClear();
 
         render(
@@ -610,6 +822,7 @@ describe('reusable data table components', () => {
                 from={11}
                 to={20}
                 pageSize={50}
+                position="top"
                 itemLabel="roles"
                 previousUrl="/access/roles?page=1"
                 nextUrl="/access/roles?page=3"
@@ -660,15 +873,13 @@ describe('reusable data table components', () => {
         );
         expect(screen.queryByText('Previous')).not.toBeInTheDocument();
         expect(screen.queryByText('Next')).not.toBeInTheDocument();
-        expect(
-            screen.getByRole('combobox', { name: 'Rows per page' }),
-        ).toHaveValue('50');
-        expect(screen.getByRole('option', { name: '100' })).toBeInTheDocument();
+        const pageSizeSelect = screen.getByRole('combobox', {
+            name: 'Rows per page',
+        });
 
-        fireEvent.change(
-            screen.getByRole('combobox', { name: 'Rows per page' }),
-            { target: { value: '100' } },
-        );
+        expect(pageSizeSelect).toHaveTextContent('50');
+        await user.click(pageSizeSelect);
+        await user.click(screen.getByRole('option', { name: '100' }));
 
         expect(inertiaRouter.get).toHaveBeenCalledWith(
             expect.stringContaining('per_page=100'),
@@ -685,6 +896,7 @@ describe('reusable data table components', () => {
                 total={200}
                 from={1}
                 to={10}
+                position="top"
                 nextUrl="/records?page=2"
                 links={[
                     {
@@ -774,6 +986,24 @@ describe('reusable data table components', () => {
             '/access/roles?search=admin&type=system&sort=display_name&direction=asc',
         );
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('preserves multiple filter values in sortable links', () => {
+        render(
+            <SortableColumn
+                action="/access/users"
+                label="User"
+                sortKey="name"
+                hidden={{ status: ['active', 'suspended'] }}
+            />,
+        );
+
+        expect(
+            screen.getByRole('link', { name: 'Sort User ascending' }),
+        ).toHaveAttribute(
+            'href',
+            '/access/users?status%5B%5D=active&status%5B%5D=suspended&sort=name&direction=asc',
+        );
     });
 
     it('toggles a sortable header from ascending to descending', () => {

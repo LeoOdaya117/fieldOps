@@ -15,11 +15,12 @@ class PlatformLayoutController extends Controller
 {
     public function edit(Request $request): Response
     {
-        abort_unless($request->user()->can('settings.manage_system'), 403);
+        abort_unless($request->user()->can('settings.view'), 403);
 
         return Inertia::render('settings/system/layout', [
             'currentTheme' => SystemSettings::theme(),
             'themes' => SystemSettings::themeDefinitions(),
+            'canUpdateSettings' => $request->user()->can('settings.update'),
         ]);
     }
 

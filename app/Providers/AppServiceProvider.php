@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Listeners\SnapshotUserSessionVersion;
 use App\Models\AccessAuditEvent;
 use App\Models\BlockedIpAddress;
 use App\Models\Country;
@@ -19,10 +20,12 @@ use App\Policies\TimezonePolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VisitLogPolicy;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -45,6 +48,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
+        Event::listen(Login::class, SnapshotUserSessionVersion::class);
+
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
         Gate::policy(AccessAuditEvent::class, AccessAuditEventPolicy::class);
@@ -59,7 +64,7 @@ class AppServiceProvider extends ServiceProvider
         )->by((string) ($request->user()?->getKey() ?? $request->ip())));
 
         Gate::before(static function ($user): ?bool {
-            return $user->isActive() && $user->isOwner() ? true : null;
+            return $user->isActive() && $user->isSuperAdmin() ? true : null;
         });
     }
 

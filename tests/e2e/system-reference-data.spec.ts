@@ -1,27 +1,13 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-
-const e2eAdmin = {
-    email: process.env.E2E_ADMIN_EMAIL ?? 'admin@example.com',
-    password: process.env.E2E_ADMIN_PASSWORD ?? 'password',
-};
-
-async function loginAsAdmin(page: Page) {
-    await page.goto('/login');
-    await page.getByLabel('Email address').fill(e2eAdmin.email);
-    await page
-        .getByRole('textbox', { name: 'Password' })
-        .fill(e2eAdmin.password);
-    await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 60_000 });
-}
+import { e2eAccounts, login } from './support/auth';
 
 async function confirmAdminPassword(page: Page) {
     await page.goto('/user/confirm-password');
     await page
         .getByRole('textbox', { name: 'Password' })
-        .fill(e2eAdmin.password);
+        .fill(e2eAccounts.admin.password);
     await page.getByRole('button', { name: 'Confirm password' }).click();
     await expect(page).toHaveURL(/\/dashboard$/, { timeout: 60_000 });
 }
@@ -30,7 +16,7 @@ test('an administrator can manage reference data across themes, responsive layou
     page,
 }, testInfo) => {
     await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
-    await loginAsAdmin(page);
+    await login(page, e2eAccounts.admin);
     await confirmAdminPassword(page);
     await page.evaluate(() => window.localStorage.clear());
     await page.goto('/system/countries');
@@ -38,11 +24,12 @@ test('an administrator can manage reference data across themes, responsive layou
     await expect(
         page.getByRole('heading', { name: 'Countries' }),
     ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Columns' })).toBeVisible();
     await expect(
-        page.getByRole('button', { name: 'Manage columns' }),
-    ).toBeVisible();
-    await expect(
-        page.getByRole('columnheader', { name: 'Created', exact: true }),
+        page.getByRole('columnheader', {
+            name: 'Sort Created ascending',
+            exact: true,
+        }),
     ).toBeVisible();
     await expect(
         page.getByRole('columnheader', { name: 'Record status' }),
@@ -121,19 +108,64 @@ test('an administrator can manage reference data across themes, responsive layou
     await expect(row).toHaveCount(1);
     await expect(
         row.getByRole('switch', {
-            name: `Active record for ${updatedName}`,
+            name: `Deactivate ${updatedName}`,
         }),
     ).toHaveAttribute('aria-checked', 'true');
+
+    await row
+        .getByRole('button', { name: `Actions for ${updatedName}` })
+        .click();
+    await page.getByRole('menuitem', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/system\/countries\/\d+$/);
+    await expect(page.locator('[data-slot="details-view"]')).toHaveCount(1);
+    await expect(
+        page.getByRole('heading', { name: 'Country definition' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('heading', { name: 'Audit history' }),
+    ).toBeVisible();
+    expect(
+        await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+    ).toBe(true);
+    await page.getByRole('link', { name: 'Back to countries' }).click();
+    await expect(page).toHaveURL(/\/system\/countries(?:\?|$)/);
+    row = page
+        .getByRole('table', { name: 'Country directory' })
+        .getByRole('row')
+        .filter({ hasText: updatedName });
 
     await page.goto('/system/timezones');
     await expect(
         page.getByRole('heading', { name: 'Timezones' }),
     ).toBeVisible();
     await expect(
-        page.getByRole('columnheader', { name: 'Created', exact: true }),
+        page.getByRole('columnheader', {
+            name: 'Sort Created ascending',
+            exact: true,
+        }),
     ).toBeVisible();
     await page.goto('/system/timezones?search=Asia%2FManila');
     await expect(page.getByText('Asia/Manila').first()).toBeVisible();
+    const timezoneRow = page
+        .getByRole('table', { name: 'Timezone directory' })
+        .getByRole('row')
+        .filter({ hasText: 'Asia/Manila' });
+    await timezoneRow
+        .getByRole('button', { name: 'Actions for Asia/Manila' })
+        .click();
+    await page.getByRole('menuitem', { name: 'View' }).click();
+    await expect(page).toHaveURL(/\/system\/timezones\/\d+$/);
+    await expect(page.locator('[data-slot="details-view"]')).toHaveCount(1);
+    await expect(
+        page.getByRole('heading', { name: 'Timezone definition' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('heading', { name: 'Record status' }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'Back to timezones' }).click();
+    await expect(page).toHaveURL(/\/system\/timezones(?:\?|$)/);
 
     await page.goto('/settings/system');
     await expect(page.getByLabel('Time zone')).toContainText(

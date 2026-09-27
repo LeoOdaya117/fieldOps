@@ -9,11 +9,25 @@ class MediaAssetPolicy
 {
     public function view(User $user, MediaAsset $asset): bool
     {
-        return $user->isActive() && (int) $asset->uploader_id === (int) $user->getKey();
+        return $user->can('media_assets.view')
+            && $user->isActive()
+            && (int) $asset->uploader_id === (int) $user->getKey()
+            && (! $asset->trashed() || $user->can('media_assets.view_deleted'));
+    }
+
+    public function update(User $user, MediaAsset $asset): bool
+    {
+        return $user->can('media_assets.update')
+            && $user->isActive()
+            && (int) $asset->uploader_id === (int) $user->getKey()
+            && ! $asset->trashed();
     }
 
     public function delete(User $user, MediaAsset $asset): bool
     {
-        return $this->view($user, $asset);
+        return $user->can('media_assets.delete')
+            && $user->isActive()
+            && (int) $asset->uploader_id === (int) $user->getKey()
+            && ! $asset->trashed();
     }
 }

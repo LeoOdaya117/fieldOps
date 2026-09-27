@@ -1,9 +1,6 @@
 import { CalendarClock, Globe2, MapPin, UserRound } from 'lucide-react';
-import {
-    DetailField,
-    DetailsPage,
-    DetailsSection,
-} from '@/components/details-page';
+import { DetailsPage } from '@/components/details-page';
+import { DetailsView } from '@/components/details-view';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { visitLogEventBadgeClassName } from '@/features/access/visit-log-table-model';
@@ -57,135 +54,185 @@ export default function VisitLogShowPage({ log }: { log: VisitLog }) {
             backHref={visitLogsIndex.url()}
             backLabel="Back to visit logs"
         >
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)]">
-                <DetailsSection
-                    title="Activity"
-                    description="The event and account context associated with the request."
-                >
-                    <div className="space-y-6 p-4 sm:p-6">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Badge
-                                variant="outline"
-                                className={visitLogEventBadgeClassName(
-                                    log.eventType,
-                                )}
-                            >
-                                {label(log.eventType)}
-                            </Badge>
-                            <Badge variant="outline">
-                                {label(log.outcome)}
-                            </Badge>
-                        </div>
-                        <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-                            <DetailField label="IP address">
-                                <span className="flex items-center gap-2">
-                                    <Globe2 className="size-3.5 text-muted-foreground" />
-                                    <code className="font-mono text-xs">
-                                        {log.ipAddress}
-                                    </code>
-                                </span>
-                            </DetailField>
-                            <DetailField label="Occurred">
-                                <span className="flex items-center gap-2 text-muted-foreground">
-                                    <CalendarClock className="size-3.5" />
-                                    {new Date(log.occurredAt).toLocaleString()}
-                                </span>
-                            </DetailField>
-                            <DetailField label="Browser location">
-                                <span className="flex items-start gap-2">
-                                    <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-                                    <span>
-                                        {locationLabel(log) || 'Not available'}
-                                        {log.locationSource === 'browser' ? (
-                                            <span className="mt-1 block text-xs text-muted-foreground">
-                                                Provided by the browser with
-                                                user permission.
-                                            </span>
-                                        ) : null}
-                                    </span>
-                                </span>
-                            </DetailField>
-                            <DetailField label="User" className="sm:col-span-2">
-                                {log.user ? (
-                                    <div className="flex items-center gap-3">
-                                        <Avatar className="size-8 rounded-lg">
-                                            <AvatarFallback className="rounded-lg bg-link/10 text-[11px] font-semibold text-link">
-                                                {initials(log.user.name)}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-medium">
-                                                {log.user.name}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {log.user.email}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <span className="flex items-center gap-2 text-muted-foreground">
-                                        <UserRound className="size-3.5" />
-                                        Anonymous
-                                    </span>
-                                )}
-                            </DetailField>
-                        </dl>
-                    </div>
-                </DetailsSection>
-
-                <DetailsSection
-                    title="Request"
-                    description="Safe request metadata without bodies, tokens, or query strings."
-                >
-                    <dl className="grid gap-5 p-4 sm:p-6">
-                        <DetailField label="Method">
-                            <Badge
-                                variant="outline"
-                                className="font-mono text-[10px]"
-                            >
-                                {log.method}
-                            </Badge>
-                        </DetailField>
-                        <DetailField label="Path">
-                            <code className="font-mono text-xs break-all">
-                                {log.path}
-                            </code>
-                        </DetailField>
-                        <DetailField label="Route name">
-                            <code className="font-mono text-xs break-all text-muted-foreground">
-                                {log.routeName ?? 'Not recorded'}
-                            </code>
-                        </DetailField>
-                        <DetailField label="Coordinates">
-                            {log.locationLatitude !== null &&
-                            log.locationLongitude !== null ? (
-                                <code className="font-mono text-xs">
-                                    {log.locationLatitude},{' '}
-                                    {log.locationLongitude}
-                                </code>
-                            ) : (
-                                'Not recorded'
+            <DetailsView
+                record={log}
+                summary={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                            variant="outline"
+                            className={visitLogEventBadgeClassName(
+                                log.eventType,
                             )}
-                        </DetailField>
-                        <DetailField label="Accuracy">
-                            {log.locationAccuracyMeters !== null
-                                ? `±${Math.round(log.locationAccuracyMeters)} m`
-                                : 'Not recorded'}
-                        </DetailField>
-                        <DetailField label="Timezone">
-                            {log.locationTimezone ?? 'Not recorded'}
-                        </DetailField>
-                        <DetailField label="Response status">
-                            {log.statusCode ?? 'Not recorded'}
-                        </DetailField>
-                        <DetailField label="User agent">
-                            <span className="break-words text-muted-foreground">
-                                {log.userAgent ?? 'Not recorded'}
-                            </span>
-                        </DetailField>
-                    </dl>
-                </DetailsSection>
-            </div>
+                        >
+                            {label(log.eventType)}
+                        </Badge>
+                        <Badge variant="outline">{label(log.outcome)}</Badge>
+                    </div>
+                }
+                sections={[
+                    {
+                        key: 'activity',
+                        title: 'Activity',
+                        description:
+                            'The event and account context associated with the request.',
+                        columns: [
+                            {
+                                key: 'ipAddress',
+                                label: 'IP address',
+                                cell: (record) => (
+                                    <span className="flex items-center gap-2">
+                                        <Globe2 className="size-3.5 text-muted-foreground" />
+                                        <code className="font-mono text-xs">
+                                            {record.ipAddress}
+                                        </code>
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'occurredAt',
+                                label: 'Occurred',
+                                cell: (record) => (
+                                    <span className="flex items-center gap-2 text-muted-foreground">
+                                        <CalendarClock className="size-3.5" />
+                                        {new Date(
+                                            record.occurredAt,
+                                        ).toLocaleString()}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'location',
+                                label: 'Browser location',
+                                cell: (record) => (
+                                    <span className="flex items-start gap-2">
+                                        <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                                        <span>
+                                            {locationLabel(record) ||
+                                                'Not available'}
+                                            {record.locationSource ===
+                                            'browser' ? (
+                                                <span className="mt-1 block text-xs text-muted-foreground">
+                                                    Provided by the browser with
+                                                    user permission.
+                                                </span>
+                                            ) : null}
+                                        </span>
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'user',
+                                label: 'User',
+                                span: 'full',
+                                cell: (record) =>
+                                    record.user ? (
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="size-8 rounded-lg">
+                                                <AvatarFallback className="rounded-lg bg-link/10 text-[11px] font-semibold text-link">
+                                                    {initials(record.user.name)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium">
+                                                    {record.user.name}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {record.user.email}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <span className="flex items-center gap-2 text-muted-foreground">
+                                            <UserRound className="size-3.5" />
+                                            Anonymous
+                                        </span>
+                                    ),
+                            },
+                        ],
+                    },
+                    {
+                        key: 'request',
+                        title: 'Request',
+                        description:
+                            'Safe request metadata without bodies, tokens, or query strings.',
+                        columns: [
+                            {
+                                key: 'method',
+                                label: 'Method',
+                                cell: (record) => (
+                                    <Badge
+                                        variant="outline"
+                                        className="font-mono text-[10px]"
+                                    >
+                                        {record.method}
+                                    </Badge>
+                                ),
+                            },
+                            {
+                                key: 'path',
+                                label: 'Path',
+                                cell: (record) => (
+                                    <code className="font-mono text-xs break-all">
+                                        {record.path}
+                                    </code>
+                                ),
+                            },
+                            {
+                                key: 'routeName',
+                                label: 'Route name',
+                                cell: (record) => (
+                                    <code className="font-mono text-xs break-all text-muted-foreground">
+                                        {record.routeName ?? 'Not recorded'}
+                                    </code>
+                                ),
+                            },
+                            {
+                                key: 'coordinates',
+                                label: 'Coordinates',
+                                cell: (record) =>
+                                    record.locationLatitude !== null &&
+                                    record.locationLongitude !== null ? (
+                                        <code className="font-mono text-xs">
+                                            {record.locationLatitude},{' '}
+                                            {record.locationLongitude}
+                                        </code>
+                                    ) : (
+                                        'Not recorded'
+                                    ),
+                            },
+                            {
+                                key: 'accuracy',
+                                label: 'Accuracy',
+                                cell: (record) =>
+                                    record.locationAccuracyMeters !== null
+                                        ? `±${Math.round(record.locationAccuracyMeters)} m`
+                                        : 'Not recorded',
+                            },
+                            {
+                                key: 'timezone',
+                                label: 'Timezone',
+                                cell: (record) =>
+                                    record.locationTimezone ?? 'Not recorded',
+                            },
+                            {
+                                key: 'statusCode',
+                                label: 'Response status',
+                                cell: (record) =>
+                                    record.statusCode ?? 'Not recorded',
+                            },
+                            {
+                                key: 'userAgent',
+                                label: 'User agent',
+                                span: 'full',
+                                valueClassName:
+                                    'break-words text-muted-foreground',
+                                cell: (record) =>
+                                    record.userAgent ?? 'Not recorded',
+                            },
+                        ],
+                    },
+                ]}
+            />
         </DetailsPage>
     );
 }

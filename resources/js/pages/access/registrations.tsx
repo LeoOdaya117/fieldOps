@@ -7,10 +7,17 @@ import type { Registration } from '@/features/access/user-table-model';
 import { dashboard } from '@/routes';
 import { index as usersIndex } from '@/routes/access/users';
 
+type RegistrationTableFilters = {
+    sort?: string;
+    direction?: 'asc' | 'desc';
+};
+
 export default function RegistrationsPage({
     registrations,
+    filters = {},
 }: {
     registrations: Registration[];
+    filters?: RegistrationTableFilters;
 }) {
     return (
         <IndexPage
@@ -40,12 +47,25 @@ export default function RegistrationsPage({
                         scrollContainerClassName="px-4"
                         data={registrations}
                         tableColumns={registrationTableColumns}
+                        addDefaultColumns
+                        excludeDefaultColumns={[
+                            'status',
+                            'created_by',
+                            'updated_by',
+                            'record_status',
+                        ]}
+                        defaultColumnSort={{
+                            action: '/access/users/registrations',
+                            sort: filters.sort,
+                            direction: filters.direction,
+                        }}
                         columnVisibility={{
-                            storageKey: 'access.registrations',
+                            storageKey: 'access.registrations.v2',
                             defaultVisibleKeys: [
                                 'applicant',
                                 'status',
-                                'submitted',
+                                'created_at',
+                                'updated_at',
                             ],
                         }}
                         getRowKey={(registration) => registration.id}

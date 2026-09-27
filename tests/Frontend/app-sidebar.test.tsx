@@ -88,8 +88,8 @@ describe('app sidebar navigation', () => {
                 auth: {
                     user: { name: 'Admin' },
                     authorization: {
-                        permissions: ['settings.manage_system'],
-                        isOwner: false,
+                        permissions: ['settings.view'],
+                        isSuperAdmin: false,
                     },
                 },
             },
@@ -113,7 +113,7 @@ describe('app sidebar navigation', () => {
                     user: { name: 'User' },
                     authorization: {
                         permissions: [],
-                        isOwner: false,
+                        isSuperAdmin: false,
                     },
                 },
             },
@@ -135,7 +135,7 @@ describe('app sidebar navigation', () => {
                     user: { name: 'Security admin' },
                     authorization: {
                         permissions: ['ip_blocks.view', 'visit_logs.view'],
-                        isOwner: false,
+                        isSuperAdmin: false,
                     },
                 },
             },
@@ -160,7 +160,7 @@ describe('app sidebar navigation', () => {
                     user: { name: 'Administrator' },
                     authorization: {
                         permissions: ['countries.view', 'timezones.view'],
-                        isOwner: false,
+                        isSuperAdmin: false,
                     },
                 },
             },

@@ -18,7 +18,7 @@ class NotificationBrowserSeeder extends Seeder
         $this->call([RbacSeeder::class, DefaultAccountsSeeder::class]);
         $owner = User::query()->where('email', 'superadmin@example.com')->firstOrFail();
         for ($i = 1; $i <= 25; $i++) {
-            $owner->notify(new AccessNotification('user.role_changed', 'Your role has changed', 'Test update '.$i.': Your role changed from Technician to Dispatcher.'));
+            $owner->notify(new AccessNotification('user.role_changed', 'Your role has changed', 'Test update '.$i.': Your role changed from User to Admin.'));
         }
     }
 }

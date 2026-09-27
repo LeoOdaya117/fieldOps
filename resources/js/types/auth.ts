@@ -25,7 +25,7 @@ export type Auth = {
             isSystem: boolean;
         } | null;
         permissions: string[];
-        isOwner: boolean;
+        isSuperAdmin: boolean;
     };
 };
 

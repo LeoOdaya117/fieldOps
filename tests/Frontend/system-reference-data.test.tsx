@@ -1,6 +1,6 @@
 import { forwardRef } from 'react';
 import type { FormEventHandler, FormHTMLAttributes, ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -78,7 +78,9 @@ import type {
 } from '@/features/system/types';
 import { DataTable } from '@/components/ui/data-table';
 import CountriesPage from '@/pages/system/countries';
+import CountryShowPage from '@/pages/system/country-show';
 import TimezonesPage from '@/pages/system/timezones';
+import TimezoneShowPage from '@/pages/system/timezone-show';
 
 const country: Country = {
     id: 1,
@@ -130,6 +132,151 @@ describe('system reference data UI', () => {
         formState.errors = {};
     });
 
+    it('restores the original reference-data filters without audit search fields', async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(
+            <CountriesPage
+                countries={countryPageData}
+                canUpdate
+                canDelete
+                canCreate
+                filters={{ search: '' }}
+            />,
+        );
+
+        const countryTable = screen.getByRole('table', {
+            name: 'Country directory',
+        });
+        const countryTableContainer = countryTable.closest(
+            '[data-slot="data-table-container"]',
+        ) as HTMLElement;
+
+        expect(
+            within(countryTableContainer).getByRole('button', {
+                name: /Filter/,
+            }),
+        ).toBeInTheDocument();
+        await user.click(
+            within(countryTableContainer).getByRole('button', {
+                name: /Filter/,
+            }),
+        );
+        expect(screen.getByLabelText('Date range')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Created by')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Updated by')).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('group', { name: 'Record status' }),
+        ).not.toBeInTheDocument();
+        await user.keyboard('{Escape}');
+        expect(
+            within(countryTableContainer).getByRole('link', {
+                name: 'Create country',
+            }),
+        ).toHaveAttribute('href', '/system/countries/create');
+
+        unmount();
+
+        const { unmount: unmountDeletedFilter } = render(
+            <CountriesPage
+                countries={countryPageData}
+                canViewDeleted
+                filters={{ search: '' }}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: /Filter/ }));
+        const recordStatusGroup = screen.getByRole('group', {
+            name: 'Record status',
+        });
+        expect(
+            within(recordStatusGroup).getByRole('checkbox', {
+                name: 'Active',
+            }),
+        ).toBeChecked();
+        expect(
+            within(recordStatusGroup).getByRole('checkbox', {
+                name: 'Inactive',
+            }),
+        ).not.toBeChecked();
+
+        unmountDeletedFilter();
+
+        render(
+            <TimezonesPage
+                timezones={timezonePageData}
+                canUpdate={false}
+                canDelete={false}
+                canCreate={false}
+                filters={{ search: '' }}
+            />,
+        );
+
+        const timezoneTable = screen.getByRole('table', {
+            name: 'Timezone directory',
+        });
+        const timezoneTableContainer = timezoneTable.closest(
+            '[data-slot="data-table-container"]',
+        ) as HTMLElement;
+
+        expect(
+            within(timezoneTableContainer).getByRole('button', {
+                name: /Filter/,
+            }),
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('link', { name: 'Create timezone' }),
+        ).not.toBeInTheDocument();
+    });
+
+    it('renders country and timezone records through the shared detail view', () => {
+        const { unmount } = render(
+            <CountryShowPage country={country} canUpdate canDelete />,
+        );
+
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            document.querySelectorAll('[data-slot="details-section"]'),
+        ).toHaveLength(3);
+        expect(
+            within(
+                document.querySelector(
+                    '[data-slot="details-view"]',
+                ) as HTMLElement,
+            ).getByRole('heading', { name: 'Philippines' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Active')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+            'href',
+            '/system/countries/1/edit',
+        );
+
+        unmount();
+
+        render(
+            <TimezoneShowPage
+                timezone={timezone}
+                canUpdate
+                canDelete
+                isCurrent
+            />,
+        );
+
+        expect(
+            document.querySelectorAll('[data-slot="details-view"]'),
+        ).toHaveLength(1);
+        expect(
+            within(
+                document.querySelector(
+                    '[data-slot="details-view"]',
+                ) as HTMLElement,
+            ).getByRole('heading', { name: 'Asia/Manila' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Current system timezone')).toBeInTheDocument();
+        expect(screen.getByText('Active')).toBeInTheDocument();
+    });
+
     it('renders country columns, record status, row actions, and pagination', async () => {
         const user = userEvent.setup();
 
@@ -144,7 +291,8 @@ describe('system reference data UI', () => {
                             sort: '',
                             direction: 'asc',
                         },
-                        canManage: true,
+                        canUpdate: true,
+                        canDelete: true,
                         firstRowNumber: 1,
                     })
                 }
@@ -203,16 +351,14 @@ describe('system reference data UI', () => {
             screen.getByRole('columnheader', { name: 'Updated by' }),
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('columnheader', { name: 'Record status' }),
-        ).toBeInTheDocument();
-        expect(screen.getAllByText('Admin')).toHaveLength(2);
-        expect(
-            screen.getByRole('switch', {
-                name: 'Active record for Philippines',
+            screen.getByRole('columnheader', {
+                name: /^Sort Record status ascending$/,
             }),
         ).toBeInTheDocument();
+        expect(screen.getAllByText('Admin')).toHaveLength(2);
+        expect(screen.getByText('Active')).toBeInTheDocument();
         expect(screen.getAllByText(/Showing 1–1 of 1 countries/)).toHaveLength(
-            2,
+            1,
         );
 
         expect(
@@ -238,7 +384,7 @@ describe('system reference data UI', () => {
         ).toBeInTheDocument();
     });
 
-    it('renders read-only record status and actions for viewers without manage permission', async () => {
+    it('renders a record status badge and actions for viewers without status-update permission', async () => {
         const user = userEvent.setup();
 
         render(
@@ -248,7 +394,8 @@ describe('system reference data UI', () => {
                 tableColumns={() =>
                     timezoneTableColumns({
                         filters: { search: '' },
-                        canManage: false,
+                        canUpdate: false,
+                        canDelete: false,
                         firstRowNumber: 1,
                     })
                 }
@@ -260,11 +407,7 @@ describe('system reference data UI', () => {
         expect(
             screen.queryByRole('columnheader', { name: 'Status' }),
         ).not.toBeInTheDocument();
-        expect(
-            screen.getByRole('switch', {
-                name: 'Active record for Asia/Manila',
-            }),
-        ).toBeInTheDocument();
+        expect(screen.getByText('Active')).toBeInTheDocument();
         await user.click(
             screen.getByRole('button', { name: 'Actions for Asia/Manila' }),
         );

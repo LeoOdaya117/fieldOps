@@ -6,6 +6,7 @@ import { ImagePlus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import Heading from '@/components/heading';
+import { ImageGalleryPicker } from '@/components/image-gallery-picker';
 import InputError from '@/components/input-error';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/profile';
-import type { Auth } from '@/types';
+import type { Auth, MediaAssetDto } from '@/types';
 /* @chisel-email-verification */
 import { send } from '@/routes/verification';
 /* @end-chisel-email-verification */
@@ -48,6 +49,11 @@ export default function Profile(
         auth.user.avatar ?? null,
     );
     const [removePhoto, setRemovePhoto] = useState(false);
+    const [selectedAsset, setSelectedAsset] = useState<MediaAssetDto | null>(
+        null,
+    );
+    const [draftAsset, setDraftAsset] = useState<MediaAssetDto | null>(null);
+    const [galleryOpen, setGalleryOpen] = useState(false);
 
     useEffect(() => {
         return () => {
@@ -63,7 +69,7 @@ export default function Profile(
 
             <h1 className="sr-only">Profile settings</h1>
 
-            <div className="space-y-6">
+            <div className="max-w-5xl space-y-6">
                 <Heading
                     variant="small"
                     title="Profile"
@@ -79,7 +85,7 @@ export default function Profile(
                 >
                     {({ processing, errors }) => (
                         <>
-                            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
+                            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
                                 <Card>
                                     <CardHeader>
                                         <h2 className="text-base font-semibold">
@@ -194,20 +200,13 @@ export default function Profile(
 
                                 <Card>
                                     <CardHeader>
-                                        <div className="flex items-start gap-3">
-                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-link/10 text-link">
-                                                <ImagePlus className="size-4" />
-                                            </span>
-                                            <div className="min-w-0">
-                                                <h2 className="text-base font-semibold">
-                                                    Profile photo
-                                                </h2>
-                                                <p className="mt-1 text-sm text-muted-foreground">
-                                                    Use a clear photo or keep
-                                                    your initials.
-                                                </p>
-                                            </div>
-                                        </div>
+                                        <h2 className="text-base font-semibold">
+                                            Profile photo
+                                        </h2>
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            Use a clear photo or keep your
+                                            initials.
+                                        </p>
                                     </CardHeader>
                                     <CardContent className="space-y-5">
                                         <div className="flex items-center gap-4">
@@ -236,32 +235,37 @@ export default function Profile(
                                         </div>
 
                                         <div className="grid gap-2">
-                                            <Label htmlFor="photo">
-                                                Upload photo
-                                            </Label>
-                                            <Input
-                                                id="photo"
-                                                name="photo"
-                                                type="file"
-                                                accept="image/jpeg,image/png,image/webp"
-                                                onChange={(event) => {
-                                                    const file =
-                                                        event.target.files?.[0];
-
-                                                    if (!file) {
-                                                        return;
-                                                    }
-
-                                                    setRemovePhoto(false);
-                                                    setPhotoPreview(
-                                                        URL.createObjectURL(
-                                                            file,
-                                                        ),
-                                                    );
-                                                }}
+                                            <p className="text-sm font-medium">
+                                                Photo source
+                                            </p>
+                                            <input
+                                                type="hidden"
+                                                name="avatar_media_asset_id"
+                                                value={selectedAsset?.id ?? ''}
                                             />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                className="justify-start"
+                                                onClick={() => {
+                                                    setDraftAsset(
+                                                        selectedAsset,
+                                                    );
+                                                    setGalleryOpen(true);
+                                                }}
+                                            >
+                                                <ImagePlus className="size-4" />
+                                                Choose from gallery
+                                            </Button>
+                                            <p className="text-xs leading-5 text-muted-foreground">
+                                                Use an existing upload, add a
+                                                new image, or capture a photo.
+                                            </p>
                                             <InputError
-                                                message={errors.photo}
+                                                message={
+                                                    errors.avatar_media_asset_id ??
+                                                    errors.photo
+                                                }
                                             />
                                         </div>
 
@@ -275,6 +279,10 @@ export default function Profile(
                                                             setRemovePhoto(
                                                                 false,
                                                             );
+                                                            setSelectedAsset(
+                                                                null,
+                                                            );
+                                                            setDraftAsset(null);
                                                             setPhotoPreview(
                                                                 auth.user
                                                                     .avatar ??
@@ -292,6 +300,10 @@ export default function Profile(
                                                             setRemovePhoto(
                                                                 true,
                                                             );
+                                                            setSelectedAsset(
+                                                                null,
+                                                            );
+                                                            setDraftAsset(null);
                                                             setPhotoPreview(
                                                                 null,
                                                             );
@@ -312,6 +324,20 @@ export default function Profile(
                                     </CardContent>
                                 </Card>
                             </div>
+
+                            <ImageGalleryPicker
+                                open={galleryOpen}
+                                onOpenChange={setGalleryOpen}
+                                value={draftAsset}
+                                onChange={setDraftAsset}
+                                title="Choose profile photo"
+                                onConfirm={(asset) => {
+                                    setSelectedAsset(asset);
+                                    setDraftAsset(asset);
+                                    setRemovePhoto(false);
+                                    setPhotoPreview(asset.contentUrl);
+                                }}
+                            />
 
                             <div className="flex items-center gap-4">
                                 <Button

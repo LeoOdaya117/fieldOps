@@ -9,7 +9,9 @@ class SaveTimezoneRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('timezones.manage') === true;
+        $permission = $this->isMethod('post') ? 'timezones.create' : 'timezones.update';
+
+        return $this->user()?->can($permission) === true;
     }
 
     protected function prepareForValidation(): void

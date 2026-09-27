@@ -5,12 +5,22 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { OrganizationLocationActions } from '@/features/system/components/organization-location-actions';
 import type { MapCoordinate } from '@/types';
 
 const MapboxMap = lazy(() => import('@/components/mapbox-map'));
 
 type Props = {
     coordinate: MapCoordinate | null;
+    recordStatus?: number | null;
+    recordStatusUrl?: string | null;
+    deleteUrl?: string | null;
+    canViewDeleted?: boolean;
+    canUpdateDeleted?: boolean;
+    canCreate?: boolean;
+    canUpdate?: boolean;
+    canDelete?: boolean;
+    canUpdateSettings?: boolean;
 };
 
 function parseCoordinate(
@@ -32,7 +42,18 @@ function parseCoordinate(
         : null;
 }
 
-export default function OrganizationMap({ coordinate }: Props) {
+export default function OrganizationMap({
+    coordinate,
+    recordStatus = null,
+    recordStatusUrl = null,
+    deleteUrl = null,
+    canUpdateDeleted = false,
+    canCreate = false,
+    canUpdate = false,
+    canDelete = false,
+    canUpdateSettings = false,
+}: Props) {
+    const canSave = canUpdateSettings && (canCreate || canUpdate);
     const [latitude, setLatitude] = useState(
         coordinate?.latitude.toFixed(7) ?? '',
     );
@@ -82,6 +103,15 @@ export default function OrganizationMap({ coordinate }: Props) {
                                             </p>
                                         </div>
                                     </div>
+                                    <OrganizationLocationActions
+                                        label="organization location"
+                                        recordStatus={recordStatus}
+                                        recordStatusUrl={recordStatusUrl}
+                                        deleteUrl={deleteUrl}
+                                        canUpdateDeleted={canUpdateDeleted}
+                                        canDelete={canDelete}
+                                        canUpdateSettings={canUpdateSettings}
+                                    />
                                     {(latitude || longitude) && (
                                         <Button
                                             type="button"
@@ -91,6 +121,7 @@ export default function OrganizationMap({ coordinate }: Props) {
                                                 setLatitude('');
                                                 setLongitude('');
                                             }}
+                                            disabled={!canSave}
                                         >
                                             <Trash2 className="size-4" />
                                             Clear
@@ -109,6 +140,7 @@ export default function OrganizationMap({ coordinate }: Props) {
                                     <MapboxMap
                                         value={mapValue}
                                         onChange={setCoordinate}
+                                        interactive={canSave}
                                         className="h-[24rem]"
                                     />
                                 </Suspense>
@@ -127,6 +159,7 @@ export default function OrganizationMap({ coordinate }: Props) {
                                             step="any"
                                             inputMode="decimal"
                                             value={latitude}
+                                            disabled={!canSave}
                                             onChange={(event) =>
                                                 setLatitude(event.target.value)
                                             }
@@ -159,6 +192,7 @@ export default function OrganizationMap({ coordinate }: Props) {
                                             step="any"
                                             inputMode="decimal"
                                             value={longitude}
+                                            disabled={!canSave}
                                             onChange={(event) =>
                                                 setLongitude(event.target.value)
                                             }
@@ -190,7 +224,7 @@ export default function OrganizationMap({ coordinate }: Props) {
                                     Coordinate inputs are always available as
                                     the accessible map alternative.
                                 </p>
-                                <Button disabled={processing}>
+                                <Button disabled={processing || !canSave}>
                                     {processing
                                         ? 'Saving…'
                                         : 'Save map location'}

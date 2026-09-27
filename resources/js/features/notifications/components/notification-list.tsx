@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { readAll, update } from '@/routes/notifications';
 import { useNotifications } from '../notification-provider';
 import type { NotificationItem } from '../types';
@@ -156,5 +157,28 @@ export function NotificationList({
                 <NotificationRow key={item.id} item={item} onOpen={onOpen} />
             ))}
         </ul>
+    );
+}
+
+export function NotificationListSkeleton() {
+    return (
+        <div
+            role="status"
+            aria-label="Loading notifications"
+            className="divide-y divide-border"
+        >
+            {[0, 1, 2].map((row) => (
+                <div
+                    key={row}
+                    aria-hidden="true"
+                    className="space-y-2 border-b border-border p-4 last:border-b-0"
+                >
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-full max-w-64" />
+                    <Skeleton className="h-8 w-24" />
+                </div>
+            ))}
+        </div>
     );
 }

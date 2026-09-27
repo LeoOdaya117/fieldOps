@@ -42,7 +42,7 @@ class HandleInertiaRequests extends Middleware
         $authorization = [
             'role' => null,
             'permissions' => [],
-            'isOwner' => false,
+            'isSuperAdmin' => false,
         ];
 
         if ($user !== null) {
@@ -55,10 +55,10 @@ class HandleInertiaRequests extends Middleware
                     'displayName' => $role->display_name,
                     'isSystem' => (bool) $role->is_system,
                 ],
-                'permissions' => $user->isActive() && $user->isOwner()
+                'permissions' => $user->isActive() && $user->isSuperAdmin()
                     ? config('rbac.permissions', [])
                     : $user->getAllPermissions()->pluck('name')->values()->all(),
-                'isOwner' => $user->isActive() && $user->isOwner(),
+                'isSuperAdmin' => $user->isActive() && $user->isSuperAdmin(),
             ];
         }
 

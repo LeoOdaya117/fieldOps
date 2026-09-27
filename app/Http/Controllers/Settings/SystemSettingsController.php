@@ -22,6 +22,7 @@ class SystemSettingsController extends Controller
             'timezones' => SystemSettings::timezoneOptions(),
             'paginationOptions' => SystemSettings::paginationOptions(),
             'maximumIdleTimeoutSeconds' => SystemSettings::maximumIdleTimeoutSeconds(),
+            'canUpdateSettings' => $request->user()->can('settings.update'),
         ]);
     }
 
@@ -41,7 +42,7 @@ class SystemSettingsController extends Controller
         abort_unless(
             $user->isActive()
                 && $user->email_verified_at !== null
-                && $user->can('settings.manage_system'),
+                && $user->can('settings.view'),
             403,
         );
     }

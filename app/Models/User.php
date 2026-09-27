@@ -42,6 +42,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $updated_at
  * @property UserStatus $status
  * @property int $record_status
+ * @property int $session_version
  * @property int|null $created_by
  * @property int|null $updated_by
  * @property CarbonImmutable|null $suspended_at
@@ -52,7 +53,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property-read User|null $updatedBy
  */
 #[Fillable(['name', 'email', 'position', 'department', 'avatar_path', 'password', 'email_verified_at', 'status', 'suspended_at', 'suspended_by', 'created_by', 'updated_by', 'record_status'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
+#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'session_version'])]
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
@@ -72,6 +73,7 @@ class User extends Authenticatable implements PasskeyUser
             'password' => 'hashed',
             'status' => UserStatus::class,
             'record_status' => 'integer',
+            'session_version' => 'integer',
             'created_by' => 'integer',
             'updated_by' => 'integer',
             'suspended_at' => 'immutable_datetime',
@@ -99,9 +101,9 @@ class User extends Authenticatable implements PasskeyUser
         return $this->morphToMany(Role::class, 'model', 'model_has_roles', 'model_id', 'role_id');
     }
 
-    public function isOwner(): bool
+    public function isSuperAdmin(): bool
     {
-        return $this->hasAnyRole(RoleName::ownerRoleNames());
+        return $this->hasRole(RoleName::SuperAdmin->value);
     }
 
     /** @return BelongsTo<User, $this> */

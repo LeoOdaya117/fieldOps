@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Access;
 
+use App\Actions\Rbac\AssertRoleCanBeRemoved;
 use App\Actions\Rbac\BulkDeleteRoles;
 use App\Actions\Rbac\RecordAccessAudit;
 use App\Actions\Rbac\ValidateRoleGrant;
@@ -9,12 +10,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Access\BulkRoleDeleteRequest;
 use App\Http\Requests\Access\SaveRoleRequest;
 use App\Models\Role;
+use App\Models\User;
 use App\Support\Pagination\PageSize;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
@@ -26,9 +28,16 @@ class RoleController extends Controller
         $this->authorize('viewAny', Role::class);
 
         $search = trim((string) $request->input('search', ''));
-        $type = (string) $request->input('type', '');
-        $assigned = (string) $request->input('assigned', '');
+        $types = $this->filterValues($request->input('type'), ['system', 'custom']);
+        $assignedValues = $this->filterValues($request->input('assigned'), ['assigned', 'unassigned']);
+        $canViewDeleted = $request->user()?->can('roles.view_deleted') === true;
+        $recordStatuses = $canViewDeleted
+            ? $this->filterValues($request->input('record_status', ['active']), ['active', 'inactive'])
+            : ['active'];
+        $recordStatuses = $recordStatuses === [] ? ['active'] : $recordStatuses;
         $permissionsMin = trim((string) $request->input('permissions_min', ''));
+        $from = $this->parseDate($request->input('from'));
+        $to = $this->parseDate($request->input('to'));
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
@@ -37,30 +46,58 @@ class RoleController extends Controller
             'is_system' => 'is_system',
             'users_count' => 'users_count',
             'permissions_count' => 'permissions_count',
+            'status' => 'status',
+            'created_at' => 'created_at',
+            'updated_at' => 'updated_at',
+            'record_status' => 'record_status',
         ];
 
-        $roles = Role::query()
+        $roles = ($canViewDeleted ? Role::withTrashed() : Role::query())
+            ->with(['createdBy:id,name,email', 'updatedBy:id,name,email'])
             ->withCount(['users', 'permissions'])
             ->when($search !== '', static fn ($query) => $query->where(static function ($query) use ($search): void {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('display_name', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%");
             }))
-            ->when($type === 'system', static fn ($query) => $query->where('is_system', true))
-            ->when($type === 'custom', static fn ($query) => $query->where('is_system', false))
-            ->when($assigned === 'assigned', static fn ($query) => $query->has('users'))
-            ->when($assigned === 'unassigned', static fn ($query) => $query->doesntHave('users'))
+            ->when(count($types) === 1, static fn ($query) => $query->where('is_system', $types[0] === 'system'))
+            ->when($recordStatuses !== ['active', 'inactive'], static fn ($query) => $query->whereIn('record_status', array_map(static fn (string $value): int => $value === 'active' ? 1 : 0, $recordStatuses)))
+            ->when(count($assignedValues) === 1 && $assignedValues[0] === 'assigned', static fn ($query) => $query->has('users'))
+            ->when(count($assignedValues) === 1 && $assignedValues[0] === 'unassigned', static fn ($query) => $query->doesntHave('users'))
             ->when(ctype_digit($permissionsMin), static fn ($query) => $query->has('permissions', '>=', (int) $permissionsMin))
+            ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
+            ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
             ->when(
-                isset($sortColumns[$sort]),
-                static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
-                static fn ($query) => $query->orderBy('is_system', 'desc')->orderBy('display_name'),
+                $sort === 'created_by',
+                static fn ($query) => $query->orderBy(
+                    DB::table('users as created_actors')
+                        ->select('created_actors.name')
+                        ->whereColumn('created_actors.id', 'roles.created_by'),
+                    $direction,
+                ),
+            )
+            ->when(
+                $sort === 'updated_by',
+                static fn ($query) => $query->orderBy(
+                    DB::table('users as updated_actors')
+                        ->select('updated_actors.name')
+                        ->whereColumn('updated_actors.id', 'roles.updated_by'),
+                    $direction,
+                ),
+            )
+            ->when(
+                $sort !== 'created_by' && $sort !== 'updated_by',
+                static fn ($query) => $query->when(
+                    isset($sortColumns[$sort]),
+                    static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
+                    static fn ($query) => $query->orderBy('is_system', 'desc')->orderBy('display_name'),
+                ),
             )
             ->paginate($pageSize)
             ->appends(PageSize::query($request, $pageSize));
 
         return Inertia::render('access/roles', [
-            'roles' => $roles->through(static fn (Role $role): array => [
+            'roles' => $roles->through(fn (Role $role): array => [
                 'id' => $role->id,
                 'name' => $role->name,
                 'displayName' => $role->display_name,
@@ -68,17 +105,30 @@ class RoleController extends Controller
                 'isSystem' => (bool) $role->is_system,
                 'usersCount' => $role->users_count,
                 'permissionsCount' => $role->permissions_count,
+                'status' => $role->status,
+                'recordStatus' => (int) $role->record_status,
+                'recordStatusUrl' => route('access.roles.record-status', $role->getKey()),
+                'createdAt' => $role->created_at?->toIso8601String(),
+                'updatedAt' => $role->updated_at?->toIso8601String(),
+                'createdBy' => $this->actor($role->createdBy),
+                'updatedBy' => $this->actor($role->updatedBy),
             ]),
-            'canManageSystemRoles' => $request->user()->isOwner(),
+            'canManageSystemRoles' => $request->user()->isSuperAdmin(),
+            'canCreate' => $request->user()->can('roles.create'),
             'canDeleteRoles' => $request->user()->can('roles.delete'),
+            'canViewDeleted' => $canViewDeleted,
+            'canUpdateDeleted' => $request->user()->can('roles.update_deleted'),
             'filters' => [
                 'search' => $search,
-                'type' => $type,
-                'assigned' => $assigned,
+                'type' => $this->filterValue($types),
+                'assigned' => $this->filterValue($assignedValues),
                 'permissionsMin' => $permissionsMin,
+                'from' => $from?->format('Y-m-d') ?? '',
+                'to' => $to?->format('Y-m-d') ?? '',
                 'sort' => $sort,
                 'direction' => $direction,
                 'perPage' => $pageSize,
+                'recordStatus' => $this->filterValue($recordStatuses),
             ],
         ]);
     }
@@ -100,6 +150,8 @@ class RoleController extends Controller
             'role' => [
                 'id' => $role->id,
                 'name' => $role->name,
+                'recordStatus' => (int) $role->record_status,
+                'recordStatusUrl' => route('access.roles.record-status', $role->getKey()),
                 'displayName' => $role->display_name,
                 'description' => $role->description,
                 'permissions' => $role->permissions()->orderBy('name')->pluck('name')->values(),
@@ -108,8 +160,10 @@ class RoleController extends Controller
         ]);
     }
 
-    public function show(Role $role): Response
+    public function show(int $role): Response
     {
+        $canViewDeleted = request()->user()?->can('roles.view_deleted') === true;
+        $role = ($canViewDeleted ? Role::withTrashed() : Role::query())->findOrFail($role);
         $this->authorize('view', $role);
 
         $role->load(['permissions:id,name', 'users:id,name,email']);
@@ -132,6 +186,8 @@ class RoleController extends Controller
             ],
             'canEdit' => request()->user()?->can('update', $role) === true,
             'canDelete' => request()->user()?->can('delete', $role) === true,
+            'canViewDeleted' => $canViewDeleted,
+            'canUpdateDeleted' => request()->user()?->can('roles.update_deleted') === true,
         ]);
     }
 
@@ -177,13 +233,10 @@ class RoleController extends Controller
         return to_route('access.roles.index')->with('success', 'Role updated.');
     }
 
-    public function destroy(Role $role, RecordAccessAudit $audit): RedirectResponse
+    public function destroy(Role $role, RecordAccessAudit $audit, AssertRoleCanBeRemoved $assertRoleCanBeRemoved): RedirectResponse
     {
         $this->authorize('delete', $role);
-
-        if ($role->users()->exists()) {
-            throw ValidationException::withMessages(['role' => 'A role cannot be deleted while it is assigned to users.']);
-        }
+        $assertRoleCanBeRemoved->execute($role, 'role', 'deleted');
 
         DB::transaction(function () use ($role, $audit): void {
             $before = ['name' => $role->name, 'display_name' => $role->display_name];
@@ -216,5 +269,55 @@ class RoleController extends Controller
             static fn (mixed $id): int => (int) $id,
             (array) $request->validated('ids'),
         );
+    }
+
+    private function parseDate(mixed $value): ?CarbonImmutable
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::createFromFormat('Y-m-d', $value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /** @param array<int, string> $allowed
+     * @return array<int, string>
+     */
+    private function filterValues(mixed $value, array $allowed): array
+    {
+        $values = is_array($value) ? $value : [$value];
+
+        return array_values(array_unique(array_filter(
+            array_map(static fn (mixed $item): string => (string) $item, $values),
+            static fn (string $item): bool => in_array($item, $allowed, true),
+        )));
+    }
+
+    /** @param array<int, string> $values
+     * @return string|array<int, string>
+     */
+    private function filterValue(array $values): string|array
+    {
+        return match (count($values)) {
+            0 => '',
+            1 => $values[0],
+            default => $values,
+        };
+    }
+
+    /** @return array{id: int, name: string, email: string}|null */
+    private function actor(?User $actor): ?array
+    {
+        return $actor === null ? null : [
+            'id' => (int) $actor->getKey(),
+            'name' => (string) $actor->name,
+            'email' => (string) $actor->email,
+        ];
     }
 }

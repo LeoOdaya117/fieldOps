@@ -8,7 +8,7 @@ class UpdateBlockedIpAddressRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('ip_blocks.manage') === true;
+        return $this->user()?->can('ip_blocks.update') === true;
     }
 
     /** @return array<string, mixed> */

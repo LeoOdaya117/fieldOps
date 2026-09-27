@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Filter, Search } from 'lucide-react';
 import { ActionLink } from '@/components/action-link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,9 @@ type SearchFilterSheetProps = {
     resetHref: string;
     activeFilterCount?: number;
     pageSize?: number;
-    children: ReactNode;
+    keyword?: ReactNode;
+    dateRange?: ReactNode;
+    children?: ReactNode;
 };
 
 export default function SearchFilterSheet({
@@ -35,14 +37,16 @@ export default function SearchFilterSheet({
     resetHref,
     activeFilterCount = 0,
     pageSize = DEFAULT_PAGE_SIZE,
+    keyword,
+    dateRange,
     children,
 }: SearchFilterSheetProps) {
     return (
         <Sheet>
             <SheetTrigger asChild>
                 <Button type="button" variant="outline">
-                    <SlidersHorizontal />
-                    Search &amp; filter
+                    <Filter />
+                    Filter
                     {activeFilterCount > 0 && (
                         <Badge variant="secondary" className="ml-1">
                             {activeFilterCount}
@@ -66,6 +70,8 @@ export default function SearchFilterSheet({
                     className="flex min-h-0 flex-1 flex-col"
                 >
                     <div className="flex-1 space-y-5 overflow-y-auto p-4">
+                        {keyword ? keyword : null}
+                        {dateRange ? dateRange : null}
                         {children}
                         <div className="grid gap-2 border-t border-border pt-5">
                             <label

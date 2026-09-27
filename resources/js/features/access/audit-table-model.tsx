@@ -20,7 +20,7 @@ export type AuditEvent = {
 };
 
 export type AuditTableFilters = {
-    event: string;
+    event: string | string[];
     actor: string;
     subject: string;
     from: string;

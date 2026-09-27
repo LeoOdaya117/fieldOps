@@ -81,8 +81,8 @@ class StoreMediaAsset
             ): MediaAsset {
                 User::query()->whereKey($actor->getKey())->lockForUpdate()->firstOrFail();
 
-                $assetCount = MediaAsset::query()->where('uploader_id', $actor->getKey())->count();
-                $usedBytes = (int) MediaAsset::query()->where('uploader_id', $actor->getKey())->sum('size_bytes');
+                $assetCount = MediaAsset::withTrashed()->where('uploader_id', $actor->getKey())->count();
+                $usedBytes = (int) MediaAsset::withTrashed()->where('uploader_id', $actor->getKey())->sum('size_bytes');
                 $maximumAssets = (int) config('media-assets.per_user_max_assets', 100);
                 $maximumBytes = (int) config('media-assets.per_user_max_bytes', 262144000);
 

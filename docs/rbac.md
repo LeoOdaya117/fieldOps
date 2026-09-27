@@ -1,16 +1,16 @@
 # Role-based access control
 
-FieldOps uses a single-enterprise RBAC model. Users receive exactly one role, roles contain source-controlled permissions, and the server enforces access through Laravel Gates and Policies. The Owner role is protected and receives the permission catalog through the Gate `before` rule.
+FieldOps uses a single-enterprise RBAC model. Users receive exactly one role, roles contain source-controlled permissions, and the server enforces access through Laravel Gates and Policies. The three built-in roles are User, Admin, and Super Admin. Super Admin is the only elevated role and receives the permission catalog through the Gate `before` rule.
 
 ## Roles
 
-The first-setup role templates are User, Admin, and Super Admin. The enterprise catalog also retains the protected Owner, Administrator, Dispatcher, Supervisor, Technician, and Auditor templates for existing deployments and more granular operating teams. Administrators can create custom roles from the permission catalog, but cannot grant permissions they do not possess. Direct user permissions, explicit denies, tenant switching, and role inheritance are intentionally not enabled.
+Fresh installations seed exactly three protected system roles: User, Admin, and Super Admin. Administrators can create custom roles from the permission catalog, but cannot grant permissions they do not possess. Direct user permissions, explicit denies, tenant switching, and role inheritance are intentionally not enabled.
 
 ## Account lifecycle
 
 Public registration is disabled. An authorized administrator invites a user, selects one role, and sends a single-use seven-day invitation. Accepted invitations create an active, verified account. Accounts are suspended and retained rather than deleted. Suspended sessions are invalidated and suspended users cannot authenticate.
 
-Users who manage access must have a verified email and active account. State-changing access operations require recent password confirmation. The application prevents self-escalation, self-suspension, deleting assigned roles, and removing the last active Owner. Standard administrators see system role templates as read-only; Super Admins can manage every role template.
+Users who manage access must have a verified email and active account. State-changing access operations require recent password confirmation. The application prevents self-escalation, self-suspension, deleting assigned roles, and removing the last active Super Admin. Admins see system roles as read-only; Super Admins can manage system roles.
 
 ## Deployment
 
@@ -31,23 +31,23 @@ The default accounts are:
 
 Set `RBAC_DEFAULT_ACCOUNT_PASSWORD` before seeding to use a different first-setup password. Existing accounts are not overwritten or re-passworded by a repeat seed. Change or remove these accounts before exposing a production environment. Two-factor authentication remains available as an account security feature but is not required to open access management.
 
-For an installation that already has users but no owner-level account, the explicit bootstrap command remains available:
+For an installation that already has users but no Super Admin account, the explicit bootstrap command remains available:
 
 ```powershell
-php artisan rbac:bootstrap-owner owner@example.com
+php artisan rbac:bootstrap-super-admin user@example.com
 ```
 
-The bootstrap command refuses missing, unverified, suspended, or ambiguous owners, and refuses to run when an active Owner or Super Admin already exists.
+The bootstrap command refuses missing, unverified, or suspended users, and refuses to run when an active Super Admin already exists.
 
 Access changes generate append-only `access_audit_events` records with actor, subject, event, redacted before/after values, and request metadata. Credentials and invitation tokens are never recorded.
 
 ## Country and timezone catalogs
 
-Administrators with `countries.view` or `timezones.view` can open the reference catalogs at `/system/countries` and `/system/timezones`. The matching `*.manage` permission is required for create, edit, and soft-delete operations; mutations also require recent password confirmation. Country records contain an English name and normalized ISO alpha-2-style code. Timezone records contain canonical PHP/IANA identifiers.
+Admins with `countries.view` or `timezones.view` can open the reference catalogs at `/system/countries` and `/system/timezones`. The matching `*.manage` permission is required for create and edit operations; mutations also require recent password confirmation. Country records contain an English name and normalized ISO alpha-2-style code. Timezone records contain canonical PHP/IANA identifiers.
 
 `CountrySeeder` loads the checked-in `database/data/countries.php` catalog, while `TimezoneSeeder` loads `DateTimeZone::listIdentifiers()`. Both seeders are additive and idempotent: existing names, soft-delete state, and audit actors are preserved. Non-deleted timezone records supply the System Settings timezone selector; if the catalog has no records, the PHP timezone list remains the safe fallback. The current system timezone cannot be renamed or deleted, and at least one timezone must remain available.
 
-These two catalogs intentionally do not have a separate business `status` field. Their lifecycle is represented by `record_status`, so the tables show the standard record-state indicator while soft-delete operations retain the audit history.
+These catalogs intentionally do not have a separate business `status` field. Their lifecycle is represented by `record_status`; `*.view_deleted` controls visibility of inactive rows and `*.update_deleted` controls the Active/Inactive status switch. Admin and Super Admin receive both actions for users (including invitations), roles, countries, timezones, IP blocks, organization locations, and media assets by default. User receives neither. The role editor lists these actions from the database permission catalog.
 
 ## Record audit columns and soft deletion
 

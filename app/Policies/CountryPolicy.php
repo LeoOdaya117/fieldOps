@@ -19,16 +19,16 @@ class CountryPolicy
 
     public function create(User $user): bool
     {
-        return $user->can('countries.manage');
+        return $user->can('countries.create');
     }
 
     public function update(User $user, Country $country): bool
     {
-        return $user->can('countries.manage');
+        return $user->can('countries.update');
     }
 
     public function delete(User $user, Country $country): bool
     {
-        return $user->can('countries.manage');
+        return $user->can('countries.delete');
     }
 }

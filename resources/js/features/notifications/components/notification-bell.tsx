@@ -14,38 +14,29 @@ import {
 import { useIsMobile } from '@/hooks/use-mobile';
 import { index } from '@/routes/notifications';
 import { useNotifications } from '../notification-provider';
-import { MarkAllRead, NotificationList } from './notification-list';
+import {
+    MarkAllRead,
+    NotificationList,
+    NotificationListSkeleton,
+} from './notification-list';
 
 export function NotificationRefreshStatus() {
-    const { loading, error, refresh } = useNotifications();
+    const { error, refresh } = useNotifications();
 
     return (
-        <>
-            {loading && (
-                <p
-                    role="status"
-                    className="px-4 py-2 text-sm text-muted-foreground"
-                >
-                    Refreshing notifications…
-                </p>
-            )}
-            {error && (
-                <div
-                    role="alert"
-                    className="px-4 py-2 text-sm text-destructive"
-                >
-                    {error}{' '}
-                    <Button variant="outline" size="sm" onClick={refresh}>
-                        Retry
-                    </Button>
-                </div>
-            )}
-        </>
+        error && (
+            <div role="alert" className="px-4 py-2 text-sm text-destructive">
+                {error}{' '}
+                <Button variant="outline" size="sm" onClick={refresh}>
+                    Retry
+                </Button>
+            </div>
+        )
     );
 }
 
 export function NotificationBell({ className }: { className?: string }) {
-    const { summary, refresh } = useNotifications();
+    const { summary, loading, refresh } = useNotifications();
     const [open, setOpen] = useState(false);
     const [top, setTop] = useState(64);
     const [right, setRight] = useState(16);
@@ -63,10 +54,14 @@ export function NotificationBell({ className }: { className?: string }) {
                 <MarkAllRead />
             </div>
             <NotificationRefreshStatus />
-            <NotificationList
-                items={summary.items}
-                onOpen={() => setOpen(false)}
-            />
+            {loading ? (
+                <NotificationListSkeleton />
+            ) : (
+                <NotificationList
+                    items={summary.items}
+                    onOpen={() => setOpen(false)}
+                />
+            )}
             <div className="border-t border-border p-3">
                 <Button asChild variant="outline" className="w-full">
                     <Link href={index()} onClick={() => setOpen(false)}>

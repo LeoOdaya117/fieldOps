@@ -1,18 +1,13 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { e2eAccounts, login } from './support/auth';
 
 test('notifications work in every shell, appearance, and viewport', async ({
     page,
 }, testInfo) => {
     test.setTimeout(300_000);
-    const password = process.env.E2E_OWNER_PASSWORD ?? 'password';
-    await page.goto('/login');
-    await page
-        .getByLabel('Email address')
-        .fill(process.env.E2E_OWNER_EMAIL ?? 'superadmin@example.com');
-    await page.getByRole('textbox', { name: 'Password' }).fill(password);
-    await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    const password = e2eAccounts.owner.password;
+    await login(page, e2eAccounts.owner);
     await page.goto('/user/confirm-password');
     await page.getByRole('textbox', { name: 'Password' }).fill(password);
     await page.getByRole('button', { name: 'Confirm password' }).click();

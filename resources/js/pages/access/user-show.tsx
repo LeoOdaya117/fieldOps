@@ -8,14 +8,11 @@ import {
     UserRound,
 } from 'lucide-react';
 import { ActionLink } from '@/components/action-link';
-import {
-    DetailField,
-    DetailsActionForm,
-    DetailsPage,
-    DetailsSection,
-} from '@/components/details-page';
+import { DetailsActionForm, DetailsPage } from '@/components/details-page';
+import { DetailsView } from '@/components/details-view';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { RecordStatusControl } from '@/components/ui/record-status-control';
 import { dashboard } from '@/routes';
 import {
     edit as editUser,
@@ -37,6 +34,8 @@ type UserDetails = {
     emailVerifiedAt: string | null;
     createdAt: string | null;
     updatedAt: string | null;
+    recordStatus?: number;
+    recordStatusUrl?: string;
 };
 
 function initials(name: string): string {
@@ -77,12 +76,14 @@ export default function UserShowPage({
     canDelete = false,
     canSuspend = false,
     canReactivate = false,
+    canUpdateDeleted = false,
 }: {
     user: UserDetails;
     canEdit?: boolean;
     canDelete?: boolean;
     canSuspend?: boolean;
     canReactivate?: boolean;
+    canUpdateDeleted?: boolean;
 }) {
     return (
         <DetailsPage
@@ -150,87 +151,132 @@ export default function UserShowPage({
                 </>
             }
         >
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
-                <DetailsSection
-                    title="Profile details"
-                    description="The identity information shown to the workspace."
-                >
-                    <div className="space-y-6 p-4 sm:p-6">
-                        <div className="flex items-center gap-4">
-                            <Avatar className="size-14 rounded-2xl">
-                                <AvatarImage
-                                    src={user.avatar ?? undefined}
-                                    alt=""
-                                />
-                                <AvatarFallback className="rounded-2xl bg-link/10 text-lg font-semibold text-link">
-                                    {initials(user.name)}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0">
-                                <h2 className="truncate text-lg font-semibold">
-                                    {user.name}
-                                </h2>
-                                <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-muted-foreground">
-                                    <Mail className="size-3.5 shrink-0" />
-                                    {user.email}
-                                </p>
-                            </div>
+            <DetailsView
+                record={user}
+                summary={
+                    <div className="flex items-center gap-4">
+                        <Avatar className="size-14 rounded-2xl">
+                            <AvatarImage
+                                src={user.avatar ?? undefined}
+                                alt=""
+                            />
+                            <AvatarFallback className="rounded-2xl bg-link/10 text-lg font-semibold text-link">
+                                {initials(user.name)}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                            <h2 className="truncate text-lg font-semibold">
+                                {user.name}
+                            </h2>
+                            <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-muted-foreground">
+                                <Mail className="size-3.5 shrink-0" />
+                                {user.email}
+                            </p>
                         </div>
-                        <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
-                            <DetailField label="Position">
-                                {user.position ?? 'Not recorded'}
-                            </DetailField>
-                            <DetailField label="Department">
-                                {user.department ?? 'Not recorded'}
-                            </DetailField>
-                            <DetailField label="Email verification">
-                                {user.emailVerifiedAt
-                                    ? `Verified ${formatDate(user.emailVerifiedAt)}`
-                                    : 'Not verified'}
-                            </DetailField>
-                            <DetailField label="Account created">
-                                {formatDate(user.createdAt)}
-                            </DetailField>
-                        </dl>
                     </div>
-                </DetailsSection>
-
-                <DetailsSection
-                    title="Access"
-                    description="Current access state and assigned workspace role."
-                >
-                    <dl className="grid gap-5 p-4 sm:p-6">
-                        <DetailField label="Status">
-                            <UserStatus status={user.status} />
-                        </DetailField>
-                        <DetailField label="Role">
-                            {user.role ? (
-                                <div>
-                                    <p className="font-medium">
-                                        {user.role.displayName}
-                                    </p>
-                                    <code className="mt-1 block font-mono text-xs text-muted-foreground">
-                                        {user.role.name}
-                                    </code>
-                                </div>
-                            ) : (
-                                'No role assigned'
-                            )}
-                        </DetailField>
-                        <DetailField label="Last profile update">
-                            <span className="flex items-center gap-2 text-muted-foreground">
-                                <CalendarDays className="size-3.5" />
-                                {formatDate(user.updatedAt)}
-                            </span>
-                        </DetailField>
-                        <DetailField label="Account identifier">
-                            <span className="flex items-center gap-2 text-muted-foreground">
-                                <UserRound className="size-3.5" />#{user.id}
-                            </span>
-                        </DetailField>
-                    </dl>
-                </DetailsSection>
-            </div>
+                }
+                sections={[
+                    {
+                        key: 'record-status',
+                        title: 'Record status',
+                        description:
+                            'The record lifecycle state used by active lists.',
+                        content: (
+                            <RecordStatusControl
+                                recordStatus={user.recordStatus ?? 1}
+                                recordStatusUrl={user.recordStatusUrl}
+                                label={user.name}
+                                canUpdateDeleted={canUpdateDeleted}
+                            />
+                        ),
+                    },
+                    {
+                        key: 'profile',
+                        title: 'Profile details',
+                        description:
+                            'The identity information shown to the workspace.',
+                        columns: [
+                            {
+                                key: 'position',
+                                label: 'Position',
+                                cell: (record) =>
+                                    record.position ?? 'Not recorded',
+                            },
+                            {
+                                key: 'department',
+                                label: 'Department',
+                                cell: (record) =>
+                                    record.department ?? 'Not recorded',
+                            },
+                            {
+                                key: 'emailVerifiedAt',
+                                label: 'Email verification',
+                                cell: (record) =>
+                                    record.emailVerifiedAt
+                                        ? `Verified ${formatDate(record.emailVerifiedAt)}`
+                                        : 'Not verified',
+                            },
+                            {
+                                key: 'createdAt',
+                                label: 'Account created',
+                                cell: (record) => formatDate(record.createdAt),
+                            },
+                        ],
+                    },
+                    {
+                        key: 'access',
+                        title: 'Access',
+                        description:
+                            'Current access state and assigned workspace role.',
+                        columns: [
+                            {
+                                key: 'status',
+                                label: 'Status',
+                                cell: (record) => (
+                                    <UserStatus status={record.status} />
+                                ),
+                            },
+                            {
+                                key: 'role',
+                                label: 'Role',
+                                cell: (record) =>
+                                    record.role ? (
+                                        <div>
+                                            <p className="font-medium">
+                                                {record.role.displayName}
+                                            </p>
+                                            <code className="mt-1 block font-mono text-xs text-muted-foreground">
+                                                {record.role.name}
+                                            </code>
+                                        </div>
+                                    ) : (
+                                        'No role assigned'
+                                    ),
+                            },
+                            {
+                                key: 'updatedAt',
+                                label: 'Last profile update',
+                                cell: (record) => (
+                                    <span className="flex items-center gap-2 text-muted-foreground">
+                                        <CalendarDays className="size-3.5" />
+                                        {formatDate(record.updatedAt)}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: 'id',
+                                label: 'Account identifier',
+                                cell: (record) => (
+                                    <span className="flex items-center gap-2 text-muted-foreground">
+                                        <UserRound className="size-3.5" />#
+                                        {record.id}
+                                    </span>
+                                ),
+                            },
+                        ],
+                    },
+                ]}
+            />
         </DetailsPage>
     );
 }
