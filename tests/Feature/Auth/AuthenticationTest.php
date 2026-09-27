@@ -3,8 +3,8 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Support\SystemSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -30,6 +30,31 @@ class AuthenticationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+    }
+
+    public function test_successful_logins_do_not_consume_the_failed_attempt_limit()
+    {
+        $user = User::factory()->create();
+        $loginAttempts = SystemSettings::loginMaxAttempts();
+
+        $this->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => 'wrong-password',
+        ])->assertSessionHasErrors('email');
+
+        for ($attempt = 0; $attempt <= $loginAttempts; $attempt++) {
+            $this->post(route('login.store'), [
+                'email' => $user->email,
+                'password' => 'password',
+            ])->assertRedirect(route('dashboard', absolute: false));
+
+            $this->assertAuthenticatedAs($user);
+
+            $this->post(route('logout'))
+                ->assertRedirect(route('home', absolute: false));
+
+            $this->assertGuest();
+        }
     }
 
     public function test_users_with_two_factor_enabled_are_redirected_to_two_factor_challenge()
@@ -79,17 +104,24 @@ class AuthenticationTest extends TestCase
     public function test_users_are_rate_limited()
     {
         $user = User::factory()->create();
+        $loginAttempts = SystemSettings::loginMaxAttempts();
 
-        RateLimiter::increment(
-            md5('login'.implode('|', ['5:30', $user->email, '127.0.0.1'])),
-            amount: 5,
-        );
+        for ($attempt = 0; $attempt < $loginAttempts; $attempt++) {
+            $this->post(route('login.store'), [
+                'email' => $user->email,
+                'password' => 'wrong-password',
+            ])->assertSessionHasErrors('email');
+        }
 
         $response = $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'wrong-password',
         ]);
 
-        $response->assertTooManyRequests();
+        $response->assertSessionHasErrors('email');
+        $this->assertStringStartsWith(
+            'Too many login attempts.',
+            session('errors')->first('email'),
+        );
     }
 }

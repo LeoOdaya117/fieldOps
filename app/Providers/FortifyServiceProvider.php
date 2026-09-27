@@ -9,7 +9,7 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Enums\UserStatus;
 use App\Models\User;
-use App\Support\SystemSettings;
+use App\Support\SystemSettingsLoginRateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -20,6 +20,7 @@ use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
+use Laravel\Fortify\LoginRateLimiter;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -28,7 +29,7 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(LoginRateLimiter::class, SystemSettingsLoginRateLimiter::class);
     }
 
     /**
@@ -112,15 +113,6 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });
         /* @end-chisel-2fa */
-
-        RateLimiter::for('login', function (Request $request) {
-            $attempts = SystemSettings::loginMaxAttempts();
-            $decayMinutes = SystemSettings::loginDecayMinutes();
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
-
-            return Limit::perMinutes($decayMinutes, $attempts)
-                ->by("{$attempts}:{$decayMinutes}|{$throttleKey}");
-        });
 
         /* @chisel-passkeys */
         RateLimiter::for('passkeys', function (Request $request) {

@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Support\SystemSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
+use Laravel\Fortify\LoginRateLimiter;
 use Tests\TestCase;
 
 class SystemSettingsTest extends TestCase
@@ -67,13 +67,23 @@ class SystemSettingsTest extends TestCase
         $audit = AccessAuditEvent::query()->where('event', 'settings.system.updated')->sole();
         $this->assertArrayNotHasKey('theme', $audit->after);
 
-        $loginLimiter = RateLimiter::limiter('login');
-        $limit = $loginLimiter(Request::create('/login', 'POST', [
+        $loginLimiter = app(LoginRateLimiter::class);
+        $loginRequest = Request::create('/login', 'POST', [
             'email' => 'ADMIN@EXAMPLE.COM',
-        ], server: ['REMOTE_ADDR' => '127.0.0.1']));
-        $this->assertSame(7, $limit->maxAttempts);
-        $this->assertSame(45 * 60, $limit->decaySeconds);
-        $this->assertStringStartsWith('7:45|', (string) $limit->key);
+        ], server: ['REMOTE_ADDR' => '127.0.0.1']);
+
+        for ($attempt = 0; $attempt < 6; $attempt++) {
+            $loginLimiter->increment($loginRequest);
+        }
+
+        $this->assertFalse($loginLimiter->tooManyAttempts($loginRequest));
+        $this->assertSame(45 * 60, $loginLimiter->availableIn($loginRequest));
+
+        $loginLimiter->increment($loginRequest);
+        $this->assertTrue($loginLimiter->tooManyAttempts($loginRequest));
+
+        $loginLimiter->clear($loginRequest);
+        $this->assertFalse($loginLimiter->tooManyAttempts($loginRequest));
 
         $this->actingAs($admin)
             ->get(route('access.users.index'))

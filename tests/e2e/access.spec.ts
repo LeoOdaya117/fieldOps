@@ -1,28 +1,23 @@
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
-
-const e2eAdmin = {
-    email: process.env.E2E_ADMIN_EMAIL ?? 'admin@example.com',
-    password: process.env.E2E_ADMIN_PASSWORD ?? 'password',
-};
-
-async function loginAsAdmin(page: Page) {
-    await page.goto('/login');
-    await page.getByLabel('Email address').fill(e2eAdmin.email);
-    await page
-        .getByRole('textbox', { name: 'Password' })
-        .fill(e2eAdmin.password);
-    await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 60_000 });
-}
+import { e2eAccounts, login } from './support/auth';
 
 test('an administrator can manage audit columns across access tables and themes', async ({
     page,
-}) => {
+}, testInfo) => {
     await page.emulateMedia({ colorScheme: 'light' });
-    await loginAsAdmin(page);
+    await login(page, e2eAccounts.admin);
     await page.evaluate(() => window.localStorage.clear());
     await page.goto('/access/users');
+
+    if (testInfo.project.name === 'tablet') {
+        const sidebarToggle = page.getByRole('button', {
+            name: /toggle sidebar/i,
+        });
+
+        if (await sidebarToggle.isVisible()) {
+            await sidebarToggle.click();
+        }
+    }
 
     await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible();
     await expect(page.locator('html')).not.toHaveClass(/dark/);
@@ -37,12 +32,15 @@ test('an administrator can manage audit columns across access tables and themes'
         userTableContainer.getByRole('button', { name: /Filter/ }),
     ).toBeVisible();
     await userTableContainer.getByRole('button', { name: /Filter/ }).click();
-    await expect(page.getByLabel('Date range')).toBeVisible();
-    await expect(page.getByLabel('Created by')).toHaveCount(0);
-    await expect(page.getByLabel('Updated by')).toHaveCount(0);
+    const filterDialog = page.getByRole('dialog', {
+        name: 'Search and filter users',
+    });
+    await expect(filterDialog.getByLabel('Date range')).toBeVisible();
+    await expect(filterDialog.getByLabel('Created by')).toHaveCount(0);
+    await expect(filterDialog.getByLabel('Updated by')).toHaveCount(0);
     await expect(
-        page.getByRole('group', { name: 'Record status' }),
-    ).toHaveCount(0);
+        filterDialog.getByRole('group', { name: 'Record status' }),
+    ).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(
         userTableContainer.getByRole('link', { name: 'Add user' }),
@@ -83,7 +81,7 @@ test('an administrator can manage audit columns across access tables and themes'
     ).toBeVisible();
     await expect(
         userTable.getByRole('columnheader', {
-            name: 'Updated',
+            name: 'Sort Updated ascending',
             exact: true,
         }),
     ).toBeVisible();
@@ -99,7 +97,12 @@ test('an administrator can manage audit columns across access tables and themes'
     await userTable
         .getByRole('link', { name: 'Sort Created by ascending' })
         .click();
-    await expect(page).toHaveURL(/\/access\/users\?sort=created_by&direction=asc/);
+    await expect(page).toHaveURL(
+        (url) =>
+            url.pathname === '/access/users' &&
+            url.searchParams.get('sort') === 'created_by' &&
+            url.searchParams.get('direction') === 'asc',
+    );
 
     await page.reload();
     const reloadedUserTable = page.getByRole('table', {
@@ -154,13 +157,13 @@ test('an administrator can manage audit columns across access tables and themes'
             const table = page.getByRole('table', { name: surface.table });
             await expect(
                 table.getByRole('columnheader', {
-                    name: 'Created',
+                    name: 'Sort Created ascending',
                     exact: true,
                 }),
             ).toBeVisible();
             await expect(
                 table.getByRole('columnheader', {
-                    name: 'Updated',
+                    name: 'Sort Updated ascending',
                     exact: true,
                 }),
             ).toBeVisible();
@@ -178,18 +181,20 @@ test('an administrator can manage audit columns across access tables and themes'
                 .getByRole('link', { name: 'Sort Updated ascending' })
                 .click();
             await expect(page).toHaveURL(
-                new RegExp(
-                    `${surface.path.replace('/', '\\/')}\\?sort=updated_at&direction=asc`,
-                ),
+                (url) =>
+                    url.pathname === surface.path &&
+                    url.searchParams.get('sort') === 'updated_at' &&
+                    url.searchParams.get('direction') === 'asc',
             );
 
             await page.getByRole('button', { name: /Filter/ }).click();
-            await expect(page.getByLabel('Date range')).toBeVisible();
-            await expect(page.getByLabel('Created by')).toHaveCount(0);
-            await expect(page.getByLabel('Updated by')).toHaveCount(0);
+            const filterDialog = page.getByRole('dialog');
+            await expect(filterDialog.getByLabel('Date range')).toBeVisible();
+            await expect(filterDialog.getByLabel('Created by')).toHaveCount(0);
+            await expect(filterDialog.getByLabel('Updated by')).toHaveCount(0);
             await expect(
-                page.getByRole('group', { name: 'Record status' }),
-            ).toHaveCount(0);
+                filterDialog.getByRole('group', { name: 'Record status' }),
+            ).toBeVisible();
             await page.keyboard.press('Escape');
 
             const scrollContainer = table.locator(

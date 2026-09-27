@@ -12,15 +12,19 @@ class PageBootSkeletonTest extends TestCase
 
     public function test_public_home_page_includes_an_accessible_landing_boot_skeleton(): void
     {
-        $this->get(route('home'))
+        $response = $this->get(route('home'))
             ->assertOk()
             ->assertSee('data-page-loading-family="landing"', false)
             ->assertSee('role="status"', false)
-            ->assertSee('aria-busy="true"', false)
-            ->assertSeeInOrder([
-                '<div id="app"></div>',
-                '<div id="page-loading-fallback"',
-            ], false);
+            ->assertSee('aria-busy="true"', false);
+
+        $content = $response->getContent();
+        $appRootPosition = strpos($content, '<div id="app"></div>');
+        $fallbackPosition = strpos($content, 'id="page-loading-fallback"');
+
+        $this->assertNotFalse($appRootPosition, 'The Inertia app root should be in the HTML.');
+        $this->assertNotFalse($fallbackPosition, 'The loading fallback should be in the HTML.');
+        $this->assertLessThan($fallbackPosition, $appRootPosition);
     }
 
     public function test_dashboard_page_includes_the_dashboard_boot_skeleton(): void
