@@ -23,11 +23,12 @@ class ProfileUpdateRequest extends FormRequest
             'position' => ['nullable', 'string', 'max:255'],
             'department' => ['nullable', 'string', 'max:255'],
             'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'avatar_media_asset_id' => [
+            'avatar_media_asset_token' => [
                 'nullable',
-                'integer',
-                Rule::exists('media_assets', 'id')
+                'string',
+                Rule::exists('media_assets', 'token')
                     ->where('uploader_id', $this->user()->id)
+                    ->where('module', 'gallery')
                     ->where('record_status', 1),
             ],
             'remove_photo' => ['sometimes', 'boolean'],

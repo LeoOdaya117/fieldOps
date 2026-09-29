@@ -71,10 +71,12 @@ class RecordStatusController extends Controller
 
     public function mediaAsset(
         UpdateRecordStatusRequest $request,
-        int $asset,
+        string $token,
         ChangeRecordStatus $change,
     ): RedirectResponse {
-        $change->execute(MediaAsset::class, $asset, (int) $request->validated('record_status'), $request->user());
+        $asset = MediaAsset::withTrashed()->where('token', $token)->firstOrFail();
+        $this->authorize('updateDeleted', $asset);
+        $change->execute(MediaAsset::class, $asset->getKey(), (int) $request->validated('record_status'), $request->user());
 
         return back()->with('success', 'Media asset status updated.');
     }

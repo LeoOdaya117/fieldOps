@@ -29,7 +29,8 @@ class MediaAssetController extends Controller
         $query = $canViewDeleted ? MediaAsset::withTrashed() : MediaAsset::query();
         $assets = $query
             ->where('uploader_id', $actor->getKey())
-            ->withCount('platformAssignments')
+            ->where('module', 'gallery')
+            ->withCount(['platformAssignments', 'usersUsingAsAvatar'])
             ->when($search !== '', static fn ($query) => $query->where('original_name', 'like', '%'.$search.'%'))
             ->when($recordStatus !== 'all', static fn ($query) => $query->where('record_status', $recordStatus === 'active' ? 1 : 0))
             ->latest('id')
@@ -55,28 +56,28 @@ class MediaAssetController extends Controller
             (string) $request->validated('source'),
             $request->user(),
         );
-        $asset->loadCount('platformAssignments');
+        $asset->loadCount(['platformAssignments', 'usersUsingAsAvatar']);
 
         return (new MediaAssetResource($asset))->response()->setStatusCode(201);
     }
 
     public function update(
         RenameMediaAssetRequest $request,
-        int $asset,
+        string $asset,
         RenameMediaAsset $rename,
     ): JsonResponse {
-        $mediaAsset = MediaAsset::query()->findOrFail($asset);
+        $mediaAsset = MediaAsset::query()->where('token', $asset)->where('module', 'gallery')->firstOrFail();
         $this->assertOwner($mediaAsset, $request);
         $this->authorize('update', $mediaAsset);
         $renamed = $rename->execute($mediaAsset, $request->validatedName(), $request->user());
-        $renamed->loadCount('platformAssignments');
+        $renamed->loadCount(['platformAssignments', 'usersUsingAsAvatar']);
 
         return (new MediaAssetResource($renamed))->response();
     }
 
-    public function destroy(Request $request, int $asset, DeleteMediaAsset $delete): JsonResponse
+    public function destroy(Request $request, string $asset, DeleteMediaAsset $delete): JsonResponse
     {
-        $mediaAsset = MediaAsset::query()->findOrFail($asset);
+        $mediaAsset = MediaAsset::query()->where('token', $asset)->where('module', 'gallery')->firstOrFail();
         $this->assertOwner($mediaAsset, $request);
         $this->authorize('delete', $mediaAsset);
         $delete->execute($mediaAsset, $request->user());

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 
 final class PlatformBranding
 {
-    private const CACHE_KEY = 'platform-branding.values.v1';
+    private const CACHE_KEY = 'platform-branding.values.v2';
 
     /**
      * @return array<string, array{url:string,version:int,is_custom:bool}>
@@ -28,7 +28,7 @@ final class PlatformBranding
                 $version = $isCustom ? (int) $assignment->version : 0;
                 $result[$slot] = [
                     'url' => $isCustom
-                        ? route('platform-assets.show', ['slot' => $slot, 'v' => $version], false)
+                        ? route('platform-assets.show', ['slot' => $slot, 'token' => $assignment->asset->token, 'v' => $version], false)
                         : $definition['fallback_url'],
                     'version' => $version,
                     'is_custom' => $isCustom,

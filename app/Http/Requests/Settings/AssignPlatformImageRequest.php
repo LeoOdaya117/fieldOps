@@ -21,11 +21,12 @@ class AssignPlatformImageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'asset_id' => [
+            'asset_token' => [
                 'required',
-                'integer',
-                Rule::exists('media_assets', 'id')
+                'string',
+                Rule::exists('media_assets', 'token')
                     ->where('uploader_id', $this->user()?->getKey())
+                    ->where('module', 'gallery')
                     ->where('record_status', 1),
             ],
         ];

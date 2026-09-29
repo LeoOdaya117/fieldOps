@@ -37,6 +37,10 @@ return [
                 PermissionKey::MediaAssetsCreate->value,
                 PermissionKey::MediaAssetsUpdate->value,
                 PermissionKey::MediaAssetsDelete->value,
+                PermissionKey::FilesView->value,
+                PermissionKey::FilesCreate->value,
+                PermissionKey::FilesUpdate->value,
+                PermissionKey::FilesDelete->value,
             ],
         ],
         RoleName::Admin->value => [
@@ -95,6 +99,12 @@ return [
                 PermissionKey::MediaAssetsDelete->value,
                 PermissionKey::MediaAssetsViewDeleted->value,
                 PermissionKey::MediaAssetsUpdateDeleted->value,
+                PermissionKey::FilesView->value,
+                PermissionKey::FilesCreate->value,
+                PermissionKey::FilesUpdate->value,
+                PermissionKey::FilesDelete->value,
+                PermissionKey::FilesViewDeleted->value,
+                PermissionKey::FilesUpdateDeleted->value,
             ],
         ],
         RoleName::SuperAdmin->value => [

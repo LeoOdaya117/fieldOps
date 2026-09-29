@@ -53,7 +53,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property-read User|null $updatedBy
  */
 #[Fillable(['name', 'email', 'position', 'department', 'avatar_path', 'password', 'email_verified_at', 'status', 'suspended_at', 'suspended_by', 'created_by', 'updated_by', 'record_status'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'session_version'])]
+#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'session_version', 'avatar_path', 'avatar_media_asset_id'])]
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
@@ -77,17 +77,26 @@ class User extends Authenticatable implements PasskeyUser
             'created_by' => 'integer',
             'updated_by' => 'integer',
             'suspended_at' => 'immutable_datetime',
-            /* @chisel-2fa */
             'two_factor_confirmed_at' => 'datetime',
-            /* @end-chisel-2fa */
         ];
     }
 
     public function getAvatarAttribute(): ?string
     {
+        $asset = $this->avatarMediaAsset;
+        if ($asset !== null && $asset->token !== null) {
+            return route('files.content', $asset->token, false);
+        }
+
         return $this->avatar_path === null
             ? null
             : Storage::disk('public')->url($this->avatar_path);
+    }
+
+    /** @return BelongsTo<MediaAsset, $this> */
+    public function avatarMediaAsset(): BelongsTo
+    {
+        return $this->belongsTo(MediaAsset::class, 'avatar_media_asset_id');
     }
 
     public function isActive(): bool

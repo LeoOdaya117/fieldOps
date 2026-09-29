@@ -2,25 +2,26 @@
 
 namespace App\Actions\Settings;
 
+use App\Actions\Media\StoreMediaAsset;
 use App\Models\MediaAsset;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class UpdateProfile
 {
+    public function __construct(private readonly StoreMediaAsset $storeMediaAsset) {}
+
     /**
      * @param  array<string, mixed>  $data
      */
     public function execute(User $user, array $data): User
     {
         return DB::transaction(function () use ($user, $data): User {
-            $oldAvatarPath = $user->avatar_path;
-            $newAvatarPath = null;
+            $newAvatarAsset = null;
 
             try {
                 $user->forceFill([
@@ -35,45 +36,41 @@ class UpdateProfile
                 }
 
                 if (($data['photo'] ?? null) instanceof UploadedFile) {
-                    $newAvatarPath = $data['photo']->store("users/{$user->getKey()}", 'public');
-
-                    if (! is_string($newAvatarPath)) {
-                        throw ValidationException::withMessages([
-                            'photo' => 'The photo could not be stored. Try again.',
-                        ]);
-                    }
-
-                    $user->avatar_path = $newAvatarPath;
-                } elseif (filled($data['avatar_media_asset_id'] ?? null)) {
+                    $newAvatarAsset = $this->storeMediaAsset->execute($data['photo'], 'upload', $user, 'avatars');
+                    $user->avatar_media_asset_id = $newAvatarAsset->getKey();
+                    $user->avatar_path = null;
+                } elseif (filled($data['avatar_media_asset_token'] ?? null)) {
                     $asset = MediaAsset::query()
-                        ->whereKey($data['avatar_media_asset_id'])
+                        ->where('token', $data['avatar_media_asset_token'])
                         ->where('uploader_id', $user->getKey())
+                        ->where('module', 'gallery')
                         ->first();
 
                     if (! $asset instanceof MediaAsset) {
                         throw ValidationException::withMessages([
-                            'avatar_media_asset_id' => 'Choose an image from your own media library.',
+                            'avatar_media_asset_token' => 'Choose an image from your own media library.',
                         ]);
                     }
 
-                    $newAvatarPath = $this->storeAvatarFromMediaAsset($asset, $user);
-                    $user->avatar_path = $newAvatarPath;
+                    if (! Storage::disk($asset->disk)->exists($asset->path)) {
+                        throw ValidationException::withMessages([
+                            'avatar_media_asset_token' => 'The selected image is unavailable. Choose another image.',
+                        ]);
+                    }
+
+                    $user->avatar_media_asset_id = $asset->getKey();
+                    $user->avatar_path = null;
                 } elseif (filter_var($data['remove_photo'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                    $user->avatar_media_asset_id = null;
                     $user->avatar_path = null;
                 }
 
                 $user->save();
 
-                if ($oldAvatarPath !== $user->avatar_path && $oldAvatarPath !== null) {
-                    DB::afterCommit(static function () use ($oldAvatarPath): void {
-                        Storage::disk('public')->delete($oldAvatarPath);
-                    });
-                }
-
                 return $user->fresh();
             } catch (Throwable $exception) {
-                if (is_string($newAvatarPath)) {
-                    Storage::disk('public')->delete($newAvatarPath);
+                if ($newAvatarAsset instanceof MediaAsset) {
+                    Storage::disk($newAvatarAsset->disk)->delete(array_filter([$newAvatarAsset->path, $newAvatarAsset->thumbnail_path]));
                 }
 
                 throw $exception;
@@ -86,40 +83,5 @@ class UpdateProfile
         $value = trim((string) ($value ?? ''));
 
         return $value === '' ? null : $value;
-    }
-
-    private function storeAvatarFromMediaAsset(MediaAsset $asset, User $user): string
-    {
-        $sourceDisk = Storage::disk($asset->disk);
-
-        if (! $sourceDisk->exists($asset->path)) {
-            throw ValidationException::withMessages([
-                'avatar_media_asset_id' => 'The selected image could not be found. Choose another image.',
-            ]);
-        }
-
-        $contents = $sourceDisk->get($asset->path);
-
-        if (! is_string($contents)) {
-            throw ValidationException::withMessages([
-                'avatar_media_asset_id' => 'The selected image could not be used. Choose another image.',
-            ]);
-        }
-
-        $path = sprintf(
-            'users/%d/avatar-%d-%s.%s',
-            $user->getKey(),
-            $asset->getKey(),
-            Str::random(12),
-            $asset->extension,
-        );
-
-        if (! Storage::disk('public')->put($path, $contents)) {
-            throw ValidationException::withMessages([
-                'avatar_media_asset_id' => 'The selected image could not be saved. Try again.',
-            ]);
-        }
-
-        return $path;
     }
 }

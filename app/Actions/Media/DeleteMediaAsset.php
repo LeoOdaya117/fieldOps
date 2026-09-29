@@ -7,6 +7,7 @@ use App\Models\MediaAsset;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class DeleteMediaAsset
@@ -18,13 +19,18 @@ class DeleteMediaAsset
         DB::transaction(function () use ($asset, $actor): void {
             $asset->refresh();
 
-            if ((int) $asset->uploader_id !== (int) $actor->getKey()) {
+            if ($asset->module === 'avatars'
+                || ($asset->module !== 'files' && (int) $asset->uploader_id !== (int) $actor->getKey())
+                || ($asset->module === 'files' && (int) $asset->uploader_id !== (int) $actor->getKey()
+                    && ! $actor->hasAnyRole(['admin', 'super_admin']))) {
                 throw new AuthorizationException;
             }
 
-            if ($asset->isAssigned()) {
+            Gate::forUser($actor)->authorize('delete', $asset);
+
+            if ($asset->isReferenced()) {
                 throw ValidationException::withMessages([
-                    'asset' => 'This image is currently assigned to a platform slot. Reset or replace that slot first.',
+                    'asset' => 'This file is in use as an avatar or platform image. Remove that assignment first.',
                 ]);
             }
 

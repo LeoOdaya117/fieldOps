@@ -15,10 +15,30 @@ use Throwable;
 
 class StoreMediaAsset
 {
-    public function __construct(private readonly RecordAccessAudit $audit) {}
+    public function __construct(
+        private readonly RecordAccessAudit $audit,
+        private readonly EnforceFileQuota $fileQuota,
+    ) {}
 
-    public function execute(UploadedFile $file, string $source, User $actor): MediaAsset
+    public function execute(UploadedFile $file, string $source, User $actor, string $module = 'gallery', ?string $tag = null): MediaAsset
     {
+        if (! in_array($module, (array) config('media-assets.allowed_modules'), true)) {
+            throw ValidationException::withMessages(['file' => 'This upload destination is not supported.']);
+        }
+
+        $dimensions = @getimagesize($file->getRealPath());
+        if (! is_array($dimensions)) {
+            throw ValidationException::withMessages(['file' => 'The selected file could not be read as an image.']);
+        }
+        $maximumDimension = (int) config('media-assets.max_dimension_pixels', 8192);
+        $maximumPixels = (int) config('media-assets.max_image_pixels', 12000000);
+        if ($dimensions[0] > $maximumDimension || $dimensions[1] > $maximumDimension
+            || $maximumPixels < $dimensions[0] * $dimensions[1]) {
+            throw ValidationException::withMessages([
+                'file' => 'The image dimensions exceed the allowed preview size.',
+            ]);
+        }
+
         $bytes = file_get_contents($file->getRealPath());
         $image = is_string($bytes) ? @imagecreatefromstring($bytes) : false;
 
@@ -29,13 +49,6 @@ class StoreMediaAsset
         try {
             $width = imagesx($image);
             $height = imagesy($image);
-            $maximumDimension = (int) config('media-assets.max_dimension_pixels', 8192);
-
-            if ($width > $maximumDimension || $height > $maximumDimension) {
-                throw ValidationException::withMessages([
-                    'file' => "Images must be no larger than {$maximumDimension}×{$maximumDimension} pixels.",
-                ]);
-            }
 
             $mimeType = (string) $file->getMimeType();
             $extension = match ($mimeType) {
@@ -54,7 +67,7 @@ class StoreMediaAsset
         }
 
         $diskName = (string) config('media-assets.disk', 'local');
-        $directory = 'media-assets/'.$actor->getKey().'/'.now()->format('Y/m');
+        $directory = 'modules/'.$module.'/'.now()->format('Y/m');
         $basename = (string) Str::uuid();
         $path = "{$directory}/{$basename}.{$extension}";
         $thumbnailPath = "{$directory}/{$basename}-thumb.webp";
@@ -78,28 +91,29 @@ class StoreMediaAsset
                 $width,
                 $height,
                 $source,
+                $module,
+                $tag,
             ): MediaAsset {
                 User::query()->whereKey($actor->getKey())->lockForUpdate()->firstOrFail();
 
-                $assetCount = MediaAsset::withTrashed()->where('uploader_id', $actor->getKey())->count();
-                $usedBytes = (int) MediaAsset::withTrashed()->where('uploader_id', $actor->getKey())->sum('size_bytes');
-                $maximumAssets = (int) config('media-assets.per_user_max_assets', 100);
-                $maximumBytes = (int) config('media-assets.per_user_max_bytes', 262144000);
-
-                if ($assetCount >= $maximumAssets) {
-                    throw ValidationException::withMessages([
-                        'file' => "Your media library has reached its {$maximumAssets}-image limit.",
-                    ]);
-                }
-
-                if ($usedBytes + strlen($normalized) > $maximumBytes) {
-                    throw ValidationException::withMessages([
-                        'file' => 'Your media library has reached its storage limit.',
-                    ]);
+                if ($module === 'files') {
+                    $this->fileQuota->execute($actor, strlen($normalized));
+                } elseif ($module === 'gallery') {
+                    $gallery = MediaAsset::withTrashed()->where('uploader_id', $actor->getKey())->where('module', 'gallery');
+                    $maximumAssets = (int) config('media-assets.per_user_max_assets', 100);
+                    $maximumBytes = (int) config('media-assets.per_user_max_bytes', 262144000);
+                    if ((clone $gallery)->count() >= $maximumAssets) {
+                        throw ValidationException::withMessages(['file' => "Your media library has reached its {$maximumAssets}-image limit."]);
+                    }
+                    if ((int) $gallery->sum('size_bytes') + strlen($normalized) > $maximumBytes) {
+                        throw ValidationException::withMessages(['file' => 'Your media library has reached its storage limit.']);
+                    }
                 }
 
                 $asset = MediaAsset::query()->create([
                     'uploader_id' => $actor->getKey(),
+                    'module' => $module,
+                    'tag' => $tag,
                     'disk' => $diskName,
                     'path' => $path,
                     'thumbnail_path' => $thumbnailPath,

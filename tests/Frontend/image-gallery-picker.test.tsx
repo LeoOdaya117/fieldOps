@@ -1,5 +1,5 @@
-import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MediaAssetDto } from '@/types';
 
@@ -10,21 +10,25 @@ vi.mock('@/components/ui/confirm-dialog', () => ({
 import { ImageGalleryPicker } from '@/components/image-gallery-picker';
 
 const asset: MediaAssetDto = {
-    id: 7,
+    token: 'opaque-gallery-token',
     name: 'operations-logo.png',
     mimeType: 'image/png',
     extension: 'png',
+    module: 'gallery',
+    tag: null,
     sizeBytes: 2048,
     width: 400,
     height: 100,
     source: 'upload',
     createdAt: '2026-09-05T08:00:00+08:00',
-    contentUrl: '/media-assets/7/content',
-    thumbnailUrl: '/media-assets/7/thumbnail',
+    contentUrl: '/files/opaque-gallery-token/content',
+    thumbnailUrl: '/files/opaque-gallery-token/thumbnail',
+    downloadUrl: '/files/opaque-gallery-token/download',
+    previewDataUrl: '/files/opaque-gallery-token/preview-data',
     assigned: false,
     recordStatus: 1,
-    recordStatusUrl: '/media-assets/7/record-status',
-    updateUrl: '/media-assets/7',
+    recordStatusUrl: '/files/opaque-gallery-token/record-status',
+    updateUrl: '/media-assets/opaque-gallery-token',
 };
 
 describe('ImageGalleryPicker', () => {

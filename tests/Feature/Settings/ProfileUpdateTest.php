@@ -72,6 +72,7 @@ class ProfileUpdateTest extends TestCase
 
     public function test_profile_details_and_photo_can_be_updated(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         $user = User::factory()->create();
 
@@ -93,8 +94,11 @@ class ProfileUpdateTest extends TestCase
 
         $this->assertSame('Field supervisor', $user->position);
         $this->assertSame('Operations', $user->department);
-        $this->assertNotNull($user->avatar_path);
-        Storage::disk('public')->assertExists($user->avatar_path);
+        $this->assertNotNull($user->avatar_media_asset_id);
+        $asset = MediaAsset::query()->findOrFail($user->avatar_media_asset_id);
+        $this->assertSame('avatars', $asset->module);
+        Storage::disk('local')->assertExists($asset->path);
+        $this->assertStringContainsString($asset->token, $user->avatar);
     }
 
     public function test_profile_photo_can_be_removed(): void
@@ -118,7 +122,7 @@ class ProfileUpdateTest extends TestCase
             ->assertRedirect(route('profile.edit'));
 
         $this->assertNull($user->refresh()->avatar_path);
-        Storage::disk('public')->assertMissing('users/1/profile.png');
+        Storage::disk('public')->assertExists('users/1/profile.png');
     }
 
     public function test_profile_photo_can_use_an_owned_media_asset(): void
@@ -137,7 +141,7 @@ class ProfileUpdateTest extends TestCase
                 'email' => $user->email,
                 'position' => $user->position,
                 'department' => $user->department,
-                'avatar_media_asset_id' => $asset->id,
+                'avatar_media_asset_token' => $asset->token,
             ]);
 
         $response
@@ -146,10 +150,10 @@ class ProfileUpdateTest extends TestCase
 
         $user->refresh();
 
-        $this->assertNotNull($user->avatar_path);
-        $this->assertStringStartsWith("users/{$user->id}/avatar-{$asset->id}-", $user->avatar_path);
-        Storage::disk('public')->assertExists($user->avatar_path);
-        Storage::disk('public')->assertMissing('users/1/old.png');
+        $this->assertSame($asset->id, $user->avatar_media_asset_id);
+        $this->assertNull($user->avatar_path);
+        $this->assertStringContainsString($asset->token, $user->avatar);
+        Storage::disk('public')->assertExists('users/1/old.png');
     }
 
     public function test_profile_photo_cannot_use_another_users_media_asset(): void
@@ -168,9 +172,9 @@ class ProfileUpdateTest extends TestCase
                 'email' => $user->email,
                 'position' => $user->position,
                 'department' => $user->department,
-                'avatar_media_asset_id' => $asset->id,
+                'avatar_media_asset_token' => $asset->token,
             ])
-            ->assertSessionHasErrors('avatar_media_asset_id');
+            ->assertSessionHasErrors('avatar_media_asset_token');
 
         $this->assertNull($user->refresh()->avatar_path);
     }

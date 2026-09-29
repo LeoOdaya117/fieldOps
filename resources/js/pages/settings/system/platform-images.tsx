@@ -2,8 +2,8 @@ import { Head, router } from '@inertiajs/react';
 import { ImageIcon, RefreshCcw, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { ImageGalleryPicker } from '@/components/image-gallery-picker';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { MediaAssetDto, PlatformImageSlot } from '@/types';
 
 type Props = {
@@ -173,7 +173,7 @@ export default function PlatformImages({
 
                         router.put(
                             `/settings/system/platform-images/${activeSlot.key}`,
-                            { asset_id: asset.id },
+                            { asset_token: asset.token },
                             { preserveScroll: true },
                         );
                     }}
