@@ -31,3 +31,9 @@ Append meaningful architectural or workflow decisions with their date, context, 
 - **Context:** The global Inertia progress bar did not show page structure while visits were pending, and client navigation continued to display the previous page.
 - **Decision:** Use an app-level visit provider for non-prefetch GET requests, render a destination-family skeleton after 200 ms inside the innermost active layout, and retain a Blade boot fallback while the Inertia mount root is empty. Unmapped future pages use a generic skeleton; local operation indicators remain local.
 - **Rationale:** This makes page navigation consistent across existing and future routes, keeps app/auth/settings navigation in place, and avoids replacing useful form, upload, or widget progress states.
+
+## 2026-09-28 — Keep uploaded-file identity and storage separate
+
+- **Context:** Files, personal images, avatars, and platform branding need one management model without exposing storage paths or treating a token as authorization.
+- **Decision:** Extend `MediaAsset` with immutable opaque tokens and a module, keep physical disk/key server-only, and resolve authenticated preview/download through token routes and module-aware policy. The public branding endpoint serves only an active assigned image by token. Keep the gallery picker uploader-scoped while the central Files list may include cross-uploader assets in administrable modules.
+- **Rationale:** One canonical record and private disk contract simplify lifecycle, auditing, and future S3-compatible storage while preserving per-module access boundaries. Legacy public avatar files stay in place until an independently verified deployment cutover.

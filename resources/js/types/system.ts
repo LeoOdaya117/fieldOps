@@ -37,25 +37,7 @@ export type PlatformImageSlot = {
     > | null;
 };
 
-export type MediaAssetDto = {
-    id: number;
-    name: string;
-    mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
-    extension: 'jpg' | 'png' | 'webp';
-    sizeBytes: number;
-    width: number;
-    height: number;
-    source: 'upload' | 'camera';
-    createdAt: string;
-    contentUrl: string;
-    thumbnailUrl: string;
-    assigned: boolean;
-    recordStatus?: number;
-    recordStatusUrl?: string | null;
-    updateUrl?: string | null;
-    canUpdate?: boolean;
-    canDelete?: boolean;
-};
+export type MediaAssetDto = FileDto;
 
 export type MapCoordinate = {
     latitude: number;
@@ -80,3 +62,4 @@ export type ImageGalleryPickerProps = {
     onConfirm: (asset: MediaAssetDto) => void;
     title?: string;
 };
+import type { FileDto } from './files';

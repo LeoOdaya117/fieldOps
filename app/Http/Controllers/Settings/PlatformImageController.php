@@ -30,7 +30,7 @@ class PlatformImageController extends Controller
                 'url' => $branding[$slot]['url'],
                 'isCustom' => $branding[$slot]['is_custom'],
                 'asset' => $asset === null ? null : [
-                    'id' => $asset->getKey(),
+                    'token' => $asset->token,
                     'name' => $asset->original_name,
                     'mimeType' => $asset->mime_type,
                     'sizeBytes' => $asset->size_bytes,
@@ -54,7 +54,7 @@ class PlatformImageController extends Controller
         string $slot,
         AssignPlatformImage $assign,
     ): RedirectResponse {
-        $asset = MediaAsset::query()->findOrFail((int) $request->validated('asset_id'));
+        $asset = MediaAsset::query()->where('token', $request->validated('asset_token'))->firstOrFail();
         $assign->assign($slot, $asset, $request->user());
 
         return to_route('system-settings.platform-images.index')

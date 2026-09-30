@@ -21,7 +21,7 @@ class AssignPlatformImage
 
         if ((int) $asset->uploader_id !== (int) $actor->getKey()) {
             throw ValidationException::withMessages([
-                'asset_id' => 'Choose an image from your own media library.',
+                'asset_token' => 'Choose an image from your own media library.',
             ]);
         }
 

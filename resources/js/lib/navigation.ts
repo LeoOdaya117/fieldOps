@@ -1,6 +1,7 @@
 import {
     Bell,
     Clock3,
+    Files,
     Globe2,
     LayoutGrid,
     ScrollText,
@@ -79,6 +80,12 @@ const navigationDefinitions: Array<{
     {
         label: 'System',
         items: [
+            {
+                title: 'Files',
+                href: '/files',
+                icon: Files,
+                permission: 'files.view',
+            },
             {
                 title: 'Countries',
                 href: '/system/countries',

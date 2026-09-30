@@ -38,7 +38,7 @@ class MediaAssetTest extends TestCase
             ->assertOk()
             ->assertJsonPath('canCreate', true)
             ->assertJsonPath('canViewDeleted', false)
-            ->assertJsonPath('data.0.id', $upload->json('data.id'));
+            ->assertJsonPath('data.0.token', $upload->json('data.token'));
 
         $this->actingAs($user)->deleteJson(route('media-assets.destroy', $asset))->assertNoContent();
         Storage::disk('local')->assertExists($asset->path);
@@ -49,8 +49,8 @@ class MediaAssetTest extends TestCase
             ->assertOk()
             ->assertJsonPath('recordStatusFilter', 'active')
             ->assertJsonCount(0, 'data');
-        $this->get(route('media-assets.content', $asset))->assertNotFound();
-        $this->patchJson(route('media-assets.record-status', $asset), ['record_status' => 1])->assertForbidden();
+        $this->get(route('files.content', $asset))->assertNotFound();
+        $this->patchJson(route('files.record-status', $asset), ['record_status' => 1])->assertForbidden();
     }
 
     public function test_owner_can_rename_owned_asset_without_changing_its_stored_paths(): void
@@ -86,10 +86,10 @@ class MediaAssetTest extends TestCase
             ->assertOk()
             ->assertJsonPath('canViewDeleted', true)
             ->assertJsonPath('data.0.recordStatus', 0)
-            ->assertJsonPath('data.0.recordStatusUrl', route('media-assets.record-status', $asset, false));
-        $this->get(route('media-assets.content', $asset))->assertOk();
+            ->assertJsonPath('data.0.recordStatusUrl', route('files.record-status', $asset, false));
+        $this->get(route('files.content', $asset))->assertOk();
 
-        $this->patch(route('media-assets.record-status', $asset), ['record_status' => 1])
+        $this->patch(route('files.record-status', $asset), ['record_status' => 1])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
         $this->assertDatabaseHas('media_assets', ['id' => $asset->id, 'record_status' => 1]);
@@ -97,7 +97,7 @@ class MediaAssetTest extends TestCase
         $other = User::factory()->create();
         $other->syncRoles(RoleName::SuperAdmin->value);
         $asset->delete();
-        $this->actingAs($other)->patch(route('media-assets.record-status', $asset), ['record_status' => 1])->assertForbidden();
+        $this->actingAs($other)->patch(route('files.record-status', $asset), ['record_status' => 1])->assertForbidden();
     }
 
     public function test_default_user_role_has_no_deleted_asset_permissions(): void
@@ -120,8 +120,8 @@ class MediaAssetTest extends TestCase
         Storage::disk('local')->put($asset->path, 'image');
         Storage::disk('local')->put($asset->thumbnail_path, 'thumb');
 
-        $this->actingAs($other)->get(route('media-assets.content', $asset))->assertForbidden();
-        $this->actingAs($other)->get(route('media-assets.thumbnail', $asset))->assertForbidden();
+        $this->actingAs($other)->get(route('files.content', $asset))->assertForbidden();
+        $this->actingAs($other)->get(route('files.thumbnail', $asset))->assertForbidden();
         $this->actingAs($other)->deleteJson(route('media-assets.destroy', $asset))->assertForbidden();
         $this->actingAs($other)->getJson(route('media-assets.index'))
             ->assertOk()
@@ -168,7 +168,7 @@ class MediaAssetTest extends TestCase
         $this->assertDatabaseHas('media_assets', ['id' => $asset->id]);
 
         $user->givePermissionTo(Permission::findOrCreate('media_assets.update_deleted', 'web'));
-        $this->actingAs($user)->patchJson(route('media-assets.record-status', $asset), ['record_status' => 0])
+        $this->actingAs($user)->patchJson(route('files.record-status', $asset), ['record_status' => 0])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['record_status']);
     }

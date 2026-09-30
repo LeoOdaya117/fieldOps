@@ -2,8 +2,10 @@
 
 namespace App\Actions\Rbac;
 
+use App\Actions\Media\StoreMediaAsset;
 use App\Actions\Security\InvalidateUserSessions;
 use App\Enums\UserStatus;
+use App\Models\MediaAsset;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -19,6 +21,7 @@ class UpdateUser
         private readonly ChangeUserStatus $changeStatus,
         private readonly RecordAccessAudit $audit,
         private readonly InvalidateUserSessions $invalidateSessions,
+        private readonly StoreMediaAsset $storeMediaAsset,
     ) {}
 
     /**
@@ -53,10 +56,9 @@ class UpdateUser
                 'email' => $target->email,
                 'position' => $target->position,
                 'department' => $target->department,
-                'has_avatar' => $target->avatar_path !== null,
+                'has_avatar' => $target->avatar_media_asset_id !== null || $target->avatar_path !== null,
             ];
-            $oldAvatarPath = $target->avatar_path;
-            $newAvatarPath = null;
+            $newAvatarAsset = null;
             $passwordChanged = filled($data['password'] ?? null);
 
             try {
@@ -94,16 +96,11 @@ class UpdateUser
                 }
 
                 if (($data['photo'] ?? null) instanceof UploadedFile) {
-                    $newAvatarPath = $data['photo']->store("users/{$target->getKey()}", 'public');
-
-                    if (! is_string($newAvatarPath)) {
-                        throw ValidationException::withMessages([
-                            'photo' => 'The photo could not be stored. Try again.',
-                        ]);
-                    }
-
-                    $target->avatar_path = $newAvatarPath;
+                    $newAvatarAsset = $this->storeMediaAsset->execute($data['photo'], 'upload', $actor, 'avatars');
+                    $target->avatar_media_asset_id = $newAvatarAsset->getKey();
+                    $target->avatar_path = null;
                 } elseif (filter_var($data['remove_photo'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                    $target->avatar_media_asset_id = null;
                     $target->avatar_path = null;
                 }
 
@@ -114,7 +111,7 @@ class UpdateUser
                     'email' => $target->email,
                     'position' => $target->position,
                     'department' => $target->department,
-                    'has_avatar' => $target->avatar_path !== null,
+                    'has_avatar' => $target->avatar_media_asset_id !== null || $target->avatar_path !== null,
                 ];
 
                 if ($before !== $after) {
@@ -133,17 +130,10 @@ class UpdateUser
                     );
                 }
 
-                $avatarChanged = $oldAvatarPath !== $target->avatar_path;
-                if ($avatarChanged && $oldAvatarPath !== null) {
-                    DB::afterCommit(static function () use ($oldAvatarPath): void {
-                        Storage::disk('public')->delete($oldAvatarPath);
-                    });
-                }
-
                 return $target->fresh('roles');
             } catch (Throwable $exception) {
-                if (is_string($newAvatarPath)) {
-                    Storage::disk('public')->delete($newAvatarPath);
+                if ($newAvatarAsset instanceof MediaAsset) {
+                    Storage::disk($newAvatarAsset->disk)->delete(array_filter([$newAvatarAsset->path, $newAvatarAsset->thumbnail_path]));
                 }
 
                 throw $exception;

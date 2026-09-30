@@ -11,9 +11,9 @@ import {
     VideoOff,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { FileDropzone } from '@/components/file-dropzone';
 import { Button } from '@/components/ui/button';
-import { RecordStatusControl } from '@/components/ui/record-status-control';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
     Dialog,
     DialogContent,
@@ -23,6 +23,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { RecordStatusControl } from '@/components/ui/record-status-control';
 import {
     Select,
     SelectContent,
@@ -30,6 +31,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useFileUploads } from '@/features/files/hooks/use-file-uploads';
 import { cn } from '@/lib/utils';
 import type { ImageGalleryPickerProps, MediaAssetDto } from '@/types';
 
@@ -134,7 +136,6 @@ export function ImageGalleryPicker({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [progress, setProgress] = useState<number | null>(null);
-    const [dragging, setDragging] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -229,6 +230,23 @@ export function ImageGalleryPicker({
         },
         [],
     );
+
+    const galleryUploads = useFileUploads<MediaAssetDto>({
+        url: '/media-assets',
+        maxFiles: 1,
+        maxBytes: 5 * 1024 * 1024,
+        accept: ['image/jpeg', 'image/png', 'image/webp'],
+        fields: { source: 'upload' },
+        onUploaded: (asset) => {
+            setSelected(asset);
+            onChange(asset);
+            setTab('library');
+            setPage(1);
+            setSearch('');
+            setSearchInput('');
+            void loadAssets(1, '', 'active');
+        },
+    });
 
     useEffect(() => {
         if (!open) {
@@ -475,7 +493,7 @@ export function ImageGalleryPicker({
         }
 
         setError(null);
-        const response = await fetch(`/media-assets/${selected.id}`, {
+        const response = await fetch(`/media-assets/${selected.token}`, {
             method: 'DELETE',
             credentials: 'same-origin',
             headers: {
@@ -518,7 +536,7 @@ export function ImageGalleryPicker({
 
         try {
             const response = await fetch(
-                selected.updateUrl ?? `/media-assets/${selected.id}`,
+                selected.updateUrl ?? `/media-assets/${selected.token}`,
                 {
                     method: 'PATCH',
                     credentials: 'same-origin',
@@ -740,11 +758,12 @@ export function ImageGalleryPicker({
                                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
                                             {assets.map((asset) => {
                                                 const active =
-                                                    selected?.id === asset.id;
+                                                    selected?.token ===
+                                                    asset.token;
 
                                                 return (
                                                     <button
-                                                        key={asset.id}
+                                                        key={asset.token}
                                                         type="button"
                                                         aria-pressed={active}
                                                         onClick={() => {
@@ -760,7 +779,8 @@ export function ImageGalleryPicker({
                                                         <span className="block aspect-square overflow-hidden bg-muted">
                                                             <img
                                                                 src={
-                                                                    asset.thumbnailUrl
+                                                                    asset.thumbnailUrl ??
+                                                                    asset.contentUrl
                                                                 }
                                                                 alt=""
                                                                 className="size-full object-contain transition-transform duration-200 group-hover:scale-[1.02] motion-reduce:transition-none"
@@ -965,65 +985,21 @@ export function ImageGalleryPicker({
 
                         {tab === 'upload' && capabilities.canCreate && (
                             <div className="flex min-h-full items-center justify-center p-5 sm:p-8">
-                                <label
-                                    className={cn(
-                                        'flex min-h-80 w-full max-w-2xl cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-8 text-center transition-colors hover:bg-muted/40',
-                                        dragging &&
-                                            'border-primary bg-accent/50',
-                                    )}
-                                    onDragEnter={(event) => {
-                                        event.preventDefault();
-                                        setDragging(true);
-                                    }}
-                                    onDragOver={(event) =>
-                                        event.preventDefault()
+                                <FileDropzone
+                                    className="w-full max-w-2xl"
+                                    label="Drop an image here or choose a file"
+                                    hint="JPEG, PNG, or WebP up to 5 MB and 8192 × 8192 pixels."
+                                    accept="image/jpeg,image/png,image/webp"
+                                    entries={galleryUploads.entries}
+                                    error={galleryUploads.error}
+                                    onFiles={(files) =>
+                                        void galleryUploads.addFiles(files)
                                     }
-                                    onDragLeave={() => setDragging(false)}
-                                    onDrop={(event) => {
-                                        event.preventDefault();
-                                        setDragging(false);
-                                        const file =
-                                            event.dataTransfer.files[0];
-
-                                        if (file) {
-                                            void acceptUpload(file);
-                                        }
-                                    }}
-                                >
-                                    {progress === null ? (
-                                        <UploadCloud className="size-9 text-muted-foreground" />
-                                    ) : (
-                                        <Loader2 className="size-9 animate-spin text-primary motion-reduce:animate-none" />
-                                    )}
-                                    <span className="mt-4 text-sm font-semibold">
-                                        Drop an image here or choose a file
-                                    </span>
-                                    <span className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-                                        JPEG, PNG, or WebP up to 5 MB and 8192 ×
-                                        8192 pixels.
-                                    </span>
-                                    {progress !== null && (
-                                        <span className="mt-4 text-sm font-medium tabular-nums">
-                                            Uploading {progress}%
-                                        </span>
-                                    )}
-                                    <input
-                                        type="file"
-                                        accept="image/jpeg,image/png,image/webp"
-                                        className="sr-only"
-                                        disabled={progress !== null}
-                                        onChange={(event) => {
-                                            const file =
-                                                event.target.files?.[0];
-
-                                            if (file) {
-                                                void acceptUpload(file);
-                                            }
-
-                                            event.currentTarget.value = '';
-                                        }}
-                                    />
-                                </label>
+                                    onRetry={(id) =>
+                                        void galleryUploads.retry(id)
+                                    }
+                                    onRemove={galleryUploads.remove}
+                                />
                             </div>
                         )}
 

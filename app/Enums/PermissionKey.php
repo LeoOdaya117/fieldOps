@@ -55,6 +55,12 @@ enum PermissionKey: string
     case MediaAssetsDelete = 'media_assets.delete';
     case MediaAssetsViewDeleted = 'media_assets.view_deleted';
     case MediaAssetsUpdateDeleted = 'media_assets.update_deleted';
+    case FilesView = 'files.view';
+    case FilesCreate = 'files.create';
+    case FilesUpdate = 'files.update';
+    case FilesDelete = 'files.delete';
+    case FilesViewDeleted = 'files.view_deleted';
+    case FilesUpdateDeleted = 'files.update_deleted';
 
     /** @return list<string> */
     public static function values(): array

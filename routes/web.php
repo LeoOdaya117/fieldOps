@@ -8,6 +8,7 @@ use App\Http\Controllers\Access\VisitLogController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\Auth\SessionActivityController;
+use App\Http\Controllers\Media\FileController;
 use App\Http\Controllers\Media\MediaAssetContentController;
 use App\Http\Controllers\Media\MediaAssetController;
 use App\Http\Controllers\Media\PlatformAssetContentController;
@@ -19,7 +20,7 @@ use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
-Route::get('platform-assets/{slot}', PlatformAssetContentController::class)->name('platform-assets.show');
+Route::get('platform-assets/{slot}/{token}', PlatformAssetContentController::class)->name('platform-assets.show');
 
 Route::middleware('guest')->group(function () {
     Route::get('register', [RegistrationController::class, 'create'])->name('register');
@@ -40,22 +41,23 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::patch('notifications/{notification}', [NotificationController::class, 'update'])->whereUuid('notification')->name('notifications.update');
 
     Route::post('session/activity', SessionActivityController::class)->name('session.activity');
+    Route::get('files', [FileController::class, 'index'])->middleware('can:files.view')->name('files.index');
+    Route::post('files', [FileController::class, 'store'])->middleware(['can:files.create', 'throttle:media-uploads'])->name('files.store');
+    Route::get('files/{token}/content', [MediaAssetContentController::class, 'content'])->name('files.content');
+    Route::get('files/{token}/thumbnail', [MediaAssetContentController::class, 'thumbnail'])->name('files.thumbnail');
+    Route::get('files/{token}/preview-data', [MediaAssetContentController::class, 'previewData'])->middleware('throttle:file-previews')->name('files.preview-data');
+    Route::get('files/{token}/download', [MediaAssetContentController::class, 'download'])->name('files.download');
+    Route::patch('files/{token}/record-status', [RecordStatusController::class, 'mediaAsset'])->name('files.record-status');
+    Route::patch('files/{token}', [FileController::class, 'update'])->middleware('can:files.update')->name('files.update');
+    Route::delete('files/{token}', [FileController::class, 'destroy'])->middleware('can:files.delete')->name('files.destroy');
+    Route::get('files/{token}', [FileController::class, 'show'])->name('files.show');
     Route::get('media-assets', [MediaAssetController::class, 'index'])->middleware('can:media_assets.view')->name('media-assets.index');
     Route::post('media-assets', [MediaAssetController::class, 'store'])
         ->middleware(['can:media_assets.create', 'throttle:media-uploads'])
         ->name('media-assets.store');
-    Route::patch('media-assets/{asset}/record-status', [RecordStatusController::class, 'mediaAsset'])
-        ->middleware('can:media_assets.update_deleted')
-        ->name('media-assets.record-status');
     Route::patch('media-assets/{asset}', [MediaAssetController::class, 'update'])
         ->middleware('can:media_assets.update')
         ->name('media-assets.update');
-    Route::get('media-assets/{asset}/content', [MediaAssetContentController::class, 'content'])
-        ->middleware('can:media_assets.view')
-        ->name('media-assets.content');
-    Route::get('media-assets/{asset}/thumbnail', [MediaAssetContentController::class, 'thumbnail'])
-        ->middleware('can:media_assets.view')
-        ->name('media-assets.thumbnail');
     Route::delete('media-assets/{asset}', [MediaAssetController::class, 'destroy'])
         ->middleware('can:media_assets.delete')
         ->name('media-assets.destroy');

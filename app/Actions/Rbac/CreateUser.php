@@ -2,7 +2,9 @@
 
 namespace App\Actions\Rbac;
 
+use App\Actions\Media\StoreMediaAsset;
 use App\Enums\UserStatus;
+use App\Models\MediaAsset;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -16,6 +18,7 @@ class CreateUser
     public function __construct(
         private readonly RecordAccessAudit $audit,
         private readonly ValidateRoleGrant $validateRoleGrant,
+        private readonly StoreMediaAsset $storeMediaAsset,
     ) {}
 
     /**
@@ -40,7 +43,7 @@ class CreateUser
         }
 
         return DB::transaction(function () use ($data, $actor, $role, $blocked): User {
-            $avatarPath = null;
+            $avatarAsset = null;
             $user = null;
 
             try {
@@ -59,15 +62,8 @@ class CreateUser
                 ]);
 
                 if (($data['photo'] ?? null) instanceof UploadedFile) {
-                    $avatarPath = $data['photo']->store("users/{$user->getKey()}", 'public');
-
-                    if (! is_string($avatarPath)) {
-                        throw ValidationException::withMessages([
-                            'photo' => 'The photo could not be stored. Try again.',
-                        ]);
-                    }
-
-                    $user->forceFill(['avatar_path' => $avatarPath])->save();
+                    $avatarAsset = $this->storeMediaAsset->execute($data['photo'], 'upload', $actor, 'avatars');
+                    $user->forceFill(['avatar_media_asset_id' => $avatarAsset->getKey()])->save();
                 }
 
                 $user->syncRoles([$role]);
@@ -84,14 +80,14 @@ class CreateUser
                         'department' => $user->department,
                         'status' => $user->status->value,
                         'role' => $role->name,
-                        'has_avatar' => $user->avatar_path !== null,
+                        'has_avatar' => $user->avatar_media_asset_id !== null,
                     ],
                 );
 
                 return $user->fresh('roles');
             } catch (Throwable $exception) {
-                if (is_string($avatarPath)) {
-                    Storage::disk('public')->delete($avatarPath);
+                if ($avatarAsset instanceof MediaAsset) {
+                    Storage::disk($avatarAsset->disk)->delete(array_filter([$avatarAsset->path, $avatarAsset->thumbnail_path]));
                 }
 
                 throw $exception;

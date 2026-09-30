@@ -24,13 +24,13 @@ class PlatformImagesTest extends TestCase
         $session = ['auth.password_confirmed_at' => now()->timestamp];
 
         $this->actingAs($owner)->withSession($session)
-            ->put(route('system-settings.platform-images.update', 'brand_mark'), ['asset_id' => $asset->id])
+            ->put(route('system-settings.platform-images.update', 'brand_mark'), ['asset_token' => $asset->token])
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('system-settings.platform-images.index'));
 
         $assignment = PlatformImageAssignment::query()->findOrFail('brand_mark');
         $this->assertSame($asset->id, $assignment->media_asset_id);
-        $this->get(route('platform-assets.show', ['slot' => 'brand_mark', 'v' => $assignment->version]))
+        $this->get(route('platform-assets.show', ['slot' => 'brand_mark', 'token' => $asset->token, 'v' => $assignment->version]))
             ->assertOk()
             ->assertHeader('Cache-Control', 'immutable, max-age=31536000, public');
 
@@ -61,7 +61,7 @@ class PlatformImagesTest extends TestCase
                 ->has('slots', 5));
 
         $this->actingAs($admin)->withSession($session)
-            ->put(route('system-settings.platform-images.update', 'brand_mark'), ['asset_id' => $asset->id])
+            ->put(route('system-settings.platform-images.update', 'brand_mark'), ['asset_token' => $asset->token])
             ->assertForbidden();
         $this->actingAs($admin)->withSession($session)
             ->delete(route('system-settings.platform-images.destroy', 'brand_mark'))
@@ -77,8 +77,8 @@ class PlatformImagesTest extends TestCase
         $session = ['auth.password_confirmed_at' => now()->timestamp];
 
         $this->actingAs($owner)->withSession($session)
-            ->put(route('system-settings.platform-images.update', 'brand_mark'), ['asset_id' => $asset->id])
-            ->assertSessionHasErrors(['asset_id']);
+            ->put(route('system-settings.platform-images.update', 'brand_mark'), ['asset_token' => $asset->token])
+            ->assertSessionHasErrors(['asset_token']);
         $this->actingAs($owner)->withSession($session)
             ->delete(route('system-settings.platform-images.destroy', 'unknown'))
             ->assertNotFound();

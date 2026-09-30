@@ -5,6 +5,7 @@ namespace Tests\Feature\Access;
 use App\Enums\RegistrationStatus;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
+use App\Models\MediaAsset;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\UserRegistration;
@@ -22,6 +23,7 @@ class UserManagementTest extends TestCase
 
     public function test_admin_can_create_a_user_with_profile_access_and_a_photo(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         $admin = $this->admin();
         $role = Role::query()->where('name', RoleName::User->value)->firstOrFail();
@@ -49,8 +51,10 @@ class UserManagementTest extends TestCase
         $this->assertTrue($user->hasRole(RoleName::User->value));
         $this->assertTrue(Hash::check('new-password', $user->password));
         $this->assertNotNull($user->email_verified_at);
-        $this->assertNotNull($user->avatar_path);
-        Storage::disk('public')->assertExists($user->avatar_path);
+        $this->assertNotNull($user->avatar_media_asset_id);
+        $asset = MediaAsset::query()->findOrFail($user->avatar_media_asset_id);
+        Storage::disk('local')->assertExists($asset->path);
+        $this->assertStringContainsString($asset->token, $user->avatar);
         $this->assertDatabaseHas('access_audit_events', [
             'event' => 'user.created',
             'subject_id' => (string) $user->id,
@@ -166,6 +170,7 @@ class UserManagementTest extends TestCase
 
     public function test_admin_can_replace_and_remove_a_user_photo(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
         $admin = $this->admin();
         $target = User::factory()->create();
@@ -186,11 +191,11 @@ class UserManagementTest extends TestCase
             ->assertRedirect(route('access.users.index'));
 
         $target = $target->fresh();
-        $newPath = $target->avatar_path;
+        $newAsset = MediaAsset::query()->findOrFail($target->avatar_media_asset_id);
 
-        $this->assertNotNull($newPath);
-        Storage::disk('public')->assertMissing($oldPath);
-        Storage::disk('public')->assertExists($newPath);
+        Storage::disk('public')->assertExists($oldPath);
+        Storage::disk('local')->assertExists($newAsset->path);
+        $this->assertNull($target->avatar_path);
 
         $this->actingAs($admin)
             ->withSession(['auth.password_confirmed_at' => time()])
@@ -203,8 +208,8 @@ class UserManagementTest extends TestCase
             ])
             ->assertRedirect(route('access.users.index'));
 
-        $this->assertNull($target->fresh()->avatar_path);
-        Storage::disk('public')->assertMissing($newPath);
+        $this->assertNull($target->fresh()->avatar_media_asset_id);
+        Storage::disk('local')->assertExists($newAsset->path);
     }
 
     public function test_basic_users_cannot_open_or_submit_admin_user_edit_flows(): void

@@ -19,6 +19,7 @@ use App\Support\SystemSettings;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class ChangeRecordStatus
@@ -36,8 +37,14 @@ class ChangeRecordStatus
             /** @var User|UserInvitation|Role|Country|Timezone|BlockedIpAddress|OrganizationLocation|MediaAsset $record */
             $record = $modelClass::query()->withoutGlobalScope('record_status')->lockForUpdate()->findOrFail($id);
 
-            if ($record instanceof MediaAsset && (int) $record->uploader_id !== (int) $actor->getKey()) {
-                throw new AuthorizationException;
+            if ($record instanceof MediaAsset) {
+                if ($record->module === 'avatars'
+                    || ($record->module !== 'files' && (int) $record->uploader_id !== (int) $actor->getKey())
+                    || ($record->module === 'files' && (int) $record->uploader_id !== (int) $actor->getKey()
+                        && ! $actor->hasAnyRole(['admin', 'super_admin']))) {
+                    throw new AuthorizationException;
+                }
+                Gate::forUser($actor)->authorize('updateDeleted', $record);
             }
 
             if ((int) $record->record_status === $status) {
@@ -110,9 +117,9 @@ class ChangeRecordStatus
             }
         }
 
-        if ($record instanceof MediaAsset && $record->isAssigned()) {
+        if ($record instanceof MediaAsset && $record->isReferenced()) {
             throw ValidationException::withMessages([
-                'record_status' => 'This image is assigned to a platform slot. Reset or replace that slot before deactivating it.',
+                'record_status' => 'This file is in use. Remove its avatar or platform assignment before deactivating it.',
             ]);
         }
     }
