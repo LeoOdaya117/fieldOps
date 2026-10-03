@@ -796,7 +796,10 @@ class ExportTest extends TestCase
         app(GenerateExportArtifact::class)->execute((string) $revoked->getKey());
         $revoked->refresh();
         $this->assertSame('failed', $revoked->status);
-        $this->assertSame('export.failed', $user->notifications()->latest()->firstOrFail()->data['event']);
+        $failureNotification = $user->notifications()
+            ->where('data->exportArtifactId', (string) $revoked->getKey())
+            ->firstOrFail();
+        $this->assertSame('export.failed', $failureNotification->data['event']);
     }
 
     public function test_queue_writer_failure_marks_artifact_failed_and_sends_failure_notification(): void
@@ -811,7 +814,10 @@ class ExportTest extends TestCase
 
         $artifact->refresh();
         $this->assertSame('failed', $artifact->status);
-        $this->assertSame('export.failed', $user->notifications()->latest()->firstOrFail()->data['event']);
+        $failureNotification = $user->notifications()
+            ->where('data->exportArtifactId', (string) $artifact->getKey())
+            ->firstOrFail();
+        $this->assertSame('export.failed', $failureNotification->data['event']);
     }
 
     public function test_downloads_are_private_and_require_current_permission_and_unexpired_artifact(): void
