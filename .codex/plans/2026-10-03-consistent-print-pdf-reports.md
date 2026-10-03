@@ -61,3 +61,9 @@ Dependency audits were attempted but could not reach Packagist or npm from this 
 ## 2026-10-03 portrait paper correction
 
 The previous wide-report layout switched A4 reports with eight or more columns to landscape. All PDF and Print reports now use portrait A4, with a compact table style for wide reports to fit their columns. The regression test covers both PDF and Print at portrait page dimensions. Focused `ExportTest` passed 37 tests and 425 assertions. Fresh wide Users and IP Blocks samples both rendered as A4 portrait. The landscape file shown in the screenshot was generated before this correction; saved artifacts keep their original page size and must be regenerated.
+
+## 2026-10-03 tablet toolbar correction and final verification
+
+Full browser testing exposed that the new export and column controls could push a table's Filter button underneath the collapsed sidebar at tablet width. The shared table toolbar action group now shrinks and wraps within its available width. The targeted tablet access-table browser test passed after rebuilding assets.
+
+Final PR-gate verification after this correction: `composer ci:check` passed (234 PHPUnit tests / 2,241 assertions, 234 Vitest tests across 35 files, lint, formatting, types, build, Pint, and PHPStan). `composer audit --locked --no-interaction` found no advisories. `npm audit --audit-level=high` exited 0 with three moderate Vitest dependency advisories and no high-severity advisories. Full `npm run test:e2e` passed 46 tests across mobile, tablet, and desktop with two expected skips.
