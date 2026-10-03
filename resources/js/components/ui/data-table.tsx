@@ -153,7 +153,7 @@ function DataTable<T>({
                     {hasActionsContent || canManageColumns || hasExportActions ? (
                         <div
                             data-slot="data-table-toolbar-actions"
-                            className="flex shrink-0 flex-wrap items-center justify-end gap-2"
+                            className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2"
                         >
                             {actions}
                             {exportOptions ? (
