@@ -4,10 +4,29 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const inertiaRouter = vi.hoisted(() => ({ get: vi.fn() }));
+const inertiaState = vi.hoisted(() => ({
+    router: { get: vi.fn(), post: vi.fn() },
+    permissions: [] as string[],
+    toast: {
+        loading: vi.fn(() => 'export-toast'),
+        success: vi.fn(),
+        info: vi.fn(),
+        error: vi.fn(),
+        dismiss: vi.fn(),
+    },
+}));
 
 vi.mock('@inertiajs/react', () => ({
-    router: inertiaRouter,
+    router: inertiaState.router,
+    usePage: () => ({
+        props: {
+            auth: {
+                authorization: {
+                    permissions: inertiaState.permissions,
+                },
+            },
+        },
+    }),
     Form: forwardRef<
         HTMLFormElement,
         FormHTMLAttributes<HTMLFormElement> & { onSuccess?: () => void }
@@ -42,6 +61,19 @@ vi.mock('@inertiajs/react', () => ({
     ),
 }));
 
+vi.mock('@/routes/exports', () => ({
+    store: {
+        url: ({ dataset, format }: { dataset: string; format: string }) =>
+            `/exports/${dataset}/${format}`,
+    },
+}));
+
+vi.mock('@/features/exports/lib/browser-download', () => ({
+    startBrowserDownload: vi.fn(),
+}));
+
+vi.mock('sonner', () => ({ toast: inertiaState.toast }));
+
 import { SortableColumn } from '@/components/sortable-column';
 import { BulkActionForm, BulkActions } from '@/components/ui/bulk-actions';
 import { buttonVariants } from '@/components/ui/button';
@@ -60,10 +92,18 @@ import {
     TableActions,
 } from '@/components/ui/table-actions';
 import { TablePagination } from '@/components/ui/table-pagination';
+import type { ExportResult } from '@/features/exports/types';
 
 describe('reusable data table components', () => {
     afterEach(() => {
         localStorage.clear();
+        inertiaState.permissions = [];
+        inertiaState.router.post.mockReset();
+        inertiaState.toast.loading.mockReset().mockReturnValue('export-toast');
+        inertiaState.toast.success.mockReset();
+        inertiaState.toast.info.mockReset();
+        inertiaState.toast.error.mockReset();
+        inertiaState.toast.dismiss.mockReset();
     });
 
     it('uses the high-contrast link token for links and active sorting', () => {
@@ -201,6 +241,101 @@ describe('reusable data table components', () => {
         expect(
             screen.getByText('Assign one role per account'),
         ).toBeInTheDocument();
+    });
+
+    it('keeps table action buttons aligned when export feedback appears', async () => {
+        const user = userEvent.setup();
+        const result: ExportResult = {
+            status: 'ready',
+            message: 'Your PDF export is ready.',
+            downloadUrl: '/exports/artifacts/example/download',
+        };
+
+        inertiaState.permissions = ['users.export_pdf'];
+        inertiaState.router.post.mockImplementation(
+            (
+                _url: string,
+                _data: unknown,
+                options: {
+                    onStart?: () => void;
+                    onSuccess?: (page: {
+                        props: {
+                            flash?: { exportResult?: ExportResult | null };
+                        };
+                    }) => void;
+                    onFinish?: () => void;
+                },
+            ) => {
+                options.onStart?.();
+                options.onSuccess?.({
+                    props: { flash: { exportResult: result } },
+                });
+                options.onFinish?.();
+            },
+        );
+
+        render(
+            <DataTable
+                data={[{ id: 1, name: 'Ria' }]}
+                tableColumns={[
+                    { key: 'name', header: 'Name', accessor: 'name' },
+                ]}
+                actions={<button type="button">Filter</button>}
+                exportOptions={{
+                    dataset: 'users',
+                    permissionNamespaces: ['users'],
+                    filters: {},
+                }}
+                columnVisibility={{
+                    storageKey: 'toolbar-export-alignment',
+                    defaultVisibleKeys: ['name'],
+                }}
+            />,
+        );
+
+        const actionRow = document.querySelector(
+            '[data-slot="data-table-toolbar-actions"]',
+        );
+        expect(actionRow).toHaveClass('items-center', 'flex-wrap');
+        expect(screen.getByRole('button', { name: 'Filter' })).toBeVisible();
+        expect(screen.getByRole('button', { name: 'Columns' })).toBeVisible();
+
+        await user.click(
+            screen.getByRole('button', { name: 'Export options' }),
+        );
+        await user.click(screen.getByRole('menuitem', { name: 'PDF' }));
+
+        expect(inertiaState.toast.success).toHaveBeenCalledWith(
+            'Your PDF export is ready.',
+            { id: 'export-toast' },
+        );
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(actionRow).toHaveClass('items-center');
+        expect(screen.getByRole('button', { name: 'Filter' })).toBeVisible();
+        expect(screen.getByRole('button', { name: 'Columns' })).toBeVisible();
+    });
+
+    it('preserves centered action alignment when no export format is available', () => {
+        render(
+            <DataTable
+                actions={<button type="button">Filter</button>}
+                exportOptions={{
+                    dataset: 'users',
+                    permissionNamespaces: ['users'],
+                    filters: {},
+                }}
+            />,
+        );
+
+        const actionRow = document.querySelector(
+            '[data-slot="data-table-toolbar-actions"]',
+        );
+
+        expect(actionRow).toHaveClass('items-center');
+        expect(actionRow).not.toHaveClass('items-start');
+        expect(
+            screen.queryByRole('button', { name: 'Export options' }),
+        ).not.toBeInTheDocument();
     });
 
     it('renders accessible table structure, actions, and action anchors', async () => {
@@ -812,7 +947,7 @@ describe('reusable data table components', () => {
 
     it('renders reusable numbered pagination controls with arrow navigation', async () => {
         const user = userEvent.setup();
-        inertiaRouter.get.mockClear();
+        inertiaState.router.get.mockClear();
 
         render(
             <TablePagination
@@ -881,7 +1016,7 @@ describe('reusable data table components', () => {
         await user.click(pageSizeSelect);
         await user.click(screen.getByRole('option', { name: '100' }));
 
-        expect(inertiaRouter.get).toHaveBeenCalledWith(
+        expect(inertiaState.router.get).toHaveBeenCalledWith(
             expect.stringContaining('per_page=100'),
             {},
             { preserveScroll: true },

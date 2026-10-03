@@ -8,6 +8,7 @@ use App\Http\Controllers\Access\VisitLogController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\Auth\SessionActivityController;
+use App\Http\Controllers\Exports\ExportController;
 use App\Http\Controllers\Media\FileController;
 use App\Http\Controllers\Media\MediaAssetContentController;
 use App\Http\Controllers\Media\MediaAssetController;
@@ -35,6 +36,14 @@ Route::post('invitations/{token}', [InvitationController::class, 'accept'])
     ->name('invitation.store');
 
 Route::middleware(['auth', 'verified', 'active'])->group(function () {
+    Route::post('exports/{dataset}/{format}', [ExportController::class, 'store'])
+        ->whereIn('dataset', ['users', 'invitations', 'registrations', 'roles', 'audit', 'ip-blocks', 'visit-logs', 'files', 'countries', 'timezones'])
+        ->whereIn('format', ['pdf', 'csv', 'xlsx', 'print'])
+        ->middleware('throttle:exports')
+        ->name('exports.store');
+    Route::get('exports/{artifact}/download', [ExportController::class, 'download'])->whereUuid('artifact')->name('exports.artifacts.download');
+    Route::get('exports/{artifact}/print', [ExportController::class, 'print'])->whereUuid('artifact')->name('exports.artifacts.print');
+
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('notifications/summary', [NotificationController::class, 'summary'])->name('notifications.summary');
     Route::patch('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');

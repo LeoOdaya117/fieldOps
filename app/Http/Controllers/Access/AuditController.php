@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Access;
 
+use App\Actions\DataTables\BuildListingQuery;
 use App\Http\Controllers\Controller;
 use App\Models\AccessAuditEvent;
 use App\Support\Pagination\PageSize;
@@ -12,7 +13,7 @@ use Inertia\Response;
 
 class AuditController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, BuildListingQuery $listingQuery): Response
     {
         $this->authorize('viewAny', AccessAuditEvent::class);
 
@@ -25,11 +26,6 @@ class AuditController extends Controller
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
-        $sortColumns = [
-            'event' => 'event',
-            'subject_type' => 'subject_type',
-            'occurred_at' => 'occurred_at',
-        ];
         $from = null;
         $to = null;
 
@@ -42,25 +38,15 @@ class AuditController extends Controller
             // Invalid optional filters are treated as absent filters.
         }
 
-        $events = AccessAuditEvent::query()
-            ->with('actor:id,name,email')
-            ->when($eventFilters !== [], static fn ($query) => $query->whereIn('event', $eventFilters))
-            ->when($actor !== '', static fn ($query) => $query->whereHas('actor', static fn ($query) => $query->where('name', 'like', "%{$actor}%")->orWhere('email', 'like', "%{$actor}%")))
-            ->when($subject !== '', static fn ($query) => $query->where(static fn ($query) => $query->where('subject_type', 'like', "%{$subject}%")->orWhere('subject_id', $subject)))
-            ->when($from !== null, static fn ($query) => $query->where('occurred_at', '>=', $from->startOfDay()))
-            ->when($to !== null, static fn ($query) => $query->where('occurred_at', '<=', $to->endOfDay()))
-            ->when(
-                $sort === 'actor',
-                static fn ($query) => $query
-                    ->leftJoin('users', 'access_audit_events.actor_user_id', '=', 'users.id')
-                    ->select('access_audit_events.*')
-                    ->orderBy('users.name', $direction),
-                static fn ($query) => $query->when(
-                    isset($sortColumns[$sort]),
-                    static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
-                    static fn ($query) => $query->latest('occurred_at'),
-                ),
-            )
+        $events = $listingQuery->query('audit', $request->user(), [
+            'event' => $eventFilters,
+            'actor' => $actor,
+            'subject' => $subject,
+            'from' => $from?->format('Y-m-d'),
+            'to' => $to?->format('Y-m-d'),
+            'sort' => $sort,
+            'direction' => $direction,
+        ])
             ->paginate($pageSize)
             ->appends(PageSize::query($request, $pageSize))
             ->through(static fn (AccessAuditEvent $event): array => [

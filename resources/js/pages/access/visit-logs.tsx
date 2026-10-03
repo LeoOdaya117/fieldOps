@@ -151,6 +151,20 @@ export default function VisitLogsPage({ logs, eventTypes, filters }: Props) {
                         })
                     }
                     actions={tableActions}
+                    exportOptions={{
+                        dataset: 'visit-logs',
+                        permissionNamespaces: ['visit_logs'],
+                        filters: {
+                            keyword: filters.keyword,
+                            event: filters.event,
+                            outcome: filters.outcome,
+                            status_code: filters.statusCode,
+                            from: filters.from,
+                            to: filters.to,
+                            sort: filters.sort,
+                            direction: filters.direction,
+                        },
+                    }}
                     emptyState={
                         <div className="flex flex-col items-center gap-3 text-center">
                             <span className="flex size-10 items-center justify-center rounded-full bg-link/10 text-link">

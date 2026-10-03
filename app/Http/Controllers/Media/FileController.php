@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Media;
 
+use App\Actions\DataTables\BuildListingQuery;
 use App\Actions\Media\DeleteMediaAsset;
 use App\Actions\Media\StoreFileAsset;
 use App\Actions\Media\UpdateFileMetadata;
@@ -17,7 +18,7 @@ use Inertia\Response;
 
 class FileController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, BuildListingQuery $listingQuery): Response
     {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
@@ -27,49 +28,18 @@ class FileController extends Controller
             'per_page' => ['nullable', 'integer', 'in:25,50,75,100'],
         ]);
         $actor = $request->user();
-        $admin = $actor->hasAnyRole(['admin', 'super_admin']);
         $search = trim((string) ($filters['search'] ?? ''));
         $status = (string) ($filters['record_status'] ?? 'active');
         $module = (string) ($filters['module'] ?? '');
         $perPage = (int) ($filters['per_page'] ?? 50);
 
-        $files = MediaAsset::withTrashed()
+        $files = $listingQuery->query('files', $actor, [
+            'search' => $search,
+            'module' => $module,
+            'record_status' => $status,
+            '_file_scopes' => $listingQuery->visibleFileScopes($actor, $status),
+        ])
             ->withCount(['platformAssignments', 'usersUsingAsAvatar'])
-            ->where(static function ($query) use ($actor, $admin, $status): void {
-                if ($actor->can('files.view')) {
-                    $query->orWhere(static function ($query) use ($actor, $admin, $status): void {
-                        $query->where('module', 'files');
-                        if (! $admin) {
-                            $query->where('uploader_id', $actor->getKey());
-                        }
-                        if ($status === 'inactive' && ! $actor->can('files.view_deleted')) {
-                            $query->whereRaw('1 = 0');
-                        }
-                    });
-                }
-                if ($actor->can('media_assets.view')) {
-                    $query->orWhere(static function ($query) use ($actor, $admin, $status): void {
-                        $query->where('module', 'gallery');
-                        if (! $admin) {
-                            $query->where('uploader_id', $actor->getKey());
-                        }
-                        if ($status === 'inactive' && ! $actor->can('media_assets.view_deleted')) {
-                            $query->whereRaw('1 = 0');
-                        }
-                    });
-                }
-                if ($status !== 'inactive' || $actor->can('users.view_deleted')) {
-                    if ($actor->can('users.view')) {
-                        $query->orWhere('module', 'avatars');
-                    } else {
-                        $query->orWhere(static fn ($query) => $query->where('module', 'avatars')->where('uploader_id', $actor->getKey()));
-                    }
-                }
-            })
-            ->where('record_status', $status === 'inactive' ? 0 : 1)
-            ->when($module !== '', static fn ($query) => $query->where('module', $module))
-            ->when($search !== '', static fn ($query) => $query->where(static fn ($query) => $query->where('original_name', 'like', '%'.$search.'%')->orWhere('tag', 'like', '%'.$search.'%')))
-            ->latest('id')
             ->paginate($perPage)
             ->withQueryString()
             ->through(static fn (MediaAsset $asset): array => (new MediaAssetResource($asset))->toArray($request));

@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@inertiajs/react', () => ({
     Head: () => null,
+    usePage: () => ({
+        props: { auth: { authorization: { permissions: [] } } },
+    }),
     Link: ({
         href,
         children,

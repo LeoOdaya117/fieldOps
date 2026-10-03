@@ -17,7 +17,7 @@ class GranularPermissionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_seeded_role_defaults_include_resource_crud_and_keep_audit_logs_view_only(): void
+    public function test_seeded_role_defaults_include_resource_crud_and_keep_audit_logs_free_of_mutations(): void
     {
         app(RbacSeeder::class)->run();
         $admin = Role::query()->where('name', RoleName::Admin->value)->firstOrFail();
@@ -38,8 +38,12 @@ class GranularPermissionTest extends TestCase
         }
         $this->assertFalse($user->hasPermissionTo('media_assets.view_deleted'));
         $this->assertFalse($user->hasPermissionTo('media_assets.update_deleted'));
-        $this->assertSame(['audit.view'], $admin->permissions()->where('name', 'like', 'audit.%')->orderBy('name')->pluck('name')->all());
-        $this->assertSame(['visit_logs.view'], $admin->permissions()->where('name', 'like', 'visit_logs.%')->orderBy('name')->pluck('name')->all());
+        $this->assertSame([
+            'audit.export_csv', 'audit.export_pdf', 'audit.export_print', 'audit.export_xlsx', 'audit.view',
+        ], $admin->permissions()->where('name', 'like', 'audit.%')->orderBy('name')->pluck('name')->all());
+        $this->assertSame([
+            'visit_logs.export_csv', 'visit_logs.export_pdf', 'visit_logs.export_print', 'visit_logs.export_xlsx', 'visit_logs.view',
+        ], $admin->permissions()->where('name', 'like', 'visit_logs.%')->orderBy('name')->pluck('name')->all());
         $this->assertSame(['dashboard.view'], $admin->permissions()->where('name', 'like', 'dashboard.%')->orderBy('name')->pluck('name')->all());
     }
 

@@ -237,6 +237,39 @@ export function FilesList({
                     data={files.data}
                     tableColumns={columns}
                     actions={tableActions}
+                    exportOptions={{
+                        dataset: 'files',
+                        permissionNamespaces: [
+                            'files',
+                            'media_assets',
+                            'users',
+                        ],
+                        permissionScopes: [
+                            {
+                                module: 'files',
+                                namespace: 'files',
+                                viewPermissions: ['files.view'],
+                                deletedPermission: 'files.view_deleted',
+                            },
+                            {
+                                module: 'gallery',
+                                namespace: 'media_assets',
+                                viewPermissions: ['media_assets.view'],
+                                deletedPermission: 'media_assets.view_deleted',
+                            },
+                            {
+                                module: 'avatars',
+                                namespace: 'users',
+                                viewPermissions: ['users.view', 'files.view'],
+                                deletedPermission: 'users.view_deleted',
+                            },
+                        ],
+                        filters: {
+                            search: filters.search,
+                            record_status: filters.record_status,
+                            module: filters.module,
+                        },
+                    }}
                     columnVisibility={{
                         storageKey: 'system.files',
                         defaultVisibleKeys: [

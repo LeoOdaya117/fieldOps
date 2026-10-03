@@ -37,3 +37,9 @@ Append meaningful architectural or workflow decisions with their date, context, 
 - **Context:** Files, personal images, avatars, and platform branding need one management model without exposing storage paths or treating a token as authorization.
 - **Decision:** Extend `MediaAsset` with immutable opaque tokens and a module, keep physical disk/key server-only, and resolve authenticated preview/download through token routes and module-aware policy. The public branding endpoint serves only an active assigned image by token. Keep the gallery picker uploader-scoped while the central Files list may include cross-uploader assets in administrable modules.
 - **Rationale:** One canonical record and private disk contract simplify lifecycle, auditing, and future S3-compatible storage while preserving per-module access boundaries. Legacy public avatar files stay in place until an independently verified deployment cutover.
+
+## 2026-10-01 — Share listing filters with global exports
+
+- **Context:** Export actions must include every row matching the active listing filters and sort while enforcing the same Files module scope and safe output columns.
+- **Decision:** Build reusable filtered queries in `BuildListingQuery`, define export datasets and safe columns in `ExportDatasetRegistry`, and store generated outputs as private expiring artifacts guarded by the owner’s current resource permission and file scope.
+- **Rationale:** Sharing query construction keeps table and export results aligned, while private artifacts preserve access checks for immediate and queued reports.

@@ -82,6 +82,7 @@ class HandleInertiaRequests extends Middleware
                 'warning' => fn (): mixed => $request->session()->get('warning'),
                 'info' => fn (): mixed => $request->session()->get('info'),
                 'message' => fn (): mixed => $request->session()->get('message'),
+                'exportResult' => fn (): mixed => $request->session()->get('exportResult'),
             ],
             'notifications' => fn (): array => $user !== null && $user->isActive() && $user->email_verified_at !== null
                 ? app(ReadNotificationInbox::class)->summary($user)

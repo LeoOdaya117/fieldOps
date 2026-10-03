@@ -135,6 +135,18 @@ export default function CountriesPage({
                         })
                     }
                     actions={tableActions}
+                    exportOptions={{
+                        dataset: 'countries',
+                        permissionNamespaces: ['countries'],
+                        filters: {
+                            search: filters.search,
+                            from: filters.from,
+                            to: filters.to,
+                            record_status: filters.recordStatus,
+                            sort: filters.sort,
+                            direction: filters.direction,
+                        },
+                    }}
                     emptyState={
                         <p className="text-sm text-muted-foreground">
                             No countries match the current filters.

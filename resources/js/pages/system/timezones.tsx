@@ -135,6 +135,18 @@ export default function TimezonesPage({
                         })
                     }
                     actions={tableActions}
+                    exportOptions={{
+                        dataset: 'timezones',
+                        permissionNamespaces: ['timezones'],
+                        filters: {
+                            search: filters.search,
+                            from: filters.from,
+                            to: filters.to,
+                            record_status: filters.recordStatus,
+                            sort: filters.sort,
+                            direction: filters.direction,
+                        },
+                    }}
                     emptyState={
                         <p className="text-sm text-muted-foreground">
                             No timezones match the current filters.

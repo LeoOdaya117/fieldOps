@@ -2,6 +2,8 @@
 
 namespace App\Actions\Notifications;
 
+use App\Actions\Exports\ExportArtifactAccess;
+use App\Models\ExportArtifact;
 use App\Models\User;
 use App\Models\UserRegistration;
 use Illuminate\Notifications\DatabaseNotification;
@@ -22,6 +24,14 @@ class ReadNotificationInbox
             && $user->can('users.review_registrations')
             && UserRegistration::query()->whereKey($registrationId)->exists()) {
             $url = route('access.users.registrations.show', $registrationId, false);
+        }
+        if (($data['event'] ?? null) === 'export.ready' && is_string($data['exportArtifactId'] ?? null)) {
+            $artifact = ExportArtifact::query()->whereKey($data['exportArtifactId'])->first();
+            if ($artifact !== null && app(ExportArtifactAccess::class)->canResolve($artifact, $user)) {
+                $url = $artifact->format === 'print'
+                    ? route('exports.artifacts.print', $artifact, false)
+                    : route('exports.artifacts.download', $artifact, false);
+            }
         }
 
         return [

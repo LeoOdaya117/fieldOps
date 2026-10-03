@@ -146,6 +146,19 @@ export default function AuditPage({ events, eventTypes, filters }: Props) {
                     data={events.data}
                     tableColumns={tableColumns}
                     actions={tableActions}
+                    exportOptions={{
+                        dataset: 'audit',
+                        permissionNamespaces: ['audit'],
+                        filters: {
+                            event: filters.event,
+                            actor: filters.actor,
+                            subject: filters.subject,
+                            from: filters.from,
+                            to: filters.to,
+                            sort: filters.sort,
+                            direction: filters.direction,
+                        },
+                    }}
                     emptyState={
                         <p className="text-sm text-muted-foreground">
                             No access events recorded.

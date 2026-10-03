@@ -67,6 +67,9 @@ class AppServiceProvider extends ServiceProvider
             (int) config('media-assets.previews_per_minute', 30),
         )->by((string) ($request->user()?->getKey() ?? $request->ip())));
 
+        RateLimiter::for('exports', static fn (Request $request): Limit => Limit::perMinute(12)
+            ->by((string) ($request->user()?->getKey() ?? $request->ip())));
+
         Gate::before(static function ($user): ?bool {
             return $user->isActive() && $user->isSuperAdmin() ? true : null;
         });
