@@ -25,6 +25,16 @@ class ExportController extends Controller
         $dataset = (string) $request->route('dataset');
         $format = (string) $request->route('format');
         $filters = $request->validatedFilters();
+        $columns = $request->validatedColumns();
+        if ($columns !== null) {
+            $filters['_report_columns'] = $columns;
+        }
+        if (in_array($format, ['pdf', 'print'], true)) {
+            // A queued worker must render the same instant and locale as the listing request.
+            $filters['_source_timezone'] = (string) config('app.timezone', 'UTC');
+            $filters['_report_timezone'] = $request->validatedReportTimezone() ?? $filters['_source_timezone'];
+            $filters['_report_locale'] = $request->validatedReportLocale() ?? 'en-US';
+        }
 
         if ($dataset === 'files') {
             $status = ($filters['record_status'] ?? 'active') === 'inactive';
@@ -106,6 +116,19 @@ class ExportController extends Controller
     {
         app(ExportArtifactAccess::class)->resolveOrFail($artifact, $request->user());
         abort_unless($artifact->format === 'print', 404);
+
+        if (str_ends_with($artifact->path, '.pdf')) {
+            $filename = $artifact->dataset.'-export-'.$artifact->created_at->format('Ymd').'.pdf';
+
+            return response(Storage::disk($artifact->disk)->get($artifact->path), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$filename.'"',
+                'Cache-Control' => 'private, no-store',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        }
+
+        abort_unless(str_ends_with($artifact->path, '.html'), 404);
 
         return response(Storage::disk($artifact->disk)->get($artifact->path), 200, [
             'Content-Type' => 'text/html; charset=UTF-8',

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Exports;
 
+use App\Actions\Exports\ExportDatasetRegistry;
 use App\Actions\Exports\ExportReportWriter;
 use App\Actions\Exports\GenerateExportArtifact;
 use App\Enums\PermissionKey;
@@ -35,6 +36,295 @@ class ExportTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_print_and_pdf_snapshot_selected_country_columns_in_table_order_with_actor_names(): void
+    {
+        Storage::fake('local');
+        $writer = new CapturingExportReportWriter;
+        $this->app->instance(ExportReportWriter::class, $writer);
+        $actor = $this->actorWith(['countries.view', 'countries.export_pdf', 'countries.export_print']);
+        Country::query()->create(['code' => 'ZX', 'name' => 'Example Country', 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+        $selected = ['updated_by', 'name', 'created_by', 'code'];
+
+        foreach (['pdf', 'print'] as $format) {
+            $this->actingAs($actor)->post($this->storeUrl('countries', $format), ['columns' => $selected])
+                ->assertSessionHas('exportResult.status', 'ready');
+            $artifact = ExportArtifact::query()->where('format', $format)->firstOrFail();
+            $this->assertSame($selected, $artifact->filters['_report_columns']);
+            $this->assertStringStartsWith('%PDF-', Storage::disk('local')->get($artifact->path));
+            $this->assertSame(1, preg_match('/\/MediaBox\s*\[\s*0(?:\.0+)?\s+0(?:\.0+)?\s+([\d.]+)\s+([\d.]+)\s*\]/', Storage::disk('local')->get($artifact->path), $pageBox));
+            $this->assertEqualsWithDelta(595.28, (float) $pageBox[1], 1.0);
+            $this->assertEqualsWithDelta(841.89, (float) $pageBox[2], 1.0);
+        }
+
+        $registry = app(ExportDatasetRegistry::class);
+        $this->assertSame(
+            ['serial' => '#', 'updated_by' => 'Updated by', 'name' => 'Name', 'created_by' => 'Created by', 'code' => 'Country code'],
+            $registry->reportColumns('countries', $selected),
+        );
+        $row = $registry->rows('countries', $actor, [])[0];
+        $this->assertSame($actor->name, $row['created_by']);
+        $this->assertSame($actor->name, $row['updated_by']);
+        $this->assertSame(1, $row['serial']);
+        $this->assertCount(2, $writer->writes);
+        foreach ($writer->writes as $write) {
+            $this->assertSame($registry->reportColumns('countries', $selected), $write['columns']);
+            $this->assertSame($actor->name, $write['rows'][0]['created_by']);
+            $this->assertSame($actor->name, $write['rows'][0]['updated_by']);
+        }
+    }
+
+    public function test_wide_report_uses_landscape_a4_to_keep_column_headings_readable(): void
+    {
+        Storage::fake('local');
+        $owner = $this->actorWith(['roles.view', 'roles.export_pdf']);
+        $artifact = $this->artifact($owner, 'pdf', []);
+        $registry = app(ExportDatasetRegistry::class);
+        $columns = $registry->reportColumns('roles', array_keys($registry->reportColumnMap('roles')));
+        $row = array_fill_keys(array_keys($columns), 'Example readable value');
+
+        app(ExportReportWriter::class)->write($artifact, 'Roles', $columns, [$row]);
+
+        $bytes = Storage::disk('local')->get($artifact->fresh()->path);
+        $this->assertSame(1, preg_match('/\/MediaBox\s*\[\s*0(?:\.0+)?\s+0(?:\.0+)?\s+([\d.]+)\s+([\d.]+)\s*\]/', $bytes, $pageBox));
+        $this->assertEqualsWithDelta(841.89, (float) $pageBox[1], 1.0);
+        $this->assertEqualsWithDelta(595.28, (float) $pageBox[2], 1.0);
+    }
+
+    public function test_report_column_validation_rejects_empty_duplicate_unknown_and_utility_keys_without_artifact(): void
+    {
+        $actor = $this->actorWith(['countries.view', 'countries.export_pdf']);
+        foreach ([[], ['name', 'name'], ['name', 'password'], ['serial'], ['actions'], ['selection']] as $columns) {
+            $this->actingAs($actor)->post($this->storeUrl('countries', 'pdf'), ['columns' => $columns])
+                ->assertSessionHasErrors();
+        }
+        $this->assertDatabaseCount('export_artifacts', 0);
+    }
+
+    public function test_print_and_pdf_dates_use_the_browser_timezone_and_number_filtered_rows(): void
+    {
+        Storage::fake('local');
+        $writer = new CapturingExportReportWriter;
+        $this->app->instance(ExportReportWriter::class, $writer);
+        $actor = $this->actorWith(['countries.view', 'countries.export_pdf', 'countries.export_print']);
+        foreach (['AF' => 'Afghanistan', 'AX' => 'Aland Islands'] as $code => $name) {
+            $country = Country::query()->create(['code' => $code, 'name' => $name]);
+            DB::table('countries')->where('id', $country->getKey())->update(['created_at' => '2026-09-26 12:11:00', 'updated_at' => '2026-09-26 12:11:00']);
+        }
+
+        foreach (['pdf', 'print'] as $format) {
+            $this->actingAs($actor)->post($this->storeUrl('countries', $format), [
+                'filters' => ['sort' => 'name', 'direction' => 'asc'],
+                'columns' => ['code', 'name', 'created_at', 'updated_at'],
+                'timezone' => 'Asia/Manila', 'locale' => 'en-US',
+            ])->assertSessionHas('exportResult.status', 'ready');
+        }
+
+        $this->assertCount(2, $writer->writes);
+        foreach ($writer->writes as $write) {
+            $this->assertSame(['serial' => '#', 'code' => 'Country code', 'name' => 'Name', 'created_at' => 'Created', 'updated_at' => 'Updated'], $write['columns']);
+            $this->assertSame([1, 2], array_column($write['rows'], 'serial'));
+            $this->assertSame(['Afghanistan', 'Aland Islands'], array_column($write['rows'], 'name'));
+            $this->assertSame('Sep 26, 2026, 8:11 PM', $write['rows'][0]['created_at']);
+            $this->assertSame($write['rows'][0]['created_at'], $write['rows'][0]['updated_at']);
+        }
+    }
+
+    public function test_report_timezone_and_locale_are_validated_and_spreadsheet_exports_reject_them(): void
+    {
+        $actor = $this->actorWith(['countries.view', 'countries.export_pdf', 'countries.export_print', 'countries.export_csv', 'countries.export_xlsx']);
+        foreach ([
+            ['timezone' => 'Mars/Olympus', 'locale' => 'en-US'],
+            ['timezone' => 'UTC', 'locale' => str_repeat('a', 36)],
+            ['timezone' => 'UTC', 'locale' => 'en-US<script>'],
+        ] as $invalid) {
+            $this->actingAs($actor)->post($this->storeUrl('countries', 'pdf'), $invalid)->assertSessionHasErrors();
+        }
+        foreach (['csv', 'xlsx'] as $format) {
+            $this->actingAs($actor)->post($this->storeUrl('countries', $format), ['timezone' => 'Asia/Manila'])->assertSessionHasErrors('timezone');
+        }
+        $this->assertDatabaseCount('export_artifacts', 0);
+    }
+
+    public function test_report_default_locale_patterns_match_browser_date_cells_and_legacy_nulls_remain_null(): void
+    {
+        $actor = $this->actorWith(['users.view', 'ip_blocks.view']);
+        $role = Role::query()->create(['name' => 'date_reader', 'guard_name' => 'web', 'display_name' => 'Date Reader', 'is_system' => false]);
+        $invitation = $this->invitation($actor, $role, 'localized-invitation@example.test', now());
+        DB::table('user_invitations')->where('id', $invitation->getKey())->update(['expires_at' => '2026-09-26 12:11:00']);
+        $block = BlockedIpAddress::query()->create([
+            'ip_address' => '203.0.113.70', 'reason' => 'Localized date', 'is_active' => true,
+            'blocked_at' => now(), 'first_seen_at' => now(),
+        ]);
+        DB::table('blocked_ip_addresses')->where('id', $block->getKey())->update(['first_seen_at' => '2026-09-26 12:11:00', 'last_seen_at' => null]);
+        $registry = app(ExportDatasetRegistry::class);
+
+        $de = ['_report_timezone' => 'UTC', '_report_locale' => 'de-DE'];
+        $this->assertSame('26.9.2026', $registry->rows('invitations', $actor, $de)[0]['expires_at']);
+        $this->assertSame('26.9.2026, 12:11:00', $registry->rows('ip-blocks', $actor, $de)[0]['last_seen_at']);
+        $ph = ['_report_timezone' => 'UTC', '_report_locale' => 'en-PH'];
+        $this->assertSame('9/26/2026, 12:11:00 PM', $registry->rows('ip-blocks', $actor, $ph)[0]['last_seen_at']);
+        $this->assertNull($registry->rows('ip-blocks', $actor, [])[0]['last_seen_at']);
+    }
+
+    public function test_print_and_pdf_include_serial_even_when_column_selection_is_omitted(): void
+    {
+        Storage::fake('local');
+        $writer = new CapturingExportReportWriter;
+        $this->app->instance(ExportReportWriter::class, $writer);
+        $actor = $this->actorWith(['countries.view', 'countries.export_pdf', 'countries.export_print']);
+        Country::query()->create(['code' => 'ZX', 'name' => 'Unselected Country']);
+
+        foreach (['pdf', 'print'] as $format) {
+            $this->actingAs($actor)->post($this->storeUrl('countries', $format))->assertSessionHas('exportResult.status', 'ready');
+        }
+        foreach ($writer->writes as $write) {
+            $this->assertSame('#', $write['columns']['serial']);
+            $this->assertSame(1, $write['rows'][0]['serial']);
+        }
+    }
+
+    public function test_queued_report_keeps_selected_columns_and_csv_xlsx_keep_legacy_columns(): void
+    {
+        Storage::fake('local');
+        $writer = new CapturingExportReportWriter;
+        $this->app->instance(ExportReportWriter::class, $writer);
+        $actor = $this->actorWith(['users.view', 'users.export_print', 'users.export_csv', 'users.export_xlsx']);
+        $this->insertRawUsers(501, 'selected-column-queue');
+        Queue::fake();
+        $this->actingAs($actor)->post($this->storeUrl('users', 'print'), [
+            'filters' => ['search' => 'selected-column-queue-'],
+            'columns' => ['role', 'user'],
+            'timezone' => 'Asia/Manila', 'locale' => 'en-US',
+        ])->assertSessionHas('exportResult.status', 'queued');
+        $queued = ExportArtifact::query()->where('format', 'print')->firstOrFail();
+        $this->assertSame(['role', 'user'], $queued->filters['_report_columns']);
+        $this->assertSame('Asia/Manila', $queued->filters['_report_timezone']);
+        $this->assertSame('en-US', $queued->filters['_report_locale']);
+        $this->assertArrayHasKey('_source_timezone', $queued->filters);
+        Queue::assertPushed(GenerateExportArtifactJob::class);
+        DB::table('users')->where('email', 'like', 'selected-column-queue-%')
+            ->where('email', '!=', 'selected-column-queue-0@example.test')->delete();
+        (new GenerateExportArtifactJob((string) $queued->getKey()))->handle(app(GenerateExportArtifact::class));
+        $this->assertSame('ready', $queued->fresh()->status);
+        $this->assertSame(['serial' => '#', 'role' => 'Role', 'user' => 'User'], $writer->writes[0]['columns']);
+        $this->assertCount(1, $writer->writes[0]['rows']);
+        $this->assertSame(1, $writer->writes[0]['rows'][0]['serial']);
+        $this->assertStringStartsWith('%PDF-', Storage::disk('local')->get($queued->fresh()->path));
+
+        $this->actingAs($actor)->post($this->storeUrl('users', 'csv'), [
+            'filters' => ['search' => 'no matching selected-column row'],
+        ])->assertSessionHas('exportResult.status', 'ready');
+        $csv = ExportArtifact::query()->where('format', 'csv')->firstOrFail();
+        $this->assertArrayNotHasKey('_report_columns', $csv->filters);
+        $this->assertStringContainsString('"Name","Email"', Storage::disk('local')->get($csv->path));
+
+        $this->actingAs($actor)->post($this->storeUrl('users', 'xlsx'), [
+            'filters' => ['search' => 'no matching selected-column row'],
+        ])->assertSessionHas('exportResult.status', 'ready');
+        $xlsx = ExportArtifact::query()->where('format', 'xlsx')->firstOrFail();
+        $sheet = IOFactory::load(Storage::disk('local')->path($xlsx->path));
+        $this->assertSame('Name', $sheet->getActiveSheet()->getCell('B4')->getValue());
+        $sheet->disconnectWorksheets();
+    }
+
+    public function test_queued_report_interprets_dates_in_snapshotted_source_timezone_and_restores_worker_timezone(): void
+    {
+        Storage::fake('local');
+        $writer = new CapturingExportReportWriter;
+        $this->app->instance(ExportReportWriter::class, $writer);
+        $owner = $this->actorWith(['users.view', 'users.export_pdf']);
+        $target = User::factory()->create(['email' => 'source-zone@example.test']);
+        DB::table('users')->where('id', $target->getKey())->update(['created_at' => '2026-09-26 00:11:00']);
+        $artifact = $this->artifact($owner, 'pdf', [
+            'search' => 'source-zone@example.test', '_report_columns' => ['created'],
+            '_source_timezone' => 'Asia/Manila', '_report_timezone' => 'UTC', '_report_locale' => 'en-US',
+        ]);
+        $originalConfig = config('app.timezone');
+        $originalDefault = date_default_timezone_get();
+        try {
+            config()->set('app.timezone', 'UTC');
+            date_default_timezone_set('UTC');
+            app(GenerateExportArtifact::class)->execute((string) $artifact->getKey());
+
+            $this->assertSame('ready', $artifact->fresh()->status);
+            $this->assertSame('Sep 25, 2026, 4:11 PM', $writer->writes[0]['rows'][0]['created_at']);
+            $this->assertSame('UTC', config('app.timezone'));
+            $this->assertSame('UTC', date_default_timezone_get());
+        } finally {
+            config()->set('app.timezone', $originalConfig);
+            date_default_timezone_set($originalDefault);
+        }
+    }
+
+    public function test_report_column_aliases_cover_all_datasets_without_exposing_raw_audit_values(): void
+    {
+        $registry = app(ExportDatasetRegistry::class);
+        $selections = [
+            'users' => ['user', 'created'], 'invitations' => ['expires'], 'registrations' => ['applicant'],
+            'roles' => ['role', 'assigned', 'permissions'], 'audit' => ['subject', 'occurred', 'changes'],
+            'ip-blocks' => ['status'], 'visit-logs' => ['location', 'event', 'request', 'status', 'user_agent'],
+            'files' => ['name', 'type', 'size', 'dimensions'], 'countries' => ['code', 'created_by'],
+            'timezones' => ['name', 'updated_by'],
+        ];
+        foreach ($selections as $dataset => $selected) {
+            $this->assertCount(count($selected) + (in_array($dataset, ['users', 'invitations', 'roles', 'audit', 'ip-blocks', 'visit-logs', 'countries', 'timezones'], true) ? 1 : 0), $registry->reportColumns($dataset, $selected));
+            $this->assertArrayNotHasKey('actions', $registry->reportColumnMap($dataset));
+            $this->assertArrayNotHasKey('serial', $registry->reportColumnMap($dataset));
+        }
+
+        $actor = $this->actorWith(['audit.view', 'audit.export_pdf']);
+        AccessAuditEvent::query()->create([
+            'actor_user_id' => $actor->getKey(), 'event' => 'test.changed', 'subject_type' => 'Country', 'subject_id' => '1',
+            'before' => ['password' => 'secret-before'], 'after' => ['password' => 'secret-after'], 'occurred_at' => now(),
+        ]);
+        $row = $registry->rows('audit', $actor, [])[0];
+        $this->assertSame('password', $row['changes']);
+        $this->assertStringNotContainsString('secret-before', (string) $row['changes']);
+        $this->assertStringNotContainsString('secret-after', (string) $row['changes']);
+
+        Role::query()->create([
+            'name' => 'report_operator', 'guard_name' => 'web', 'display_name' => 'Report Operator',
+            'description' => 'Reviews reports', 'is_system' => false,
+        ]);
+        $roleRow = collect($registry->rows('roles', $actor, []))->firstWhere('name', 'report_operator');
+        $this->assertSame('Report Operator (report_operator) - Reviews reports', $roleRow['role_summary']);
+
+        $protectedRole = Role::query()->create([
+            'name' => 'protected_report_role', 'guard_name' => 'web', 'display_name' => 'Protected Report Role',
+            'is_system' => true,
+        ]);
+        $protectedRow = collect($registry->rows('roles', $actor, []))->firstWhere('name', $protectedRole->name);
+        $this->assertSame('Protected', $protectedRow['type_display']);
+        $this->assertSame('Managed', $protectedRow['permissions_display']);
+        $this->assertSame(['serial' => '#', 'type_display' => 'Type', 'permissions_display' => 'Permissions'], $registry->reportColumns('roles', ['type', 'permissions']));
+        $this->assertSame('System', $protectedRow['type']);
+        $this->assertSame(0, $protectedRow['permissions_count']);
+
+        $firstSeen = now()->subMinute();
+        BlockedIpAddress::query()->create([
+            'ip_address' => '203.0.113.68', 'reason' => 'Observed abuse', 'is_active' => true,
+            'blocked_at' => now(), 'first_seen_at' => $firstSeen,
+        ]);
+        $ipBlockRow = $registry->rows('ip-blocks', $actor, [])[0];
+        $this->assertSame('Blocked', $ipBlockRow['block_status']);
+        $this->assertNull($ipBlockRow['last_seen_at']);
+        $reportBlockRow = $registry->rows('ip-blocks', $actor, ['_report_timezone' => 'UTC', '_report_locale' => 'en-US'])[0];
+        $this->assertNotNull($reportBlockRow['last_seen_at']);
+
+        VisitLog::query()->create([
+            'user_id' => $actor->getKey(), 'event_type' => 'login', 'outcome' => 'success',
+            'ip_address' => '203.0.113.68', 'location_source' => 'browser',
+            'location_city' => 'Manila', 'location_country_code' => 'PH',
+            'location_latitude' => 14.5995, 'location_longitude' => 120.9842,
+            'location_accuracy_meters' => 12.6, 'method' => 'POST',
+            'route_name' => 'login.store', 'path' => '/login', 'occurred_at' => now(),
+        ]);
+        $visitRow = $registry->rows('visit-logs', $actor, [])[0];
+        $this->assertSame('POST login.store /login', $visitRow['request']);
+        $this->assertStringContainsString('Manila, PH; 14.59950, 120.98420; Browser location ±13 m', $visitRow['location']);
+        $this->assertSame($actor->name.' ('.$actor->email.')', $visitRow['user_display']);
+    }
+
     public function test_csv_xlsx_pdf_and_print_use_the_shared_safe_report_layout(): void
     {
         Storage::fake('local');
@@ -65,17 +355,12 @@ class ExportTest extends TestCase
                 $this->assertSame(PageSetup::PAPERSIZE_A4, $spreadsheet->getActiveSheet()->getPageSetup()->getPaperSize());
                 $this->assertSame(PageSetup::ORIENTATION_PORTRAIT, $spreadsheet->getActiveSheet()->getPageSetup()->getOrientation());
                 $spreadsheet->disconnectWorksheets();
-            } elseif ($format === 'pdf') {
+            } elseif (in_array($format, ['pdf', 'print'], true)) {
+                $this->assertStringEndsWith('.pdf', $artifact->path);
                 $this->assertStringStartsWith('%PDF-', $bytes);
                 $this->assertSame(1, preg_match('/\/MediaBox\s*\[\s*0(?:\.0+)?\s+0(?:\.0+)?\s+([\d.]+)\s+([\d.]+)\s*\]/', $bytes, $pageBox));
-                $this->assertEqualsWithDelta(595.28, (float) $pageBox[1], 1.0);
-                $this->assertEqualsWithDelta(841.89, (float) $pageBox[2], 1.0);
-            } else {
-                $this->assertStringContainsString('A4 portrait', $bytes);
-                $this->assertStringContainsString('FieldOps', $bytes);
-                $this->assertStringContainsString('Export Target One', $bytes);
-                $this->assertStringContainsString("window.addEventListener('load'", $bytes);
-                $this->assertStringContainsString('window.print()', $bytes);
+                $this->assertEqualsWithDelta(841.89, (float) $pageBox[1], 1.0);
+                $this->assertEqualsWithDelta(595.28, (float) $pageBox[2], 1.0);
             }
         }
     }
@@ -141,12 +426,10 @@ class ExportTest extends TestCase
                 $this->assertSame('Name', $spreadsheet->getActiveSheet()->getCell('B4')->getValue());
                 $this->assertNull($spreadsheet->getActiveSheet()->getCell('B5')->getValue());
                 $spreadsheet->disconnectWorksheets();
-            } elseif ($format === 'pdf') {
+            } else {
+                $this->assertStringEndsWith('.pdf', $artifact->path);
                 $this->assertStringStartsWith('%PDF-', $contents);
                 $this->assertGreaterThan(500, strlen($contents));
-            } else {
-                $this->assertStringContainsString('No records match the selected filters.', $contents);
-                $this->assertStringContainsString('FieldOps · Confidential system report', $contents);
             }
         }
     }
@@ -551,6 +834,109 @@ class ExportTest extends TestCase
             ->assertJsonPath('items.0.actionUrl', null);
     }
 
+    public function test_pdf_download_and_print_viewer_have_distinct_dispositions_and_permissions(): void
+    {
+        Storage::fake('local');
+        $owner = $this->actorWith(['users.view', 'users.export_pdf', 'users.export_print']);
+
+        foreach (['pdf', 'print'] as $format) {
+            $response = $this->actingAs($owner)->post($this->storeUrl('users', $format), [
+                'filters' => ['search' => 'no matching user exists'],
+            ])->assertSessionHas('exportResult.status', 'ready');
+            $created = ExportArtifact::query()->where('format', $format)->firstOrFail();
+            $response->assertSessionHas(
+                $format === 'print' ? 'exportResult.printUrl' : 'exportResult.downloadUrl',
+                route($format === 'print' ? 'exports.artifacts.print' : 'exports.artifacts.download', $created),
+            );
+        }
+
+        $pdf = ExportArtifact::query()->where('format', 'pdf')->firstOrFail();
+        $print = ExportArtifact::query()->where('format', 'print')->firstOrFail();
+        $this->assertStringEndsWith('.pdf', $print->path);
+        $this->assertSame('print', $print->format);
+        $this->actingAs($owner)->get(route('exports.artifacts.download', $pdf))
+            ->assertDownload('users-export-'.$pdf->created_at->format('Ymd').'.pdf')
+            ->assertHeader('Content-Type', 'application/pdf');
+        $printResponse = $this->actingAs($owner)->get(route('exports.artifacts.print', $print))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf')
+            ->assertHeader('Content-Disposition', 'inline; filename="users-export-'.$print->created_at->format('Ymd').'.pdf"')
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->assertStringContainsString('private', (string) $printResponse->headers->get('Cache-Control'));
+        $this->assertStringContainsString('no-store', (string) $printResponse->headers->get('Cache-Control'));
+        $this->assertStringStartsWith('%PDF-', $printResponse->getContent());
+        $this->actingAs($owner)->get(route('exports.artifacts.download', $print))->assertNotFound();
+        $this->actingAs($owner)->get(route('exports.artifacts.print', $pdf))->assertNotFound();
+
+        $other = $this->actorWith(['users.view', 'users.export_print']);
+        $this->actingAs($other)->get(route('exports.artifacts.print', $print))->assertNotFound();
+        $owner->revokePermissionTo('users.export_print');
+        $this->actingAs($owner)->get(route('exports.artifacts.print', $print))->assertNotFound();
+        $this->actingAs($owner)->get(route('exports.artifacts.download', $pdf))->assertOk();
+        $owner->givePermissionTo('users.export_print');
+        $print->forceFill(['expires_at' => now()->subSecond()])->save();
+        $this->actingAs($owner)->get(route('exports.artifacts.print', $print))->assertNotFound();
+    }
+
+    public function test_existing_html_print_artifact_keeps_its_restricted_response_until_expiry(): void
+    {
+        Storage::fake('local');
+        $owner = $this->actorWith(['users.view', 'users.export_print']);
+        $legacy = $this->artifact($owner, 'print', [], status: 'ready');
+        $path = 'exports/'.$owner->getKey().'/'.$legacy->getKey().'.html';
+        Storage::disk('local')->put($path, '<!doctype html><title>Legacy report</title>');
+        $legacy->forceFill(['path' => $path])->save();
+
+        $response = $this->actingAs($owner)->get(route('exports.artifacts.print', $legacy))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/html; charset=UTF-8')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertSee('Legacy report');
+        $this->assertStringContainsString("default-src 'none'", (string) $response->headers->get('Content-Security-Policy'));
+
+        $legacy->forceFill(['expires_at' => now()->subSecond()])->save();
+        $this->actingAs($owner)->get(route('exports.artifacts.print', $legacy))->assertNotFound();
+    }
+
+    public function test_queued_print_notification_opens_the_inline_pdf_route(): void
+    {
+        Storage::fake('local');
+        $owner = $this->actorWith(['users.view', 'users.export_print']);
+        $artifact = $this->artifact($owner, 'print', []);
+
+        (new GenerateExportArtifactJob((string) $artifact->getKey()))->handle(app(GenerateExportArtifact::class));
+
+        $artifact->refresh();
+        $this->assertSame('ready', $artifact->status);
+        $this->assertStringEndsWith('.pdf', $artifact->path);
+        $this->actingAs($owner)->getJson(route('notifications.summary'))
+            ->assertJsonPath('items.0.type', 'export.ready')
+            ->assertJsonPath('items.0.actionUrl', route('exports.artifacts.print', $artifact, false));
+        $this->actingAs($owner)->get(route('exports.artifacts.print', $artifact))
+            ->assertOk()->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_shared_pdf_renderer_paginates_long_reports(): void
+    {
+        Storage::fake('local');
+        $owner = $this->actorWith(['users.view', 'users.export_pdf', 'users.export_print']);
+        $rows = [];
+        for ($index = 1; $index <= 150; $index++) {
+            $rows[] = ['name' => 'Long report row '.$index, 'detail' => str_repeat('Sample detail ', 12)];
+        }
+
+        foreach (['pdf', 'print'] as $format) {
+            $artifact = $this->artifact($owner, $format, []);
+            app(ExportReportWriter::class)->write($artifact, 'Long report', ['name' => 'Name', 'detail' => 'Detail'], $rows);
+            $artifact->refresh();
+            $bytes = Storage::disk('local')->get($artifact->path);
+            $this->assertStringEndsWith('.pdf', $artifact->path);
+            $this->assertStringStartsWith('%PDF-', $bytes);
+            $this->assertGreaterThan(1, preg_match_all('/\/Type\s*\/Page\b/', $bytes));
+            $this->assertSame(150, $artifact->row_count);
+        }
+    }
+
     public function test_registrations_require_review_permission_and_export_only_pending_rows(): void
     {
         Storage::fake('local');
@@ -718,5 +1104,20 @@ class ExportTest extends TestCase
             'thumbnail_path' => null, 'original_name' => $name, 'module' => $module, 'mime_type' => 'application/octet-stream',
             'extension' => pathinfo($name, PATHINFO_EXTENSION), 'size_bytes' => 5, 'width' => 1, 'height' => 1, 'source' => 'upload',
         ]);
+    }
+}
+
+class CapturingExportReportWriter extends ExportReportWriter
+{
+    /** @var list<array{columns: array<string, string>, rows: list<array<string, scalar|null>>}> */
+    public array $writes = [];
+
+    /** @param array<string, string> $columns
+     * @param  list<array<string, scalar|null>>  $rows
+     */
+    public function write(ExportArtifact $artifact, string $title, array $columns, array $rows): void
+    {
+        $this->writes[] = ['columns' => $columns, 'rows' => $rows];
+        parent::write($artifact, $title, $columns, $rows);
     }
 }

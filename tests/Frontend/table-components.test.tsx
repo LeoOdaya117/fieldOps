@@ -338,6 +338,52 @@ describe('reusable data table components', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('exports only the visible data columns in table order', async () => {
+        inertiaState.permissions = ['countries.export_pdf'];
+        const user = userEvent.setup();
+        render(
+            <DataTable
+                data={[{ id: 1, code: 'AF', name: 'Afghanistan' }]}
+                tableColumns={[
+                    { key: 'serial', header: '#', hideable: false },
+                    { key: 'code', header: 'Country code', accessor: 'code' },
+                    { key: 'name', header: 'Name', accessor: 'name' },
+                    { key: 'actions', header: 'Actions', hideable: false },
+                ]}
+                exportOptions={{
+                    dataset: 'countries',
+                    permissionNamespaces: ['countries'],
+                    filters: {},
+                }}
+                columnVisibility={{
+                    storageKey: 'tests.country-export-columns',
+                    defaultVisibleKeys: ['code', 'name'],
+                }}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Columns' }));
+        await user.click(
+            screen.getByRole('menuitemcheckbox', { name: 'Name' }),
+        );
+        await user.keyboard('{Escape}');
+        await user.click(
+            screen.getByRole('button', { name: 'Export options' }),
+        );
+        await user.click(screen.getByRole('menuitem', { name: 'PDF' }));
+
+        expect(inertiaState.router.post).toHaveBeenCalledWith(
+            '/exports/countries/pdf',
+            {
+                filters: {},
+                columns: ['code'],
+                timezone: new Intl.DateTimeFormat().resolvedOptions().timeZone,
+                locale: new Intl.DateTimeFormat().resolvedOptions().locale,
+            },
+            expect.any(Object),
+        );
+    });
+
     it('renders accessible table structure, actions, and action anchors', async () => {
         const user = userEvent.setup();
         render(

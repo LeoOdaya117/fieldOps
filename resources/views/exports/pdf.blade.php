@@ -23,6 +23,5 @@
             </tbody>
         </table>
     @endif
-    <footer class="report-footer">FieldOps · Confidential system report</footer>
 </body>
 </html>

@@ -3,7 +3,9 @@
 namespace App\Actions\Exports;
 
 use App\Models\ExportArtifact;
+use Dompdf\Canvas;
 use Dompdf\Dompdf;
+use Dompdf\FontMetrics;
 use Dompdf\Options;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -24,8 +26,7 @@ class ExportReportWriter
         $contents = match ($artifact->format) {
             'csv' => $this->csv($columns, $rows),
             'xlsx' => $this->xlsx($title, $columns, $rows),
-            'pdf' => $this->pdf($title, $columns, $rows),
-            'print' => view('exports.print', ['title' => $title, 'columns' => $columns, 'rows' => $rows, 'generatedAt' => now()])->render(),
+            'pdf', 'print' => $this->pdf($title, $columns, $rows, $artifact->filters['_report_timezone'] ?? null),
             default => throw new \InvalidArgumentException('Unsupported export format.'),
         };
 
@@ -38,7 +39,7 @@ class ExportReportWriter
 
     public function extension(string $format): string
     {
-        return $format === 'print' ? 'html' : $format;
+        return $format === 'print' ? 'pdf' : $format;
     }
 
     /** @param array<string, string> $columns
@@ -158,18 +159,34 @@ class ExportReportWriter
     /** @param array<string, string> $columns
      * @param  list<array<string, scalar|null>>  $rows
      */
-    private function pdf(string $title, array $columns, array $rows): string
+    private function pdf(string $title, array $columns, array $rows, mixed $timezone = null): string
     {
         $options = new Options;
         $options->setIsRemoteEnabled(false);
         $options->setIsPhpEnabled(false);
         $options->setIsJavascriptEnabled(false);
         $dompdf = new Dompdf($options);
-        $html = view('exports.pdf', ['title' => $title, 'columns' => $columns, 'rows' => $rows, 'generatedAt' => now()])->render();
+        $generatedAt = now();
+        if (is_string($timezone) && in_array($timezone, \DateTimeZone::listIdentifiers(\DateTimeZone::ALL_WITH_BC), true)) {
+            $generatedAt = $generatedAt->setTimezone($timezone);
+        }
+        $html = view('exports.pdf', ['title' => $title, 'columns' => $columns, 'rows' => $rows, 'generatedAt' => $generatedAt])->render();
         $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->setPaper('A4', count($columns) >= 8 ? 'landscape' : 'portrait');
         $dompdf->render();
-        $dompdf->getCanvas()->page_text(42, 570, 'FieldOps • Page {PAGE_NUM} of {PAGE_COUNT}', 'Helvetica', 8, [0.38, 0.42, 0.48]);
+        $dompdf->getCanvas()->page_script(static function (int $pageNumber, int $pageCount, Canvas $canvas, FontMetrics $fonts): void {
+            $left = 42.52; // 15 mm page margin on A4.
+            $right = $canvas->get_width() - $left;
+            $lineY = $canvas->get_height() - 36;
+            $textY = $lineY + 8;
+            $font = $fonts->getFont('DejaVu Sans');
+            $color = [0.28, 0.33, 0.40];
+            $pagination = "Page {$pageNumber} of {$pageCount}";
+
+            $canvas->line($left, $lineY, $right, $lineY, [0.82, 0.84, 0.87], 0.5);
+            $canvas->text($left, $textY, 'FieldOps · Confidential system report', $font, 8, $color);
+            $canvas->text($right - $canvas->get_text_width($pagination, $font, 8), $textY, $pagination, $font, 8, $color);
+        });
 
         return $dompdf->output();
     }

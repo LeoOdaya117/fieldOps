@@ -157,7 +157,20 @@ function DataTable<T>({
                         >
                             {actions}
                             {exportOptions ? (
-                                <DataTableExportActions options={exportOptions} />
+                                <DataTableExportActions
+                                    options={exportOptions}
+                                    reportColumns={
+                                        canManageColumns
+                                            ? renderedColumns
+                                                  ?.filter(
+                                                      (column) =>
+                                                          column.hideable !==
+                                                          false,
+                                                  )
+                                                  .map((column) => column.key)
+                                            : undefined
+                                    }
+                                />
                             ) : null}
                             {canManageColumns ? (
                                 <DataTableColumnVisibility

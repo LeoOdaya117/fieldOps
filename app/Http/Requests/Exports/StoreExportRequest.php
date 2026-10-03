@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Exports;
 
 use App\Actions\Exports\ExportDatasetRegistry;
+use DateTimeZone;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -86,13 +87,26 @@ class StoreExportRequest extends FormRequest
             'filters.per_page' => ['sometimes', 'nullable', 'integer', 'in:25,50,75,100'],
         ];
 
+        $format = (string) $this->route('format');
+        if (in_array($format, ['pdf', 'print'], true) && in_array($dataset, ExportDatasetRegistry::DATASETS, true)) {
+            $keys = array_keys(app(ExportDatasetRegistry::class)->reportColumnMap($dataset));
+            $rules['columns'] = ['sometimes', 'required', 'array', 'list', 'min:1', 'max:'.count($keys)];
+            $rules['columns.*'] = ['required', 'string', 'distinct:strict', Rule::in($keys)];
+            $rules['timezone'] = ['sometimes', 'required', 'string', 'max:64', Rule::in(DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC))];
+            $rules['locale'] = ['sometimes', 'required', 'string', 'max:35', 'regex:/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/D'];
+        } else {
+            $rules['columns'] = ['missing'];
+            $rules['timezone'] = ['missing'];
+            $rules['locale'] = ['missing'];
+        }
+
         if ($dataset === 'visit-logs') {
             $rules['filters.event'] = ['sometimes', 'nullable', $this->allowedList(['login', 'logout'])];
         }
 
         return array_intersect_key($rules, array_flip([
             'filters', ...array_map(static fn (string $key): string => 'filters.'.$key, $allowed),
-            'filters.event.*',
+            'filters.event.*', 'columns', 'columns.*', 'timezone', 'locale',
         ]));
     }
 
@@ -117,6 +131,24 @@ class StoreExportRequest extends FormRequest
     public function validatedFilters(): array
     {
         return $this->validated('filters', []);
+    }
+
+    /** @return list<string>|null */
+    public function validatedColumns(): ?array
+    {
+        $columns = $this->validated('columns');
+
+        return is_array($columns) ? array_values($columns) : null;
+    }
+
+    public function validatedReportTimezone(): ?string
+    {
+        return $this->validated('timezone');
+    }
+
+    public function validatedReportLocale(): ?string
+    {
+        return $this->validated('locale');
     }
 
     /** @param list<string> $allowed */

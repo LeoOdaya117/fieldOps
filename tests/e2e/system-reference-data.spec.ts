@@ -12,6 +12,88 @@ async function confirmAdminPassword(page: Page) {
     await expect(page).toHaveURL(/\/dashboard$/, { timeout: 60_000 });
 }
 
+test('country Print and PDF follow the visible table columns', async ({
+    page,
+    context,
+}) => {
+    await login(page, e2eAccounts.admin);
+    await page.evaluate(() => window.localStorage.clear());
+    await page.goto('/system/countries?search=Afghanistan');
+
+    const table = page.getByRole('table', { name: 'Country directory' });
+    const container = table.locator(
+        'xpath=ancestor::*[@data-slot="data-table-container"]',
+    );
+    await expect(table.getByText('Afghanistan')).toBeVisible();
+    await expect(table.getByRole('columnheader', { name: '#' })).toBeVisible();
+    const browserDateSettings = await page.evaluate(() => {
+        const { locale, timeZone } = Intl.DateTimeFormat().resolvedOptions();
+
+        return { locale, timezone: timeZone };
+    });
+
+    await container.getByRole('button', { name: 'Columns' }).click();
+    await page
+        .getByRole('menuitemcheckbox', { name: 'Name', exact: true })
+        .click();
+    await page.keyboard.press('Escape');
+    await expect(table.getByRole('columnheader', { name: 'Name' })).toHaveCount(
+        0,
+    );
+
+    const selectedColumns = [
+        'code',
+        'record_status',
+        'created_at',
+        'updated_at',
+        'created_by',
+        'updated_by',
+    ];
+    const exportButton = container.getByRole('button', {
+        name: 'Export options',
+    });
+
+    await exportButton.click();
+    const pdfRequestPromise = page.waitForRequest(
+        (request) =>
+            request.method() === 'POST' &&
+            new URL(request.url()).pathname === '/exports/countries/pdf',
+    );
+    const pdfDownloadPromise = page.waitForEvent('download');
+    await page.getByRole('menuitem', { name: 'PDF', exact: true }).click();
+    const pdfRequest = await pdfRequestPromise;
+    expect(pdfRequest.postDataJSON().columns).toEqual(selectedColumns);
+    expect(pdfRequest.postDataJSON()).toMatchObject(browserDateSettings);
+    const pdfDownload = await pdfDownloadPromise;
+    expect(await pdfDownload.failure()).toBeNull();
+
+    await exportButton.click();
+    const printRequestPromise = page.waitForRequest(
+        (request) =>
+            request.method() === 'POST' &&
+            new URL(request.url()).pathname === '/exports/countries/print',
+    );
+    const popupPromise = page.waitForEvent('popup');
+    const printPdfRequestPromise = context.waitForEvent(
+        'request',
+        (request) =>
+            request.method() === 'GET' &&
+            /\/exports\/[^/]+\/print$/.test(new URL(request.url()).pathname),
+    );
+    await page.getByRole('menuitem', { name: 'Print' }).click();
+    const printRequest = await printRequestPromise;
+    expect(printRequest.postDataJSON().columns).toEqual(selectedColumns);
+    expect(printRequest.postDataJSON()).toMatchObject(browserDateSettings);
+    const printPopup = await popupPromise;
+    const printPdfRequest = await printPdfRequestPromise;
+    const printResponse = await context.request.get(printPdfRequest.url());
+    expect(printResponse.ok()).toBe(true);
+    expect(printResponse.headers()['content-type']).toContain(
+        'application/pdf',
+    );
+    await printPopup.close();
+});
+
 test('an administrator can manage reference data across themes, responsive layouts, and accessibility checks', async ({
     page,
 }, testInfo) => {

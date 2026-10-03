@@ -211,22 +211,22 @@ test('an administrator can manage audit columns across access tables and themes'
     }
 });
 
-test('an administrator can export CSV and open a print popup that invokes the browser print dialog', async ({
+test('an administrator can export CSV and open a print-ready PDF', async ({
     page,
     context,
-}) => {
-    await context.addInitScript(() => {
-        const printWindow = window as Window & {
-            __fieldOpsPrintCalled?: boolean;
-        };
-        printWindow.__fieldOpsPrintCalled = false;
-        window.print = () => {
-            printWindow.__fieldOpsPrintCalled = true;
-        };
-    });
-
+}, testInfo) => {
     await login(page, e2eAccounts.admin);
     await page.goto('/access/users');
+
+    if (testInfo.project.name === 'tablet') {
+        const sidebarToggle = page.getByRole('button', {
+            name: /toggle sidebar/i,
+        });
+
+        if (await sidebarToggle.isVisible()) {
+            await sidebarToggle.click();
+        }
+    }
 
     const userTable = page.getByRole('table', {
         name: 'FieldOps user accounts',
@@ -239,7 +239,8 @@ test('an administrator can export CSV and open a print popup that invokes the br
     });
 
     await expect(exportButton).toBeVisible();
-    await userTableContainer.getByRole('button', { name: /Filter/ }).click();
+    await userTableContainer.getByRole('button', { name: /Filter/ }).focus();
+    await page.keyboard.press('Enter');
     const filterDialog = page.getByRole('dialog', {
         name: 'Search and filter users',
     });
@@ -299,24 +300,25 @@ test('an administrator can export CSV and open a print popup that invokes the br
 
     await exportButton.click();
     const popupPromise = page.waitForEvent('popup');
+    const printRequestPromise = context.waitForEvent(
+        'request',
+        (request) =>
+            request.method() === 'GET' &&
+            /\/exports\/[^/]+\/print$/.test(new URL(request.url()).pathname),
+    );
     await page.getByRole('menuitem', { name: 'Print' }).click();
     const printPopup = await popupPromise;
+    const printRequest = await printRequestPromise;
 
-    await expect(printPopup).toHaveURL(/\/exports\/[^/]+\/print$/);
-    await expect(
-        printPopup.getByRole('button', { name: 'Print report' }),
-    ).toBeVisible();
-    await expect
-        .poll(() =>
-            printPopup.evaluate(() => {
-                const printWindow = window as Window & {
-                    __fieldOpsPrintCalled?: boolean;
-                };
-
-                return printWindow.__fieldOpsPrintCalled === true;
-            }),
-        )
-        .toBe(true);
+    const printResponse = await context.request.get(printRequest.url());
+    expect(printResponse.ok()).toBe(true);
+    expect(printResponse.headers()['content-type']).toContain(
+        'application/pdf',
+    );
+    expect(printResponse.headers()['content-disposition']).toContain('inline');
+    expect((await printResponse.body()).subarray(0, 5).toString()).toBe(
+        '%PDF-',
+    );
     await printPopup.close();
 
     for (const appearance of ['light', 'dark'] as const) {

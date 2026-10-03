@@ -386,6 +386,118 @@ describe('data table export actions', () => {
         );
     });
 
+    it('sends selected columns and browser date preferences only for PDF and Print', async () => {
+        state.permissions = [
+            'users.export_pdf',
+            'users.export_print',
+            'users.export_csv',
+        ];
+        const browserOptions = new Intl.DateTimeFormat().resolvedOptions();
+        vi.spyOn(
+            Intl.DateTimeFormat.prototype,
+            'resolvedOptions',
+        ).mockReturnValue({
+            ...browserOptions,
+            locale: 'en-PH',
+            timeZone: 'Asia/Manila',
+        });
+        state.post.mockImplementation(
+            (_url: string, _data: unknown, options: VisitOptions) => {
+                options.onStart?.();
+                options.onFinish?.();
+            },
+        );
+        const printWindow = {
+            opener: window,
+            document: { title: '', body: { textContent: '' } },
+            close: vi.fn(),
+        };
+        vi.spyOn(window, 'open').mockReturnValue(
+            printWindow as unknown as Window,
+        );
+        const user = userEvent.setup();
+
+        render(
+            <DataTableExportActions
+                options={userExportOptions}
+                reportColumns={['user', 'role', 'record_status']}
+            />,
+        );
+
+        for (const label of ['PDF', 'Print', 'CSV']) {
+            await user.click(
+                screen.getByRole('button', { name: 'Export options' }),
+            );
+            await user.click(screen.getByRole('menuitem', { name: label }));
+        }
+
+        expect(state.post.mock.calls[0][1]).toEqual({
+            filters: expect.any(Object),
+            columns: ['user', 'role', 'record_status'],
+            timezone: 'Asia/Manila',
+            locale: 'en-PH',
+        });
+        expect(state.post.mock.calls[1][1]).toEqual({
+            filters: expect.any(Object),
+            columns: ['user', 'role', 'record_status'],
+            timezone: 'Asia/Manila',
+            locale: 'en-PH',
+        });
+        expect(state.post.mock.calls[2][1]).toEqual({
+            filters: expect.any(Object),
+        });
+    });
+
+    it('leaves out an unavailable browser timezone while keeping its locale', async () => {
+        state.permissions = ['users.export_pdf'];
+        const browserOptions = new Intl.DateTimeFormat().resolvedOptions();
+        vi.spyOn(
+            Intl.DateTimeFormat.prototype,
+            'resolvedOptions',
+        ).mockReturnValue({
+            ...browserOptions,
+            locale: 'en-PH',
+            timeZone: '',
+        });
+        const user = userEvent.setup();
+
+        render(<DataTableExportActions options={userExportOptions} />);
+        await user.click(
+            screen.getByRole('button', { name: 'Export options' }),
+        );
+        await user.click(screen.getByRole('menuitem', { name: 'PDF' }));
+
+        expect(state.post.mock.calls[0][1]).toEqual({
+            filters: expect.any(Object),
+            locale: 'en-PH',
+        });
+    });
+
+    it('blocks PDF and Print when all table columns are hidden', async () => {
+        state.permissions = ['users.export_pdf', 'users.export_print'];
+        const openWindow = vi.spyOn(window, 'open');
+        const user = userEvent.setup();
+        render(
+            <DataTableExportActions
+                options={userExportOptions}
+                reportColumns={[]}
+            />,
+        );
+
+        for (const label of ['PDF', 'Print']) {
+            await user.click(
+                screen.getByRole('button', { name: 'Export options' }),
+            );
+            await user.click(screen.getByRole('menuitem', { name: label }));
+        }
+
+        expect(state.post).not.toHaveBeenCalled();
+        expect(openWindow).not.toHaveBeenCalled();
+        expect(state.toast.error).toHaveBeenCalledWith(
+            'Select at least one table column to export.',
+        );
+    });
+
     it('submits exports from the keyboard menu flow', async () => {
         state.permissions = ['users.export_csv'];
         state.post.mockImplementation(
@@ -504,6 +616,36 @@ describe('data table export actions', () => {
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
+    it('closes the preparing PDF popup when a print export is queued', async () => {
+        state.permissions = ['users.export_print'];
+        const printWindow = {
+            opener: window,
+            document: { title: '', body: { textContent: '' } },
+            close: vi.fn(),
+        };
+        vi.spyOn(window, 'open').mockReturnValue(
+            printWindow as unknown as Window,
+        );
+        mockReadyExport({
+            status: 'queued',
+            message:
+                'Your export is queued. We will notify you when it is ready.',
+        });
+        const user = userEvent.setup();
+
+        render(<DataTableExportActions options={userExportOptions} />);
+        await user.click(
+            screen.getByRole('button', { name: 'Export options' }),
+        );
+        await user.click(screen.getByRole('menuitem', { name: 'Print' }));
+
+        expect(printWindow.close).toHaveBeenCalledTimes(1);
+        expect(state.toast.info).toHaveBeenCalledWith(
+            'Your export is queued. We will notify you when it is ready.',
+            { id: 'export-toast' },
+        );
+    });
+
     it('shows a safe actionable message when the export request fails', async () => {
         state.permissions = ['users.export_csv'];
         state.post.mockImplementation(
@@ -527,7 +669,7 @@ describe('data table export actions', () => {
         );
     });
 
-    it('opens a ready print view in the popup created by the user action', async () => {
+    it('opens a ready print PDF in the popup created by the user action', async () => {
         state.permissions = ['users.export_print'];
         const location = { replace: vi.fn() };
         const printWindow = {
@@ -564,13 +706,17 @@ describe('data table export actions', () => {
         expect(location.replace).toHaveBeenCalledWith(
             '/exports/artifacts/print/view',
         );
+        expect(printWindow.document.title).toBe('Preparing print PDF');
+        expect(printWindow.document.body.textContent).toBe(
+            'Preparing your print PDF…',
+        );
         expect(state.toast.success).toHaveBeenCalledWith(
-            'Your print view is ready.',
+            'Print PDF opened. Use the viewer’s Print control.',
             { id: 'export-toast' },
         );
     });
 
-    it('offers an open print view action in the toast when the popup is blocked', async () => {
+    it('offers a PDF viewer action in the toast when the popup is blocked', async () => {
         state.permissions = ['users.export_print'];
         vi.spyOn(window, 'open').mockReturnValue(null);
         mockReadyExport({
@@ -587,11 +733,11 @@ describe('data table export actions', () => {
         await user.click(screen.getByRole('menuitem', { name: 'Print' }));
 
         expect(state.toast.info).toHaveBeenCalledWith(
-            'Your print view is ready.',
+            'Open the PDF viewer and use Print.',
             expect.objectContaining({
                 id: 'export-toast',
                 action: expect.objectContaining({
-                    label: 'Open print view',
+                    label: 'Open PDF viewer',
                     onClick: expect.any(Function),
                 }),
             }),

@@ -32,7 +32,14 @@ class GenerateExportArtifact
 
         $artifact->forceFill(['status' => 'generating', 'failure_message' => null])->save();
         $filters = $artifact->filters;
+        $originalTimezone = date_default_timezone_get();
+        $originalConfigTimezone = config('app.timezone');
         try {
+            $sourceTimezone = $filters['_source_timezone'] ?? null;
+            if (is_string($sourceTimezone) && in_array($sourceTimezone, \DateTimeZone::listIdentifiers(\DateTimeZone::ALL_WITH_BC), true)) {
+                config()->set('app.timezone', $sourceTimezone);
+                date_default_timezone_set($sourceTimezone);
+            }
             $count = $this->registry->query($artifact->dataset, $owner, $filters)->count();
             if ($count > 10000) {
                 $this->fail($artifact, 'This export exceeds the 10,000 row limit. Narrow the filters and try again.');
@@ -48,7 +55,25 @@ class GenerateExportArtifact
             }
 
             $title = $this->title($artifact->dataset);
-            $this->writer->write($artifact, $title, $this->registry->columns($artifact->dataset), $rows);
+            $selected = $filters['_report_columns'] ?? null;
+            $columns = $this->registry->columns($artifact->dataset);
+            if (in_array($artifact->format, ['pdf', 'print'], true) && $this->registry->hasSerialColumn($artifact->dataset)) {
+                $columns = ['serial' => '#', ...$columns];
+            }
+            if (in_array($artifact->format, ['pdf', 'print'], true) && is_array($selected)) {
+                if (! array_is_list($selected)) {
+                    throw new \InvalidArgumentException('Invalid report columns.');
+                }
+                $keys = [];
+                foreach ($selected as $key) {
+                    if (! is_string($key)) {
+                        throw new \InvalidArgumentException('Invalid report column.');
+                    }
+                    $keys[] = $key;
+                }
+                $columns = $this->registry->reportColumns($artifact->dataset, $keys);
+            }
+            $this->writer->write($artifact, $title, $columns, $rows);
             $changed = ExportArtifact::query()->whereKey($artifact->getKey())->where('status', 'generating')->update([
                 'status' => 'ready',
                 'row_count' => count($rows),
@@ -59,13 +84,18 @@ class GenerateExportArtifact
                 $owner->notify(new ExportNotification(
                     'export.ready',
                     'Your export is ready',
-                    $title.' export is ready to download.',
+                    $artifact->format === 'print'
+                        ? $title.' report is ready to open for printing.'
+                        : $title.' export is ready to download.',
                     (string) $artifact->getKey(),
                 ));
             }
         } catch (Throwable $exception) {
             report($exception);
             $this->fail($artifact, 'The export could not be generated. Please try again or narrow the filters.');
+        } finally {
+            config()->set('app.timezone', $originalConfigTimezone);
+            date_default_timezone_set($originalTimezone);
         }
     }
 

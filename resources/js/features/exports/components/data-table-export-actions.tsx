@@ -45,8 +45,10 @@ function firstErrorMessage(errors: Record<string, string>) {
 
 export function DataTableExportActions({
     options,
+    reportColumns,
 }: {
     options: DataTableExportOptions;
+    reportColumns?: readonly string[];
 }) {
     const { props } = usePage();
     const permissions = props.auth.authorization.permissions;
@@ -59,6 +61,15 @@ export function DataTableExportActions({
     }
 
     const startExport = (format: ExportFormat) => {
+        if (
+            (format === 'pdf' || format === 'print') &&
+            reportColumns?.length === 0
+        ) {
+            toast.error('Select at least one table column to export.');
+
+            return;
+        }
+
         let toastId: string | number | undefined;
         const showToast = (
             type: 'success' | 'info' | 'error',
@@ -82,14 +93,29 @@ export function DataTableExportActions({
 
         if (printWindow) {
             printWindow.opener = null;
-            printWindow.document.title = 'Preparing print view';
-            printWindow.document.body.textContent =
-                'Preparing your print view…';
+            printWindow.document.title = 'Preparing print PDF';
+            printWindow.document.body.textContent = 'Preparing your print PDF…';
         }
+
+        const isReport = format === 'pdf' || format === 'print';
+        const reportPreferences = isReport
+            ? new Intl.DateTimeFormat().resolvedOptions()
+            : null;
 
         router.post(
             exportStore.url({ dataset: options.dataset, format }),
-            { filters: buildExportFilters(options.filters) },
+            {
+                filters: buildExportFilters(options.filters),
+                ...(isReport && reportColumns !== undefined
+                    ? { columns: [...reportColumns] }
+                    : {}),
+                ...(reportPreferences?.timeZone
+                    ? { timezone: reportPreferences.timeZone }
+                    : {}),
+                ...(reportPreferences?.locale
+                    ? { locale: reportPreferences.locale }
+                    : {}),
+            },
             {
                 onStart: () => {
                     setProcessingFormat(format);
@@ -126,30 +152,37 @@ export function DataTableExportActions({
                     if (format === 'print') {
                         if (printWindow && resultUrl) {
                             printWindow.location.replace(resultUrl);
-                            showToast('success', exportResult.message);
+                            showToast(
+                                'success',
+                                'Print PDF opened. Use the viewer’s Print control.',
+                            );
                         } else if (printWindow) {
                             printWindow.close();
                             showToast(
                                 'error',
-                                'The print view is ready, but no print URL was provided.',
+                                'The print PDF is ready, but no viewer URL was provided.',
                             );
                         } else if (resultUrl) {
-                            showToast('info', exportResult.message, {
-                                action: {
-                                    label: 'Open print view',
-                                    onClick: () => {
-                                        window.open(
-                                            resultUrl,
-                                            'fieldops-print-export',
-                                            'popup=yes,width=1100,height=750,resizable=yes,scrollbars=yes',
-                                        );
+                            showToast(
+                                'info',
+                                'Open the PDF viewer and use Print.',
+                                {
+                                    action: {
+                                        label: 'Open PDF viewer',
+                                        onClick: () => {
+                                            window.open(
+                                                resultUrl,
+                                                'fieldops-print-export',
+                                                'popup=yes,width=1100,height=750,resizable=yes,scrollbars=yes',
+                                            );
+                                        },
                                     },
                                 },
-                            });
+                            );
                         } else {
                             showToast(
                                 'error',
-                                'The print view is ready, but no print URL was provided.',
+                                'The print PDF is ready, but no viewer URL was provided.',
                             );
                         }
 
