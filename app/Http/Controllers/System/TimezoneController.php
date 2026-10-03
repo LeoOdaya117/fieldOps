@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\System;
 
+use App\Actions\DataTables\BuildListingQuery;
 use App\Actions\System\ManageTimezone;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\System\DeleteTimezoneRequest;
@@ -13,13 +14,12 @@ use App\Support\SystemSettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class TimezoneController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, BuildListingQuery $listingQuery): Response
     {
         $this->authorize('viewAny', Timezone::class);
 
@@ -34,45 +34,15 @@ class TimezoneController extends Controller
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
-        $sortColumns = [
-            'name' => 'name',
-            'created_at' => 'created_at',
-            'updated_at' => 'updated_at',
-            'record_status' => 'record_status',
-        ];
-
-        $timezones = ($canViewDeleted ? Timezone::withTrashed() : Timezone::query())
+        $timezones = $listingQuery->query('timezones', $request->user(), [
+            'search' => $search,
+            'record_status' => $recordStatuses,
+            'from' => $from?->format('Y-m-d'),
+            'to' => $to?->format('Y-m-d'),
+            'sort' => $sort,
+            'direction' => $direction,
+        ])
             ->with(['createdBy:id,name,email', 'updatedBy:id,name,email'])
-            ->when($search !== '', static fn ($query) => $query->where('name', 'like', "%{$search}%"))
-            ->when($recordStatuses !== ['active', 'inactive'], static fn ($query) => $query->whereIn('record_status', array_map(static fn (string $value): int => $value === 'active' ? 1 : 0, $recordStatuses)))
-            ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
-            ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
-            ->when(
-                $sort === 'created_by',
-                static fn ($query) => $query->orderBy(
-                    DB::table('users as created_actors')
-                        ->select('created_actors.name')
-                        ->whereColumn('created_actors.id', 'timezones.created_by'),
-                    $direction,
-                ),
-            )
-            ->when(
-                $sort === 'updated_by',
-                static fn ($query) => $query->orderBy(
-                    DB::table('users as updated_actors')
-                        ->select('updated_actors.name')
-                        ->whereColumn('updated_actors.id', 'timezones.updated_by'),
-                    $direction,
-                ),
-            )
-            ->when(
-                $sort !== 'created_by' && $sort !== 'updated_by',
-                static fn ($query) => $query->when(
-                    isset($sortColumns[$sort]),
-                    static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
-                    static fn ($query) => $query->orderBy('name'),
-                ),
-            )
             ->paginate($pageSize)
             ->appends(PageSize::query($request, $pageSize))
             ->through(fn (Timezone $timezone): array => $this->serialize($timezone));

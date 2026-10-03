@@ -1,6 +1,7 @@
 import type { NotificationSummary } from '@/features/notifications/types';
 import type { Auth } from '@/types/auth';
 import type { PlatformBranding, PlatformTheme } from '@/types/system';
+import type { ExportResult } from '@/features/exports/types';
 
 declare module 'react' {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -29,6 +30,7 @@ declare module '@inertiajs/core' {
                 warning?: string | string[] | null;
                 info?: string | string[] | null;
                 message?: string | string[] | null;
+                exportResult?: ExportResult | null;
             };
             [key: string]: unknown;
         };

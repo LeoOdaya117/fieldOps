@@ -1,3 +1,4 @@
+import { usePage } from '@inertiajs/react';
 import type { ComponentProps, Key, ReactNode } from 'react';
 import { SortableColumn } from '@/components/sortable-column';
 import {
@@ -12,6 +13,9 @@ import type { TablePaginationProps } from '@/components/ui/table-pagination';
 import { formatDateTime } from '@/lib/format-date';
 import { cn } from '@/lib/utils';
 import { RecordStatusControl } from '@/components/ui/record-status-control';
+import { DataTableExportActions } from '@/features/exports/components/data-table-export-actions';
+import type { DataTableExportOptions } from '@/features/exports/types';
+import { getAvailableExportFormats } from '@/features/exports/lib/export-filters';
 
 type DataTableColumn<T> = {
     key: string;
@@ -45,6 +49,7 @@ type DataTableProps<T = unknown> = ComponentProps<'table'> & {
         | readonly DataTableColumn<T>[]
         | (() => readonly DataTableColumn<T>[]);
     columnVisibility?: DataTableColumnVisibilityOptions;
+    exportOptions?: DataTableExportOptions;
     toolbar?: ReactNode;
     actions?: ReactNode;
     emptyState?: ReactNode;
@@ -69,6 +74,7 @@ function DataTable<T>({
     scrollContainerClassName,
     tableColumns,
     columnVisibility,
+    exportOptions,
     toolbar,
     actions,
     emptyState,
@@ -78,6 +84,7 @@ function DataTable<T>({
     canUpdateDeleted = false,
     ...props
 }: DataTableProps<T>) {
+    const { props: pageProps } = usePage();
     const configuredColumns =
         typeof tableColumns === 'function' ? tableColumns() : tableColumns;
     const columns =
@@ -115,8 +122,14 @@ function DataTable<T>({
         toolbar !== undefined && toolbar !== null && toolbar !== false;
     const hasActionsContent =
         actions !== undefined && actions !== null && actions !== false;
+    const hasExportActions =
+        exportOptions !== undefined &&
+        getAvailableExportFormats(
+            exportOptions,
+            pageProps.auth.authorization.permissions,
+        ).length > 0;
     const hasDataTableToolbar =
-        hasToolbarContent || hasActionsContent || canManageColumns;
+        hasToolbarContent || hasActionsContent || canManageColumns || hasExportActions;
 
     return (
         <div
@@ -137,9 +150,28 @@ function DataTable<T>({
                     {hasToolbarContent ? (
                         <div className="min-w-0 flex-1">{toolbar}</div>
                     ) : null}
-                    {hasActionsContent || canManageColumns ? (
-                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                    {hasActionsContent || canManageColumns || hasExportActions ? (
+                        <div
+                            data-slot="data-table-toolbar-actions"
+                            className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2"
+                        >
                             {actions}
+                            {exportOptions ? (
+                                <DataTableExportActions
+                                    options={exportOptions}
+                                    reportColumns={
+                                        canManageColumns
+                                            ? renderedColumns
+                                                  ?.filter(
+                                                      (column) =>
+                                                          column.hideable !==
+                                                          false,
+                                                  )
+                                                  .map((column) => column.key)
+                                            : undefined
+                                    }
+                                />
+                            ) : null}
                             {canManageColumns ? (
                                 <DataTableColumnVisibility
                                     columns={hideableColumns.map((column) => ({

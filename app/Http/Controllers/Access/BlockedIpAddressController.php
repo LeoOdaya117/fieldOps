@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Access;
 
+use App\Actions\DataTables\BuildListingQuery;
 use App\Actions\Security\ManageBlockedIpAddress;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Access\ActivateBlockedIpAddressRequest;
@@ -15,13 +16,12 @@ use App\Support\Pagination\PageSize;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class BlockedIpAddressController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, BuildListingQuery $listingQuery): Response
     {
         $this->authorize('viewAny', BlockedIpAddress::class);
 
@@ -37,61 +37,16 @@ class BlockedIpAddressController extends Controller
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
-        $sortColumns = [
-            'ip_address' => 'ip_address',
-            'is_active' => 'is_active',
-            'blocked_at' => 'blocked_at',
-            'last_seen_at' => 'last_seen_at',
-            'created_at' => 'created_at',
-            'updated_at' => 'updated_at',
-            'record_status' => 'record_status',
-        ];
-
-        $rules = ($canViewDeleted ? BlockedIpAddress::withTrashed() : BlockedIpAddress::query())
-            ->with([
-                'user:id,name,email',
-                'blockedBy:id,name,email',
-                'unblockedBy:id,name,email',
-                'createdBy:id,name,email',
-                'updatedBy:id,name,email',
-            ])
-            ->when($search !== '', static fn ($query) => $query->where(static function ($query) use ($search): void {
-                $query->where('ip_address', 'like', "%{$search}%")
-                    ->orWhere('reason', 'like', "%{$search}%")
-                    ->orWhereHas('user', static fn ($userQuery) => $userQuery
-                        ->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%"));
-            }))
-            ->when($statuses !== [], static fn ($query) => $query->whereIn('is_active', array_map(static fn (string $status): bool => $status === 'active', $statuses)))
-            ->when($recordStatuses !== ['active', 'inactive'], static fn ($query) => $query->whereIn('record_status', array_map(static fn (string $value): int => $value === 'active' ? 1 : 0, $recordStatuses)))
-            ->when($from !== null, static fn ($query) => $query->where('blocked_at', '>=', $from->startOfDay()))
-            ->when($to !== null, static fn ($query) => $query->where('blocked_at', '<=', $to->endOfDay()))
-            ->when(
-                $sort === 'created_by',
-                static fn ($query) => $query->orderBy(
-                    DB::table('users as created_actors')
-                        ->select('created_actors.name')
-                        ->whereColumn('created_actors.id', 'blocked_ip_addresses.created_by'),
-                    $direction,
-                ),
-            )
-            ->when(
-                $sort === 'updated_by',
-                static fn ($query) => $query->orderBy(
-                    DB::table('users as updated_actors')
-                        ->select('updated_actors.name')
-                        ->whereColumn('updated_actors.id', 'blocked_ip_addresses.updated_by'),
-                    $direction,
-                ),
-            )
-            ->when(
-                $sort !== 'created_by' && $sort !== 'updated_by',
-                static fn ($query) => $query->when(
-                    isset($sortColumns[$sort]),
-                    static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
-                    static fn ($query) => $query->orderByDesc('is_active')->orderByDesc('last_seen_at')->orderByDesc('blocked_at'),
-                ),
-            )
+        $rules = $listingQuery->query('ip-blocks', $request->user(), [
+            'search' => $search,
+            'status' => $statuses,
+            'record_status' => $recordStatuses,
+            'from' => $from?->format('Y-m-d'),
+            'to' => $to?->format('Y-m-d'),
+            'sort' => $sort,
+            'direction' => $direction,
+        ])
+            ->with(['createdBy:id,name,email', 'updatedBy:id,name,email'])
             ->paginate($pageSize)
             ->appends(PageSize::query($request, $pageSize))
             ->through(fn (BlockedIpAddress $rule): array => [

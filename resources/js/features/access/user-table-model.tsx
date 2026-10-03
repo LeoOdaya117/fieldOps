@@ -78,6 +78,7 @@ export type UserTableFilters = AuditTableFilters & {
 };
 
 export type InvitationTableFilters = {
+    recordStatus?: string | string[];
     sort?: string;
     direction?: 'asc' | 'desc';
 };

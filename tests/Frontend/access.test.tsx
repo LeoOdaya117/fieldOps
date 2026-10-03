@@ -40,6 +40,9 @@ vi.mock('@inertiajs/react', () => ({
         );
     },
     Head: () => null,
+    usePage: () => ({
+        props: { auth: { authorization: { permissions: [] } } },
+    }),
     Link: ({
         href,
         children,

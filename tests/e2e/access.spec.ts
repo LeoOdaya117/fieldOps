@@ -210,3 +210,135 @@ test('an administrator can manage audit columns across access tables and themes'
         }
     }
 });
+
+test('an administrator can export CSV and open a print-ready PDF', async ({
+    page,
+    context,
+}, testInfo) => {
+    await login(page, e2eAccounts.admin);
+    await page.goto('/access/users');
+
+    if (testInfo.project.name === 'tablet') {
+        const sidebarToggle = page.getByRole('button', {
+            name: /toggle sidebar/i,
+        });
+
+        if (await sidebarToggle.isVisible()) {
+            await sidebarToggle.click();
+        }
+    }
+
+    const userTable = page.getByRole('table', {
+        name: 'FieldOps user accounts',
+    });
+    const userTableContainer = userTable.locator(
+        'xpath=ancestor::*[@data-slot="data-table-container"]',
+    );
+    const exportButton = userTableContainer.getByRole('button', {
+        name: 'Export options',
+    });
+
+    await expect(exportButton).toBeVisible();
+    await userTableContainer.getByRole('button', { name: /Filter/ }).focus();
+    await page.keyboard.press('Enter');
+    const filterDialog = page.getByRole('dialog', {
+        name: 'Search and filter users',
+    });
+    await filterDialog.getByLabel('Search users').fill(e2eAccounts.admin.email);
+    const filteredUsers = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+
+        return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/access/users' &&
+            url.searchParams.get('search') === e2eAccounts.admin.email
+        );
+    });
+    await filterDialog.getByRole('button', { name: 'Apply filters' }).click();
+    await filteredUsers;
+    await expect(
+        userTable.getByText(e2eAccounts.admin.email, { exact: true }),
+    ).toBeVisible();
+    await expect(exportButton).toBeVisible();
+
+    await exportButton.focus();
+    await page.keyboard.press('Enter');
+
+    const menu = page.getByRole('menu');
+
+    for (const label of ['PDF', 'CSV', 'Excel (.xlsx)', 'Print']) {
+        await expect(menu.getByRole('menuitem', { name: label })).toBeVisible();
+    }
+
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    await exportButton.click();
+    const csvDownloadPromise = page.waitForEvent('download');
+    await page.getByRole('menuitem', { name: 'CSV' }).click();
+    const csvDownload = await csvDownloadPromise;
+
+    expect(csvDownload.suggestedFilename()).toMatch(/users-export-\d{8}\.csv$/);
+    const exportToast = page
+        .locator('[data-sonner-toast]')
+        .filter({ hasText: 'Your export is ready.' });
+    await expect(exportToast).toBeVisible();
+    await expect(
+        userTableContainer.getByText('Your export is ready.'),
+    ).toHaveCount(0);
+    expect(await csvDownload.failure()).toBeNull();
+    await expect(
+        userTableContainer.getByRole('link', { name: 'Download CSV' }),
+    ).toHaveCount(0);
+    await expect(
+        userTableContainer.getByRole('button', { name: 'Columns' }),
+    ).toBeVisible();
+    expect(
+        await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+    ).toBe(true);
+
+    await exportButton.click();
+    const popupPromise = page.waitForEvent('popup');
+    const printRequestPromise = context.waitForEvent(
+        'request',
+        (request) =>
+            request.method() === 'GET' &&
+            /\/exports\/[^/]+\/print$/.test(new URL(request.url()).pathname),
+    );
+    await page.getByRole('menuitem', { name: 'Print' }).click();
+    const printPopup = await popupPromise;
+    const printRequest = await printRequestPromise;
+
+    const printResponse = await context.request.get(printRequest.url());
+    expect(printResponse.ok()).toBe(true);
+    expect(printResponse.headers()['content-type']).toContain(
+        'application/pdf',
+    );
+    expect(printResponse.headers()['content-disposition']).toContain('inline');
+    expect((await printResponse.body()).subarray(0, 5).toString()).toBe(
+        '%PDF-',
+    );
+    await printPopup.close();
+
+    for (const appearance of ['light', 'dark'] as const) {
+        await page.evaluate((mode) => {
+            window.localStorage.setItem('appearance', mode);
+        }, appearance);
+        await page.reload();
+
+        if (appearance === 'dark') {
+            await expect(page.locator('html')).toHaveClass(/dark/);
+        } else {
+            await expect(page.locator('html')).not.toHaveClass(/dark/);
+        }
+
+        const themedExportButton = userTableContainer.getByRole('button', {
+            name: 'Export options',
+        });
+        await expect(themedExportButton).toBeVisible();
+        await themedExportButton.click();
+        await expect(page.getByRole('menu')).toBeVisible();
+        await page.keyboard.press('Escape');
+    }
+});

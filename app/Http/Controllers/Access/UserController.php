@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Access;
 
+use App\Actions\DataTables\BuildListingQuery;
 use App\Actions\Rbac\ApproveRegistration;
 use App\Actions\Rbac\AssignRoleToUser;
 use App\Actions\Rbac\BulkChangeUserStatus;
@@ -32,7 +33,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -136,7 +136,7 @@ class UserController extends Controller
         return to_route('access.users.index')->with('success', 'User deleted.');
     }
 
-    public function index(Request $request): Response
+    public function index(Request $request, BuildListingQuery $listingQuery): Response
     {
         $this->authorize('viewAny', User::class);
 
@@ -154,61 +154,18 @@ class UserController extends Controller
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
-        $sortColumns = [
-            'name' => 'name',
-            'status' => 'status',
-            'created_at' => 'created_at',
-            'updated_at' => 'updated_at',
-            'record_status' => 'record_status',
-        ];
-        $invitationSortColumns = [
-            'status' => 'status',
-            'created_at' => 'created_at',
-            'updated_at' => 'updated_at',
-            'record_status' => 'record_status',
-        ];
 
         return Inertia::render('access/users', [
-            'users' => ($canViewDeleted ? User::withTrashed() : User::query())
-                ->with([
-                    'roles:id,name,display_name,is_system',
-                    'createdBy:id,name,email',
-                    'updatedBy:id,name,email',
-                ])
-                ->when($search !== '', static fn ($query) => $query->where(static function ($query) use ($search): void {
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                }))
-                ->when($statuses !== [], static fn ($query) => $query->whereIn('status', $statuses))
-                ->when($recordStatuses !== ['active', 'inactive'], static fn ($query) => $query->whereIn('record_status', array_map(static fn (string $value): int => $value === 'active' ? 1 : 0, $recordStatuses)))
-                ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
-                ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
-                ->when(
-                    $sort === 'created_by',
-                    static fn ($query) => $query->orderBy(
-                        DB::table('users as created_actors')
-                            ->select('created_actors.name')
-                            ->whereColumn('created_actors.id', 'users.created_by'),
-                        $direction,
-                    ),
-                )
-                ->when(
-                    $sort === 'updated_by',
-                    static fn ($query) => $query->orderBy(
-                        DB::table('users as updated_actors')
-                            ->select('updated_actors.name')
-                            ->whereColumn('updated_actors.id', 'users.updated_by'),
-                        $direction,
-                    ),
-                )
-                ->when(
-                    $sort !== 'created_by' && $sort !== 'updated_by',
-                    static fn ($query) => $query->when(
-                        isset($sortColumns[$sort]),
-                        static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
-                        static fn ($query) => $query->orderBy('name'),
-                    ),
-                )
+            'users' => $listingQuery->query('users', $request->user(), [
+                'search' => $search,
+                'status' => $statuses,
+                'record_status' => $recordStatuses,
+                'from' => $from?->format('Y-m-d'),
+                'to' => $to?->format('Y-m-d'),
+                'sort' => $sort,
+                'direction' => $direction,
+            ])
+                ->with(['createdBy:id,name,email', 'updatedBy:id,name,email'])
                 ->paginate($pageSize)
                 ->appends(PageSize::query($request, $pageSize))
                 ->through(fn (User $user): array => [
@@ -236,41 +193,12 @@ class UserController extends Controller
             'activeUsersCount' => User::query()
                 ->where('status', UserStatus::Active->value)
                 ->count(),
-            'invitations' => ($canViewDeleted ? UserInvitation::withTrashed() : UserInvitation::query())
-                ->with([
-                    'role:id,name,display_name',
-                    'createdBy:id,name,email',
-                    'updatedBy:id,name,email',
-                ])
-                ->whereNull('accepted_at')
-                ->whereNull('revoked_at')
-                ->when($recordStatuses !== ['active', 'inactive'], static fn ($query) => $query->whereIn('record_status', array_map(static fn (string $value): int => $value === 'active' ? 1 : 0, $recordStatuses)))
-                ->when(
-                    $invitationSort === 'created_by',
-                    static fn ($query) => $query->orderBy(
-                        DB::table('users as created_actors')
-                            ->select('created_actors.name')
-                            ->whereColumn('created_actors.id', 'user_invitations.created_by'),
-                        $invitationDirection,
-                    ),
-                )
-                ->when(
-                    $invitationSort === 'updated_by',
-                    static fn ($query) => $query->orderBy(
-                        DB::table('users as updated_actors')
-                            ->select('updated_actors.name')
-                            ->whereColumn('updated_actors.id', 'user_invitations.updated_by'),
-                        $invitationDirection,
-                    ),
-                )
-                ->when(
-                    $invitationSort !== 'created_by' && $invitationSort !== 'updated_by',
-                    static fn ($query) => $query->when(
-                        isset($invitationSortColumns[$invitationSort]),
-                        static fn ($query) => $query->orderBy($invitationSortColumns[$invitationSort], $invitationDirection),
-                        static fn ($query) => $query->orderByDesc('created_at'),
-                    ),
-                )
+            'invitations' => $listingQuery->invitations($request->user(), [
+                'record_status' => $recordStatuses,
+                'invitation_sort' => $invitationSort,
+                'invitation_direction' => $invitationDirection,
+            ])
+                ->with(['createdBy:id,name,email', 'updatedBy:id,name,email'])
                 ->get()
                 ->map(fn (UserInvitation $invitation): array => [
                     'id' => $invitation->id,
@@ -290,9 +218,7 @@ class UserController extends Controller
                     'recordStatusUrl' => route('access.users.invitations.record-status', $invitation->getKey()),
                 ])->values(),
             'registrations' => $request->user()->can('users.review_registrations')
-                ? UserRegistration::query()
-                    ->where('status', 'pending')
-                    ->latest()
+                ? $listingQuery->registrations([])
                     ->get(['id', 'name', 'email', 'status', 'created_at', 'updated_at'])
                     ->map(fn (UserRegistration $registration): array => [
                         'id' => $registration->id,
@@ -352,25 +278,18 @@ class UserController extends Controller
         return back()->with('success', 'Invitation sent.');
     }
 
-    public function registrations(Request $request): Response
+    public function registrations(Request $request, BuildListingQuery $listingQuery): Response
     {
         $this->authorize('reviewRegistrations', User::class);
 
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
-        $sortColumns = [
-            'created_at' => 'created_at',
-            'updated_at' => 'updated_at',
-        ];
 
         return Inertia::render('access/registrations', [
-            'registrations' => UserRegistration::query()
-                ->where('status', 'pending')
-                ->when(
-                    isset($sortColumns[$sort]),
-                    static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
-                    static fn ($query) => $query->orderByDesc('created_at'),
-                )
+            'registrations' => $listingQuery->registrations([
+                'sort' => $sort,
+                'direction' => $direction,
+            ])
                 ->get(['id', 'name', 'email', 'status', 'created_at', 'updated_at'])
                 ->map(fn (UserRegistration $registration): array => [
                     'id' => $registration->id,

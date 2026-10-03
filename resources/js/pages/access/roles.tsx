@@ -252,6 +252,21 @@ export default function RolesPage({
                     data={roleRows}
                     tableColumns={tableColumns}
                     actions={tableActions}
+                    exportOptions={{
+                        dataset: 'roles',
+                        permissionNamespaces: ['roles'],
+                        filters: {
+                            search: filters.search,
+                            type: filters.type,
+                            assigned: filters.assigned,
+                            permissions_min: filters.permissionsMin,
+                            from: filters.from,
+                            to: filters.to,
+                            record_status: filters.recordStatus,
+                            sort: filters.sort,
+                            direction: filters.direction,
+                        },
+                    }}
                     emptyState={
                         <>
                             <p className="font-medium">No roles found</p>

@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
     patch: vi.fn(),
     transform: vi.fn(),
     visit: vi.fn(),
+    navigateExport: vi.fn(),
     reload: vi.fn(),
     mobile: false,
 }));
@@ -54,6 +55,9 @@ vi.mock('@inertiajs/react', () => ({
     ),
 }));
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => mocks.mobile }));
+vi.mock('@/features/exports/lib/browser-download', () => ({
+    startBrowserDownload: mocks.navigateExport,
+}));
 
 import { NotificationProvider } from '@/features/notifications/notification-provider';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
@@ -287,6 +291,54 @@ describe('notifications', () => {
         expect(mocks.transform.mock.lastCall?.[0]()).toEqual({ read: false });
         act(() => mocks.patch.mock.lastCall?.[1].onNetworkError());
         expect(screen.getByRole('alert')).toHaveTextContent('Could not update');
+    });
+
+    it('opens a ready export with browser navigation only after marking it read', () => {
+        const exportItem: NotificationItem = {
+            ...item,
+            id: 'export-1',
+            type: 'export.ready',
+            title: 'Your export is ready',
+            actionUrl: '/exports/artifacts/print/view',
+        };
+        const onOpen = vi.fn();
+        render(
+            <ul>
+                <NotificationRow item={exportItem} onOpen={onOpen} />
+            </ul>,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Open export' }));
+        expect(mocks.transform.mock.calls[0][0]()).toEqual({ read: true });
+        expect(mocks.navigateExport).not.toHaveBeenCalled();
+        expect(mocks.visit).not.toHaveBeenCalled();
+
+        act(() => mocks.patch.mock.calls[0][1].onSuccess());
+        expect(onOpen).toHaveBeenCalledTimes(1);
+        expect(mocks.navigateExport).toHaveBeenCalledWith(exportItem.actionUrl);
+        expect(mocks.visit).not.toHaveBeenCalled();
+    });
+
+    it('keeps a failed export notification open for retry', () => {
+        render(
+            <ul>
+                <NotificationRow
+                    item={{
+                        ...item,
+                        type: 'export.ready',
+                        actionUrl: '/exports/artifacts/1/download',
+                    }}
+                />
+            </ul>,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Open export' }));
+        act(() => mocks.patch.mock.calls[0][1].onNetworkError());
+
+        expect(mocks.navigateExport).not.toHaveBeenCalled();
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Could not update this notification',
+        );
     });
 
     it('renders filters, pagination, counts, and an empty inbox', () => {

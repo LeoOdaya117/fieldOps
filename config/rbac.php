@@ -105,6 +105,10 @@ return [
                 PermissionKey::FilesDelete->value,
                 PermissionKey::FilesViewDeleted->value,
                 PermissionKey::FilesUpdateDeleted->value,
+                ...PermissionKey::exportValuesFor([
+                    'users', 'roles', 'audit', 'ip_blocks', 'visit_logs', 'files',
+                    'media_assets', 'countries', 'timezones',
+                ]),
             ],
         ],
         RoleName::SuperAdmin->value => [

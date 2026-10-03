@@ -31,46 +31,56 @@ export default function RegistrationsPage({
             }
         >
             <IndexPageSection>
-                {registrations.length === 0 ? (
-                    <div className="px-6 py-14 text-center">
-                        <p className="font-medium">No pending registrations</p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            New requests will appear here after someone submits
-                            the public registration form.
-                        </p>
-                    </div>
-                ) : (
-                    <DataTable
-                        caption="Pending user registrations"
-                        className="min-w-max"
-                        containerClassName="rounded-none border-0 shadow-none ring-0"
-                        scrollContainerClassName="px-4"
-                        data={registrations}
-                        tableColumns={registrationTableColumns}
-                        addDefaultColumns
-                        excludeDefaultColumns={[
-                            'status',
-                            'created_by',
-                            'updated_by',
-                            'record_status',
-                        ]}
-                        defaultColumnSort={{
-                            action: '/access/users/registrations',
+                <DataTable
+                    caption="Pending user registrations"
+                    className="min-w-max"
+                    containerClassName="rounded-none border-0 shadow-none ring-0"
+                    scrollContainerClassName="px-4"
+                    data={registrations}
+                    tableColumns={registrationTableColumns}
+                    addDefaultColumns
+                    excludeDefaultColumns={[
+                        'status',
+                        'created_by',
+                        'updated_by',
+                        'record_status',
+                    ]}
+                    defaultColumnSort={{
+                        action: '/access/users/registrations',
+                        sort: filters.sort,
+                        direction: filters.direction,
+                    }}
+                    exportOptions={{
+                        dataset: 'registrations',
+                        permissionNamespaces: ['users'],
+                        requiredPermissions: ['users.review_registrations'],
+                        filters: {
                             sort: filters.sort,
                             direction: filters.direction,
-                        }}
-                        columnVisibility={{
-                            storageKey: 'access.registrations.v2',
-                            defaultVisibleKeys: [
-                                'applicant',
-                                'status',
-                                'created_at',
-                                'updated_at',
-                            ],
-                        }}
-                        getRowKey={(registration) => registration.id}
-                    />
-                )}
+                        },
+                    }}
+                    emptyState={
+                        <div className="py-4">
+                            <p className="font-medium">
+                                No pending registrations
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                New requests will appear here after someone
+                                submits the public registration form.
+                            </p>
+                        </div>
+                    }
+                    columnVisibility={{
+                        storageKey: 'access.registrations.v2',
+                        defaultVisibleKeys: [
+                            'applicant',
+                            'status',
+                            'created_at',
+                            'updated_at',
+                        ],
+                    }}
+                    getRowKey={(registration) => registration.id}
+                />
             </IndexPageSection>
         </IndexPage>
     );

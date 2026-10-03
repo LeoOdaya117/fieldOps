@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Access;
 
+use App\Actions\DataTables\BuildListingQuery;
 use App\Actions\Rbac\AssertRoleCanBeRemoved;
 use App\Actions\Rbac\BulkDeleteRoles;
 use App\Actions\Rbac\RecordAccessAudit;
@@ -23,7 +24,7 @@ use Spatie\Permission\Models\Permission;
 
 class RoleController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, BuildListingQuery $listingQuery): Response
     {
         $this->authorize('viewAny', Role::class);
 
@@ -41,58 +42,18 @@ class RoleController extends Controller
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'desc' ? 'desc' : 'asc';
         $pageSize = PageSize::resolve($request);
-        $sortColumns = [
-            'display_name' => 'display_name',
-            'is_system' => 'is_system',
-            'users_count' => 'users_count',
-            'permissions_count' => 'permissions_count',
-            'status' => 'status',
-            'created_at' => 'created_at',
-            'updated_at' => 'updated_at',
-            'record_status' => 'record_status',
-        ];
-
-        $roles = ($canViewDeleted ? Role::withTrashed() : Role::query())
+        $roles = $listingQuery->query('roles', $request->user(), [
+            'search' => $search,
+            'type' => $types,
+            'assigned' => $assignedValues,
+            'record_status' => $recordStatuses,
+            'permissions_min' => $permissionsMin,
+            'from' => $from?->format('Y-m-d'),
+            'to' => $to?->format('Y-m-d'),
+            'sort' => $sort,
+            'direction' => $direction,
+        ])
             ->with(['createdBy:id,name,email', 'updatedBy:id,name,email'])
-            ->withCount(['users', 'permissions'])
-            ->when($search !== '', static fn ($query) => $query->where(static function ($query) use ($search): void {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('display_name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            }))
-            ->when(count($types) === 1, static fn ($query) => $query->where('is_system', $types[0] === 'system'))
-            ->when($recordStatuses !== ['active', 'inactive'], static fn ($query) => $query->whereIn('record_status', array_map(static fn (string $value): int => $value === 'active' ? 1 : 0, $recordStatuses)))
-            ->when(count($assignedValues) === 1 && $assignedValues[0] === 'assigned', static fn ($query) => $query->has('users'))
-            ->when(count($assignedValues) === 1 && $assignedValues[0] === 'unassigned', static fn ($query) => $query->doesntHave('users'))
-            ->when(ctype_digit($permissionsMin), static fn ($query) => $query->has('permissions', '>=', (int) $permissionsMin))
-            ->when($from !== null, static fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
-            ->when($to !== null, static fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
-            ->when(
-                $sort === 'created_by',
-                static fn ($query) => $query->orderBy(
-                    DB::table('users as created_actors')
-                        ->select('created_actors.name')
-                        ->whereColumn('created_actors.id', 'roles.created_by'),
-                    $direction,
-                ),
-            )
-            ->when(
-                $sort === 'updated_by',
-                static fn ($query) => $query->orderBy(
-                    DB::table('users as updated_actors')
-                        ->select('updated_actors.name')
-                        ->whereColumn('updated_actors.id', 'roles.updated_by'),
-                    $direction,
-                ),
-            )
-            ->when(
-                $sort !== 'created_by' && $sort !== 'updated_by',
-                static fn ($query) => $query->when(
-                    isset($sortColumns[$sort]),
-                    static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
-                    static fn ($query) => $query->orderBy('is_system', 'desc')->orderBy('display_name'),
-                ),
-            )
             ->paginate($pageSize)
             ->appends(PageSize::query($request, $pageSize));
 

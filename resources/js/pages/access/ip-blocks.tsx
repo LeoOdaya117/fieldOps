@@ -163,6 +163,19 @@ export default function IpBlocksPage({
                         })
                     }
                     actions={tableActions}
+                    exportOptions={{
+                        dataset: 'ip-blocks',
+                        permissionNamespaces: ['ip_blocks'],
+                        filters: {
+                            search: filters.search,
+                            status: filters.status,
+                            from: filters.from,
+                            to: filters.to,
+                            record_status: filters.recordStatus,
+                            sort: filters.sort,
+                            direction: filters.direction,
+                        },
+                    }}
                     emptyState={
                         <p className="text-sm text-muted-foreground">
                             No IP addresses match the current filters.

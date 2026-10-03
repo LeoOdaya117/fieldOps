@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { startBrowserDownload } from '@/features/exports/lib/browser-download';
 import { readAll, update } from '@/routes/notifications';
 import { useNotifications } from '../notification-provider';
 import type { NotificationItem } from '../types';
@@ -73,7 +74,12 @@ export function NotificationRow({
             onSuccess: () => {
                 if (navigate && item.actionUrl) {
                     onOpen?.();
-                    router.visit(item.actionUrl);
+
+                    if (item.type === 'export.ready') {
+                        startBrowserDownload(item.actionUrl);
+                    } else {
+                        router.visit(item.actionUrl);
+                    }
                 }
             },
         });
@@ -111,7 +117,9 @@ export function NotificationRow({
                         disabled={form.processing}
                         onClick={() => change(true, true)}
                     >
-                        View details
+                        {item.type === 'export.ready'
+                            ? 'Open export'
+                            : 'View details'}
                     </Button>
                 )}
                 <Button

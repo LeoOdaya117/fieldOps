@@ -321,45 +321,58 @@ export default function UsersPage({
                 />
             </div>
 
-            {invitations.length > 0 && (
-                <IndexPageSection
-                    title="Pending invitations"
-                    description="Invitations expire automatically and can be resent or revoked."
-                >
-                    <DataTable
-                        caption="Pending user invitations"
-                        className="min-w-max"
-                        containerClassName="rounded-none border-0 shadow-none ring-0"
-                        scrollContainerClassName="px-4"
-                        data={invitations}
-                        tableColumns={invitationTableColumns}
-                        addDefaultColumns
-                        canUpdateDeleted={canUpdateDeleted}
-                        defaultColumnSort={{
-                            action: usersIndex.url(),
-                            sort: invitationFilters.sort,
-                            direction: invitationFilters.direction,
-                            sortParam: 'invitation_sort',
-                            directionParam: 'invitation_direction',
-                        }}
-                        columnVisibility={{
-                            storageKey: 'access.invitations.v2',
-                            defaultVisibleKeys: [
-                                'email',
-                                'role',
-                                'expires',
-                                'created_at',
-                                'updated_at',
-                                'created_by',
-                                'updated_by',
-                                'status',
-                                'record_status',
-                            ],
-                        }}
-                        getRowKey={(invitation) => invitation.id}
-                    />
-                </IndexPageSection>
-            )}
+            <IndexPageSection
+                title="Pending invitations"
+                description="Invitations expire automatically and can be resent or revoked."
+            >
+                <DataTable
+                    caption="Pending user invitations"
+                    className="min-w-max"
+                    containerClassName="rounded-none border-0 shadow-none ring-0"
+                    scrollContainerClassName="px-4"
+                    data={invitations}
+                    tableColumns={invitationTableColumns}
+                    addDefaultColumns
+                    canUpdateDeleted={canUpdateDeleted}
+                    defaultColumnSort={{
+                        action: usersIndex.url(),
+                        sort: invitationFilters.sort,
+                        direction: invitationFilters.direction,
+                        sortParam: 'invitation_sort',
+                        directionParam: 'invitation_direction',
+                    }}
+                    exportOptions={{
+                        dataset: 'invitations',
+                        permissionNamespaces: ['users'],
+                        requiredPermissions: ['users.view'],
+                        filters: {
+                            record_status: invitationFilters.recordStatus,
+                            invitation_sort: invitationFilters.sort,
+                            invitation_direction: invitationFilters.direction,
+                        },
+                    }}
+                    emptyState={
+                        <p className="text-sm text-muted-foreground">
+                            No pending invitations.
+                        </p>
+                    }
+                    columnVisibility={{
+                        storageKey: 'access.invitations.v2',
+                        defaultVisibleKeys: [
+                            'email',
+                            'role',
+                            'expires',
+                            'created_at',
+                            'updated_at',
+                            'created_by',
+                            'updated_by',
+                            'status',
+                            'record_status',
+                        ],
+                    }}
+                    getRowKey={(invitation) => invitation.id}
+                />
+            </IndexPageSection>
 
             <IndexPageSection
                 title="User accounts"
@@ -373,6 +386,19 @@ export default function UsersPage({
                     data={users.data}
                     tableColumns={userTableColumns}
                     actions={tableActions}
+                    exportOptions={{
+                        dataset: 'users',
+                        permissionNamespaces: ['users'],
+                        filters: {
+                            search: filters.search,
+                            status: filters.status,
+                            from: filters.from,
+                            to: filters.to,
+                            record_status: filters.recordStatus,
+                            sort: filters.sort,
+                            direction: filters.direction,
+                        },
+                    }}
                     emptyState={
                         <p className="text-sm text-muted-foreground">
                             No users found.

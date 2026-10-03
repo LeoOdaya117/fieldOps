@@ -37,3 +37,33 @@ Append meaningful architectural or workflow decisions with their date, context, 
 - **Context:** Files, personal images, avatars, and platform branding need one management model without exposing storage paths or treating a token as authorization.
 - **Decision:** Extend `MediaAsset` with immutable opaque tokens and a module, keep physical disk/key server-only, and resolve authenticated preview/download through token routes and module-aware policy. The public branding endpoint serves only an active assigned image by token. Keep the gallery picker uploader-scoped while the central Files list may include cross-uploader assets in administrable modules.
 - **Rationale:** One canonical record and private disk contract simplify lifecycle, auditing, and future S3-compatible storage while preserving per-module access boundaries. Legacy public avatar files stay in place until an independently verified deployment cutover.
+
+## 2026-10-01 — Share listing filters with global exports
+
+- **Context:** Export actions must include every row matching the active listing filters and sort while enforcing the same Files module scope and safe output columns.
+- **Decision:** Build reusable filtered queries in `BuildListingQuery`, define export datasets and safe columns in `ExportDatasetRegistry`, and store generated outputs as private expiring artifacts guarded by the owner’s current resource permission and file scope.
+- **Rationale:** Sharing query construction keeps table and export results aligned, while private artifacts preserve access checks for immediate and queued reports.
+
+## 2026-10-03 — Render Print and PDF from one report layout
+
+- **Context:** Browser HTML printing added its own page chrome while PDF output placed a footer and page count inconsistently.
+- **Decision:** Generate both formats through Dompdf, draw the footer and page number on every page, and serve Print PDFs inline while preserving the distinct `export_print` permission and guarded route. Serve existing HTML Print artifacts until their current expiry.
+- **Rationale:** One renderer gives Print and PDF the same pagination and report content without changing format permissions or interrupting short-lived artifacts.
+
+## 2026-10-03 — Use visible table columns for Print and PDF
+
+- **Context:** Manage Columns hid or showed fields in the listing, but Print/PDF still used fixed export columns, so the report did not match the table selection.
+- **Decision:** Send ordered visible data-column keys for Print/PDF, validate them against dataset-specific server mappings, and snapshot them on the artifact before queuing. Keep CSV/XLSX on their existing fixed export columns and preserve the default layout for callers without a column selection.
+- **Rationale:** The report now reflects the user's chosen table view while server allowlists and artifact snapshots preserve safe, deterministic output.
+
+## 2026-10-03 — Match report dates and serials to the table
+
+- **Context:** Countries Print/PDF showed raw server timestamps and omitted the table's fixed `#` column despite matching the chosen data columns.
+- **Decision:** Snapshot validated browser locale and timezone alongside the source application timezone for Print/PDF, format report dates with PHP Intl using the table's display styles, and generate serials on the server in full filtered row order. Add `#` even for new Print/PDF requests without a selected-column payload. Keep CSV/XLSX values unchanged and require `ext-intl` in the PHP runtime.
+- **Rationale:** The report and browser table now show the same dates and numbering for immediate and queued exports, without trusting client-provided row numbers or changing spreadsheet contracts.
+
+## 2026-10-03 — Keep Print and PDF reports in portrait
+
+- **Context:** The report renderer switched reports with eight or more columns to landscape, while users expect a consistent portrait page format.
+- **Decision:** Render every PDF and Print report on A4 portrait pages. Use compact table typography when a report has eight or more columns.
+- **Rationale:** Every report now opens and prints with the same page orientation, while wide tables use less space per cell to fit the portrait page.

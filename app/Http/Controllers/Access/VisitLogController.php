@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Access;
 
+use App\Actions\DataTables\BuildListingQuery;
 use App\Http\Controllers\Controller;
 use App\Models\VisitLog;
 use App\Support\Pagination\PageSize;
@@ -12,7 +13,7 @@ use Inertia\Response;
 
 class VisitLogController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, BuildListingQuery $listingQuery): Response
     {
         $this->authorize('viewAny', VisitLog::class);
 
@@ -25,40 +26,19 @@ class VisitLogController extends Controller
         $sort = (string) $request->input('sort', '');
         $direction = $request->input('direction') === 'asc' ? 'asc' : 'desc';
         $pageSize = PageSize::resolve($request);
-        $sortColumns = [
-            'occurred_at' => 'occurred_at',
-            'ip_address' => 'ip_address',
-            'location_city' => 'location_city',
-            'event_type' => 'event_type',
-            'status_code' => 'status_code',
-        ];
         $from = $this->parseDate($fromValue);
         $to = $this->parseDate($toValue);
 
-        $logs = VisitLog::query()
-            ->whereIn('event_type', VisitLog::EVENT_TYPES)
-            ->with('user:id,name,email')
-            ->when($keyword !== '', static function ($query) use ($keyword): void {
-                $query->where(static function ($query) use ($keyword): void {
-                    $query->where('ip_address', 'like', "%{$keyword}%")
-                        ->orWhere('location_city', 'like', "%{$keyword}%")
-                        ->orWhere('location_region', 'like', "%{$keyword}%")
-                        ->orWhere('location_country_code', 'like', "%{$keyword}%")
-                        ->orWhereHas('user', static fn ($query) => $query
-                            ->where('name', 'like', "%{$keyword}%")
-                            ->orWhere('email', 'like', "%{$keyword}%"));
-                });
-            })
-            ->when($events !== [], static fn ($query) => $query->whereIn('event_type', $events))
-            ->when($outcomes !== [], static fn ($query) => $query->whereIn('outcome', $outcomes))
-            ->when($statusCode >= 100 && $statusCode <= 599, static fn ($query) => $query->where('status_code', $statusCode))
-            ->when($from !== null, static fn ($query) => $query->where('occurred_at', '>=', $from->startOfDay()))
-            ->when($to !== null, static fn ($query) => $query->where('occurred_at', '<=', $to->endOfDay()))
-            ->when(
-                isset($sortColumns[$sort]),
-                static fn ($query) => $query->orderBy($sortColumns[$sort], $direction),
-                static fn ($query) => $query->latest('occurred_at'),
-            )
+        $logs = $listingQuery->query('visit-logs', $request->user(), [
+            'keyword' => $keyword,
+            'event' => $events,
+            'outcome' => $outcomes,
+            'status_code' => $statusCode >= 100 && $statusCode <= 599 ? $statusCode : null,
+            'from' => $from?->format('Y-m-d'),
+            'to' => $to?->format('Y-m-d'),
+            'sort' => $sort,
+            'direction' => $direction,
+        ])
             ->paginate($pageSize)
             ->appends(PageSize::query($request, $pageSize))
             ->through(fn (VisitLog $log): array => $this->serialize($log));

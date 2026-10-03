@@ -62,7 +62,17 @@ vi.mock('@inertiajs/react', () => {
         ),
         router: {
             visit: vi.fn(),
+            post: vi.fn(),
         },
+        usePage: () => ({
+            props: {
+                auth: {
+                    authorization: {
+                        permissions: [],
+                    },
+                },
+            },
+        }),
     };
 });
 
