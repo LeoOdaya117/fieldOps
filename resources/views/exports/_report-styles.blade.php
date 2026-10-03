@@ -12,6 +12,7 @@
     th, td { border: 1px solid #d0d5dd; padding: 5px 6px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
     th { background: #f2f4f7; font-size: 7.5pt; font-weight: bold; }
     td { font-size: 7.5pt; }
+    .report-table-compact th, .report-table-compact td { font-size: 5.5pt; padding: 3px 2px; }
     tbody tr:nth-child(even) { background: #f9fafb; }
     .empty { color: #667085; font-style: italic; padding: 10mm 2mm; text-align: center; }
 </style>

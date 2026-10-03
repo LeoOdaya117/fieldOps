@@ -170,9 +170,15 @@ class ExportReportWriter
         if (is_string($timezone) && in_array($timezone, \DateTimeZone::listIdentifiers(\DateTimeZone::ALL_WITH_BC), true)) {
             $generatedAt = $generatedAt->setTimezone($timezone);
         }
-        $html = view('exports.pdf', ['title' => $title, 'columns' => $columns, 'rows' => $rows, 'generatedAt' => $generatedAt])->render();
+        $html = view('exports.pdf', [
+            'title' => $title,
+            'columns' => $columns,
+            'rows' => $rows,
+            'generatedAt' => $generatedAt,
+            'compactTable' => count($columns) >= 8,
+        ])->render();
         $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4', count($columns) >= 8 ? 'landscape' : 'portrait');
+        $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
         $dompdf->getCanvas()->page_script(static function (int $pageNumber, int $pageCount, Canvas $canvas, FontMetrics $fonts): void {
             $left = 42.52; // 15 mm page margin on A4.

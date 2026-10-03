@@ -73,21 +73,23 @@ class ExportTest extends TestCase
         }
     }
 
-    public function test_wide_report_uses_landscape_a4_to_keep_column_headings_readable(): void
+    public function test_wide_pdf_and_print_reports_remain_a4_portrait(): void
     {
         Storage::fake('local');
-        $owner = $this->actorWith(['roles.view', 'roles.export_pdf']);
-        $artifact = $this->artifact($owner, 'pdf', []);
+        $owner = $this->actorWith(['roles.view', 'roles.export_pdf', 'roles.export_print']);
         $registry = app(ExportDatasetRegistry::class);
         $columns = $registry->reportColumns('roles', array_keys($registry->reportColumnMap('roles')));
         $row = array_fill_keys(array_keys($columns), 'Example readable value');
 
-        app(ExportReportWriter::class)->write($artifact, 'Roles', $columns, [$row]);
+        foreach (['pdf', 'print'] as $format) {
+            $artifact = $this->artifact($owner, $format, []);
+            app(ExportReportWriter::class)->write($artifact, 'Roles', $columns, [$row]);
 
-        $bytes = Storage::disk('local')->get($artifact->fresh()->path);
-        $this->assertSame(1, preg_match('/\/MediaBox\s*\[\s*0(?:\.0+)?\s+0(?:\.0+)?\s+([\d.]+)\s+([\d.]+)\s*\]/', $bytes, $pageBox));
-        $this->assertEqualsWithDelta(841.89, (float) $pageBox[1], 1.0);
-        $this->assertEqualsWithDelta(595.28, (float) $pageBox[2], 1.0);
+            $bytes = Storage::disk('local')->get($artifact->fresh()->path);
+            $this->assertSame(1, preg_match('/\/MediaBox\s*\[\s*0(?:\.0+)?\s+0(?:\.0+)?\s+([\d.]+)\s+([\d.]+)\s*\]/', $bytes, $pageBox));
+            $this->assertEqualsWithDelta(595.28, (float) $pageBox[1], 1.0);
+            $this->assertEqualsWithDelta(841.89, (float) $pageBox[2], 1.0);
+        }
     }
 
     public function test_report_column_validation_rejects_empty_duplicate_unknown_and_utility_keys_without_artifact(): void
@@ -359,8 +361,8 @@ class ExportTest extends TestCase
                 $this->assertStringEndsWith('.pdf', $artifact->path);
                 $this->assertStringStartsWith('%PDF-', $bytes);
                 $this->assertSame(1, preg_match('/\/MediaBox\s*\[\s*0(?:\.0+)?\s+0(?:\.0+)?\s+([\d.]+)\s+([\d.]+)\s*\]/', $bytes, $pageBox));
-                $this->assertEqualsWithDelta(841.89, (float) $pageBox[1], 1.0);
-                $this->assertEqualsWithDelta(595.28, (float) $pageBox[2], 1.0);
+                $this->assertEqualsWithDelta(595.28, (float) $pageBox[1], 1.0);
+                $this->assertEqualsWithDelta(841.89, (float) $pageBox[2], 1.0);
             }
         }
     }

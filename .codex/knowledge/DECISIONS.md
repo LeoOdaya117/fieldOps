@@ -61,3 +61,9 @@ Append meaningful architectural or workflow decisions with their date, context, 
 - **Context:** Countries Print/PDF showed raw server timestamps and omitted the table's fixed `#` column despite matching the chosen data columns.
 - **Decision:** Snapshot validated browser locale and timezone alongside the source application timezone for Print/PDF, format report dates with PHP Intl using the table's display styles, and generate serials on the server in full filtered row order. Add `#` even for new Print/PDF requests without a selected-column payload. Keep CSV/XLSX values unchanged and require `ext-intl` in the PHP runtime.
 - **Rationale:** The report and browser table now show the same dates and numbering for immediate and queued exports, without trusting client-provided row numbers or changing spreadsheet contracts.
+
+## 2026-10-03 — Keep Print and PDF reports in portrait
+
+- **Context:** The report renderer switched reports with eight or more columns to landscape, while users expect a consistent portrait page format.
+- **Decision:** Render every PDF and Print report on A4 portrait pages. Use compact table typography when a report has eight or more columns.
+- **Rationale:** Every report now opens and prints with the same page orientation, while wide tables use less space per cell to fit the portrait page.

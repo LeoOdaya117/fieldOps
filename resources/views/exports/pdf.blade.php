@@ -14,7 +14,7 @@
     @if ($rows === [])
         <div class="empty">No records match the selected filters.</div>
     @else
-        <table>
+        <table @class(['report-table-compact' => $compactTable])>
             <thead><tr>@foreach ($columns as $label)<th>{{ $label }}</th>@endforeach</tr></thead>
             <tbody>
                 @foreach ($rows as $row)
