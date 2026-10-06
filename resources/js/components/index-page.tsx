@@ -14,6 +14,7 @@ type IndexPageProps = {
 
 type IndexPageSectionProps = {
     title?: string;
+    headingLevel?: 2 | 3;
     description?: string;
     actions?: ReactNode;
     toolbar?: ReactNode;
@@ -53,6 +54,7 @@ function IndexPage({
 
 function IndexPageSection({
     title,
+    headingLevel = 3,
     description,
     actions,
     toolbar,
@@ -61,6 +63,7 @@ function IndexPageSection({
 }: IndexPageSectionProps) {
     const hasSectionHeader = Boolean(title || description);
     const hasSectionActions = Boolean(actions);
+    const HeadingTag = headingLevel === 2 ? 'h2' : 'h3';
 
     return (
         <section className={cn('space-y-3', className)}>
@@ -74,9 +77,9 @@ function IndexPageSection({
                     {hasSectionHeader ? (
                         <div className="min-w-0">
                             {title ? (
-                                <h3 className="text-base font-semibold tracking-tight">
+                                <HeadingTag className="text-base font-semibold tracking-tight">
                                     {title}
-                                </h3>
+                                </HeadingTag>
                             ) : null}
                             {description ? (
                                 <p className="mt-1 text-sm text-muted-foreground">

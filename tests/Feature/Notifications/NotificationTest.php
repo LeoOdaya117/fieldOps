@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Notifications;
 
+use App\Actions\Backups\BackupStore;
+use App\Actions\Backups\NotifyBackupOperationCreator;
 use App\Actions\Rbac\AssignRoleToUser;
 use App\Actions\Rbac\SubmitRegistration;
 use App\Enums\RoleName;
@@ -10,10 +12,13 @@ use App\Http\Middleware\EnforceIdleSession;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\AccessNotification;
+use App\Notifications\BackupNotification;
 use App\Support\IdleSessionActivity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Illuminate\Testing\Fluent\AssertableJson;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -40,6 +45,32 @@ class NotificationTest extends TestCase
         $this->get(route('notifications.index', ['filter' => 'unread', 'page' => 2]))->assertInertia(fn (AssertableJson $page) => $page->has('inbox.data', 2));
         $this->getJson(route('notifications.index', ['filter' => 'invalid']))->assertUnprocessable();
         $this->getJson(route('notifications.index', ['page' => -1]))->assertUnprocessable();
+    }
+
+    public function test_summary_returns_the_five_newest_unread_notifications_even_when_newer_items_are_read(): void
+    {
+        $user = User::factory()->create();
+        for ($i = 0; $i < 8; $i++) {
+            $user->notify(new AccessNotification('test', 'Update '.$i, 'Safe body'));
+        }
+
+        $readIds = $user->notifications()
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(5)
+            ->pluck('id');
+        $user->notifications()->whereIn('id', $readIds)->update(['read_at' => now()]);
+
+        $response = $this->actingAs($user)->getJson(route('notifications.summary'))
+            ->assertOk()
+            ->assertJsonPath('total', 8)
+            ->assertJsonPath('unread', 3)
+            ->assertJsonCount(3, 'items');
+
+        foreach ($response->json('items') as $item) {
+            $this->assertNull($item['readAt']);
+            $this->assertNotContains($item['id'], $readIds->all());
+        }
     }
 
     public function test_read_mutations_are_idempotent_and_isolated_even_for_owners(): void
@@ -110,6 +141,76 @@ class NotificationTest extends TestCase
             $this->fail('Duplicate registration accepted');
         } catch (ValidationException) {
             $this->assertSame(1, $owner->notifications()->count());
+        }
+    }
+
+    public function test_backup_completion_notification_links_only_to_an_available_backup_for_its_super_admin_creator(): void
+    {
+        $root = storage_path('framework/testing/notification-backups-'.Str::uuid());
+        config(['backups.root' => $root]);
+        $user = User::factory()->create();
+        $user->syncRoles(RoleName::SuperAdmin->value);
+        $actor = ['id' => (string) $user->getKey(), 'name' => $user->name, 'source' => 'web'];
+        $store = app(BackupStore::class);
+        $path = $store->temporaryPath('fieldops');
+        file_put_contents($path, 'signed-package');
+        $backup = $store->publish($path, [
+            'created_at' => now()->toIso8601String(), 'engine' => 'mysql', 'server_version' => '8.4.0',
+            'created_by' => $actor,
+        ]);
+        $user->notify(new BackupNotification(
+            'backup.ready', 'Database backup ready', 'Your backup is ready.', (string) $backup['id'], (string) Str::uuid(),
+        ));
+
+        try {
+            $this->actingAs($user)->getJson(route('notifications.summary'))
+                ->assertJsonPath('items.0.actionUrl', route('system-settings.backups.show', $backup['id'], false));
+
+            $user->syncRoles(RoleName::User->value);
+            $user->refresh();
+            $this->getJson(route('notifications.summary'))->assertJsonPath('items.0.actionUrl', null);
+
+            $user->syncRoles(RoleName::SuperAdmin->value);
+            $user->refresh();
+            $store->delete((string) $backup['id']);
+            $this->getJson(route('notifications.summary'))->assertJsonPath('items.0.actionUrl', null);
+        } finally {
+            File::deleteDirectory($root);
+        }
+    }
+
+    public function test_notification_inbox_recovers_a_missing_backup_completion_notice_once_for_its_creator(): void
+    {
+        $root = storage_path('framework/testing/notification-recovery-'.Str::uuid());
+        config(['backups.root' => $root]);
+        $creator = User::factory()->create();
+        $creator->syncRoles(RoleName::SuperAdmin->value);
+        $actor = ['id' => (string) $creator->getKey(), 'name' => $creator->name, 'source' => 'web'];
+        $store = app(BackupStore::class);
+        $package = $store->temporaryPath('fieldops');
+        file_put_contents($package, 'signed-package');
+        $backup = $store->publish($package, [
+            'created_at' => now()->toIso8601String(), 'engine' => 'mysql', 'server_version' => '8.4.0',
+            'created_by' => $actor,
+        ]);
+        $operation = $store->queue('backup', null, false, ['actor' => $actor]);
+        $operation['status'] = 'succeeded';
+        $operation['backup_id'] = $backup['id'];
+        $operation['finished_at'] = now()->toIso8601String();
+        $store->saveOperation($operation);
+
+        try {
+            $this->actingAs($creator)->getJson(route('notifications.summary'))
+                ->assertOk()
+                ->assertJsonPath('total', 1)
+                ->assertJsonPath('unread', 1)
+                ->assertJsonPath('items.0.type', 'backup.ready')
+                ->assertJsonPath('items.0.actionUrl', route('system-settings.backups.show', $backup['id'], false));
+            app(NotifyBackupOperationCreator::class)->notifyOperation($operation);
+            $this->getJson(route('notifications.summary'))->assertJsonPath('total', 1)->assertJsonPath('unread', 1);
+            $this->assertSame(1, $creator->notifications()->count());
+        } finally {
+            File::deleteDirectory($root);
         }
     }
 

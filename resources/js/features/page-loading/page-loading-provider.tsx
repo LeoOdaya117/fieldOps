@@ -77,7 +77,7 @@ export function PageLoadingProvider({
         const removeBeforeListener = router.on('before', (event) => {
             const visit = event.detail.visit;
 
-            if (visit.method !== 'get' || visit.prefetch) {
+            if (visit.method !== 'get' || visit.prefetch || visit.async) {
                 return;
             }
 
@@ -91,7 +91,7 @@ export function PageLoadingProvider({
         const removeStartListener = router.on('start', (event) => {
             const visit = event.detail.visit;
 
-            if (visit.prefetch) {
+            if (visit.prefetch || visit.async) {
                 return;
             }
 

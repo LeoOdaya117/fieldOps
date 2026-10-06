@@ -1,7 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { cn } from '@/lib/utils';
-import { getNavigationGroups } from '@/lib/navigation';
+import { getActiveNavigationItem, getNavigationGroups } from '@/lib/navigation';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { PlatformLogo } from '@/components/platform-logo';
 import {
@@ -23,10 +23,14 @@ export default function AppNavigatorLayout({
 }: AppLayoutProps) {
     const { auth } = usePage().props;
     const groups = getNavigationGroups(auth);
-    const { isCurrentOrParentUrl } = useCurrentUrl();
+    const { currentUrl } = useCurrentUrl();
+    const activeItem = getActiveNavigationItem(
+        groups.flatMap((group) => group.items),
+        currentUrl,
+    );
     const activeGroup =
         groups.find((group) =>
-            group.items.some((item) => isCurrentOrParentUrl(item.href)),
+            activeItem ? group.items.includes(activeItem) : false,
         ) ?? groups[0];
 
     return (
@@ -86,7 +90,7 @@ export default function AppNavigatorLayout({
                     aria-label={`${activeGroup?.label ?? 'Current'} navigation`}
                 >
                     {activeGroup?.items.map((item) => {
-                        const active = isCurrentOrParentUrl(item.href);
+                        const active = item === activeItem;
                         const Icon = item.icon;
 
                         return (

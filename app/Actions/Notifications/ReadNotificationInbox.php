@@ -2,11 +2,14 @@
 
 namespace App\Actions\Notifications;
 
+use App\Actions\Backups\BackupStore;
 use App\Actions\Exports\ExportArtifactAccess;
 use App\Models\ExportArtifact;
 use App\Models\User;
 use App\Models\UserRegistration;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Str;
+use RuntimeException;
 
 class ReadNotificationInbox
 {
@@ -33,6 +36,19 @@ class ReadNotificationInbox
                     : route('exports.artifacts.download', $artifact, false);
             }
         }
+        if (($data['event'] ?? null) === 'backup.ready' && is_string($data['backupId'] ?? null)
+            && Str::isUuid($data['backupId']) && $this->canAccessBackups($user)) {
+            try {
+                $backup = app(BackupStore::class)->backup($data['backupId']);
+                if ((string) ($backup['created_by']['id'] ?? '') === (string) $user->getKey()) {
+                    $url = route('system-settings.backups.show', $data['backupId'], false);
+                }
+            } catch (RuntimeException) {
+                // Keep stale backup notifications readable when a package was deleted.
+            }
+        } elseif (($data['event'] ?? null) === 'backup.failed' && $this->canAccessBackups($user)) {
+            $url = route('system-settings.backups.index', [], false);
+        }
 
         return [
             'id' => $notification->id,
@@ -45,13 +61,19 @@ class ReadNotificationInbox
         ];
     }
 
+    private function canAccessBackups(User $user): bool
+    {
+        return $user->isActive() && $user->record_status === 1
+            && $user->email_verified_at !== null && $user->isSuperAdmin();
+    }
+
     /** @return array<string, mixed> */
     public function summary(User $user): array
     {
         return [
             'total' => $user->notifications()->count(),
             'unread' => $user->unreadNotifications()->count(),
-            'items' => $user->notifications()->reorder()->orderByDesc('created_at')->orderByDesc('id')->limit(5)->get()
+            'items' => $user->unreadNotifications()->reorder()->orderByDesc('created_at')->orderByDesc('id')->limit(5)->get()
                 ->map(fn (DatabaseNotification $notification): array => $this->item($notification, $user))->all(),
         ];
     }

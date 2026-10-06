@@ -147,6 +147,44 @@ describe('notifications', () => {
         },
     );
 
+    it.each([false, true])(
+        'keeps the notification panel within its maximum height (mobile=%s)',
+        async (mobile) => {
+            mocks.mobile = mobile;
+            bell();
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Notifications, 1 unread' }),
+            );
+
+            expect(await screen.findByRole('dialog')).toHaveStyle({
+                maxHeight: mobile
+                    ? 'min(32rem, 85dvh)'
+                    : 'min(32rem, calc(100dvh - 6rem))',
+            });
+        },
+    );
+
+    it('shows only unread items in the bell preview', async () => {
+        const readItem = {
+            ...item,
+            id: 'read-item',
+            title: 'Already read update',
+            readAt: '2026-09-13T00:01:00Z',
+        };
+        mocks.page.props.notifications = {
+            total: 2,
+            unread: 1,
+            items: [readItem, item],
+        };
+        bell();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Notifications, 1 unread' }),
+        );
+
+        expect(await screen.findByText(item.title)).toBeVisible();
+        expect(screen.queryByText(readItem.title)).not.toBeInTheDocument();
+    });
+
     it('shows a skeleton while refreshing the notification preview', async () => {
         let resolveSummary: (value: {
             ok: boolean;
@@ -189,7 +227,17 @@ describe('notifications', () => {
     });
 
     it('keeps the empty state hidden until an empty refresh completes', async () => {
-        mocks.page.props.notifications = { total: 0, unread: 0, items: [] };
+        const readItem = {
+            ...item,
+            id: 'already-read',
+            title: 'Already read update',
+            readAt: '2026-09-13T00:01:00Z',
+        };
+        mocks.page.props.notifications = {
+            total: 35,
+            unread: 0,
+            items: [readItem],
+        };
         let resolveSummary: (value: {
             ok: boolean;
             status: number;
@@ -218,11 +266,16 @@ describe('notifications', () => {
             resolveSummary({
                 ok: true,
                 status: 200,
-                json: async () => ({ total: 0, unread: 0, items: [] }),
+                json: async () => ({
+                    total: 35,
+                    unread: 0,
+                    items: [readItem],
+                }),
             });
         });
 
-        expect(await screen.findByText('No notifications here')).toBeVisible();
+        expect(await screen.findByText("You're all caught up")).toBeVisible();
+        expect(screen.queryByText(readItem.title)).not.toBeInTheDocument();
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
@@ -317,6 +370,30 @@ describe('notifications', () => {
         expect(onOpen).toHaveBeenCalledTimes(1);
         expect(mocks.navigateExport).toHaveBeenCalledWith(exportItem.actionUrl);
         expect(mocks.visit).not.toHaveBeenCalled();
+    });
+
+    it('opens the completed database backup details after marking the notice read', () => {
+        const backupItem: NotificationItem = {
+            ...item,
+            id: 'backup-notification-1',
+            type: 'backup.ready',
+            title: 'Database backup ready',
+            body: 'Your backup has completed and is available in Backup & Restore.',
+            actionUrl: '/settings/system/backups/backup-1',
+        };
+
+        render(
+            <ul>
+                <NotificationRow item={backupItem} />
+            </ul>,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'View backup' }));
+        expect(mocks.transform.mock.calls[0][0]()).toEqual({ read: true });
+        expect(mocks.visit).not.toHaveBeenCalled();
+
+        act(() => mocks.patch.mock.calls[0][1].onSuccess());
+        expect(mocks.visit).toHaveBeenCalledWith(backupItem.actionUrl);
     });
 
     it('keeps a failed export notification open for retry', () => {

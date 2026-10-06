@@ -37,6 +37,7 @@ export function NotificationRefreshStatus() {
 
 export function NotificationBell({ className }: { className?: string }) {
     const { summary, loading, refresh } = useNotifications();
+    const unreadItems = summary.items.filter((item) => item.readAt === null);
     const [open, setOpen] = useState(false);
     const [top, setTop] = useState(64);
     const [right, setRight] = useState(16);
@@ -50,15 +51,19 @@ export function NotificationBell({ className }: { className?: string }) {
                     {summary.unread} unread · {summary.total} total
                 </DialogDescription>
             </div>
-            <div className="flex justify-end px-2 py-1">
-                <MarkAllRead />
-            </div>
+            {summary.unread > 0 && (
+                <div className="flex justify-end px-2 py-1">
+                    <MarkAllRead />
+                </div>
+            )}
             <NotificationRefreshStatus />
             {loading ? (
                 <NotificationListSkeleton />
             ) : (
                 <NotificationList
-                    items={summary.items}
+                    items={unreadItems}
+                    emptyTitle="You're all caught up"
+                    emptyMessage="Unread notifications will appear here."
                     onOpen={() => setOpen(false)}
                 />
             )}
@@ -119,14 +124,21 @@ export function NotificationBell({ className }: { className?: string }) {
                 </Button>
             </DialogTrigger>
             {mobile ? (
-                <DialogContent className="max-h-[85dvh] gap-0 overflow-y-auto p-0">
+                <DialogContent
+                    style={{ maxHeight: 'min(32rem, 85dvh)' }}
+                    className="gap-0 overflow-y-auto p-0"
+                >
                     {content}
                 </DialogContent>
             ) : (
                 <DialogPortal>
                     <DialogPrimitive.Content
-                        style={{ top, right }}
-                        className="fixed z-50 max-h-[calc(100dvh-6rem)] w-96 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-border bg-popover text-popover-foreground shadow-md"
+                        style={{
+                            top,
+                            right,
+                            maxHeight: 'min(32rem, calc(100dvh - 6rem))',
+                        }}
+                        className="fixed z-50 w-96 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-border bg-popover text-popover-foreground shadow-md"
                     >
                         {content}
                         <DialogPrimitive.Close asChild>

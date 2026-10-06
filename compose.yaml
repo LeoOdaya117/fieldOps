@@ -20,6 +20,8 @@ services:
             DB_DATABASE: "${DB_DOCKER_DATABASE:-fieldops}"
             DB_USERNAME: "${DB_DOCKER_USERNAME:-fieldops}"
             DB_PASSWORD: "${DB_DOCKER_PASSWORD:-password}"
+            BACKUP_MYSQL_DUMP: /usr/local/bin/fieldops-mysqldump
+            BACKUP_MYSQL_CLIENT: /usr/local/bin/fieldops-mysql
             MAIL_MAILER: smtp
             MAIL_HOST: mailpit
             MAIL_PORT: 1025
@@ -30,6 +32,37 @@ services:
             fieldops:
                 aliases:
                     - fieldops.test
+
+    backups:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        image: fieldops-app:latest
+        working_dir: /var/www/html
+        entrypoint: []
+        command: ["php", "artisan", "backups:work"]
+        user: www-data
+        restart: unless-stopped
+        volumes:
+            - .:/var/www/html
+            - laravel_storage:/var/www/html/storage
+            - bootstrap_cache:/var/www/html/bootstrap/cache
+        environment:
+            DB_CONNECTION: mysql
+            DB_HOST: mysql
+            DB_PORT: 3306
+            DB_DATABASE: "${DB_DOCKER_DATABASE:-fieldops}"
+            DB_USERNAME: "${DB_DOCKER_USERNAME:-fieldops}"
+            DB_PASSWORD: "${DB_DOCKER_PASSWORD:-password}"
+            BACKUP_MYSQL_DUMP: /usr/local/bin/fieldops-mysqldump
+            BACKUP_MYSQL_CLIENT: /usr/local/bin/fieldops-mysql
+        depends_on:
+            app:
+                condition: service_started
+            mysql:
+                condition: service_healthy
+        networks:
+            - fieldops
 
     node:
         build:
@@ -57,6 +90,7 @@ services:
 
     mysql:
         image: mysql:8.4
+        command: ["--event-scheduler=OFF"]
         container_name: fieldops-mysql
         ports:
             - "${FORWARD_DB_PORT:-3306}:3306"

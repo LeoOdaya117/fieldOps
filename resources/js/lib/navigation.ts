@@ -1,6 +1,7 @@
 import {
     Bell,
     Clock3,
+    DatabaseBackup,
     Files,
     Globe2,
     LayoutGrid,
@@ -10,6 +11,8 @@ import {
     Users,
 } from 'lucide-react';
 import { index as notificationsIndex } from '@/routes/notifications';
+import { index as backupsIndex } from '@/routes/system-settings/backups';
+import { toUrl } from '@/lib/utils';
 import type { Auth, NavItem } from '@/types';
 
 export type NavigationGroup = {
@@ -19,6 +22,7 @@ export type NavigationGroup = {
 
 type NavigationDefinition = NavItem & {
     permission: string | null;
+    superAdminOnly?: boolean;
 };
 
 const navigationDefinitions: Array<{
@@ -104,9 +108,64 @@ const navigationDefinitions: Array<{
                 icon: Settings2,
                 permission: 'settings.view',
             },
+            {
+                title: 'Backup & Restore',
+                href: backupsIndex.url(),
+                icon: DatabaseBackup,
+                permission: null,
+                superAdminOnly: true,
+            },
         ],
     },
 ];
+
+function normalizePathname(url: string): string | null {
+    try {
+        return (
+            new URL(url, 'http://fieldops.local').pathname.replace(
+                /\/+$/,
+                '',
+            ) || '/'
+        );
+    } catch {
+        return null;
+    }
+}
+
+export function getActiveNavigationItem(
+    items: readonly NavItem[],
+    currentUrl: string,
+): NavItem | undefined {
+    const currentPath = normalizePathname(currentUrl);
+
+    if (!currentPath) {
+        return undefined;
+    }
+
+    let activeItem: NavItem | undefined;
+    let activePathLength = -1;
+
+    for (const item of items) {
+        const itemPath = normalizePathname(toUrl(item.href));
+
+        if (!itemPath) {
+            continue;
+        }
+
+        const matches =
+            currentPath === itemPath ||
+            (itemPath === '/'
+                ? currentPath.startsWith('/')
+                : currentPath.startsWith(`${itemPath}/`));
+
+        if (matches && itemPath.length > activePathLength) {
+            activeItem = item;
+            activePathLength = itemPath.length;
+        }
+    }
+
+    return activeItem;
+}
 
 export function getNavigationGroups(auth: Auth): NavigationGroup[] {
     const can = (permission: string) =>
@@ -118,7 +177,10 @@ export function getNavigationGroups(auth: Auth): NavigationGroup[] {
             label: group.label,
             items: group.items
                 .filter(
-                    (item) => item.permission === null || can(item.permission),
+                    (item) =>
+                        (!item.superAdminOnly ||
+                            auth.authorization.isSuperAdmin) &&
+                        (item.permission === null || can(item.permission)),
                 )
                 .map((item): NavItem => ({
                     title: item.title,

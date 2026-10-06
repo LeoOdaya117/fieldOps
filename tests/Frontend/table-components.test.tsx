@@ -106,7 +106,7 @@ describe('reusable data table components', () => {
         inertiaState.toast.dismiss.mockReset();
     });
 
-    it('uses the high-contrast link token for links and active sorting', () => {
+    it('uses the high-contrast link token and readable active sorting', () => {
         expect(buttonVariants({ variant: 'link' })).toContain('text-link');
 
         render(
@@ -121,7 +121,7 @@ describe('reusable data table components', () => {
 
         expect(
             screen.getByRole('link', { name: 'Sort User descending' }),
-        ).toHaveClass('bg-link/10', 'text-link');
+        ).toHaveClass('bg-link/10', 'text-foreground');
         expect(screen.getByRole('link').querySelector('svg')).toHaveClass(
             'text-link',
         );

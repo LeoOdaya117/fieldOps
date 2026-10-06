@@ -66,7 +66,7 @@ function SortableColumn({
             size="sm"
             className={cn(
                 'h-8 gap-1.5 px-2 text-xs font-semibold tracking-normal text-foreground normal-case hover:bg-muted',
-                isActive && 'bg-link/10 text-link hover:bg-link/15',
+                isActive && 'bg-link/10 text-foreground hover:bg-link/15',
             )}
             aria-label={`Sort ${label} ${nextDirection === 'asc' ? 'ascending' : 'descending'}`}
             aria-current={isActive ? 'true' : undefined}

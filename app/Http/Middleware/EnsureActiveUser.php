@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Actions\Backups\BackupStore;
 use App\Enums\UserStatus;
 use Closure;
 use Illuminate\Http\Request;
@@ -20,8 +21,10 @@ class EnsureActiveUser
 
         if ($user !== null && $request->hasSession() && $request->session()->has(Auth::guard()->getName())) {
             $sessionVersion = $request->session()->get('auth.session_version');
+            $epoch = $request->session()->get('auth.backup_epoch');
 
-            if (! is_int($sessionVersion) || $sessionVersion !== (int) $user->session_version) {
+            if (! is_int($sessionVersion) || $sessionVersion !== (int) $user->session_version
+                || ! is_string($epoch) || ! hash_equals(app(BackupStore::class)->authEpoch(), $epoch)) {
                 Auth::guard()->logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();

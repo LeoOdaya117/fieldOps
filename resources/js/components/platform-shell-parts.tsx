@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/sheet';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useInitials } from '@/hooks/use-initials';
+import { getActiveNavigationItem } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 import type { NavigationGroup } from '@/lib/navigation';
 import type { BreadcrumbItem } from '@/types';
@@ -63,7 +64,11 @@ export function MobilePlatformNavigation({
     groups: NavigationGroup[];
     className?: string;
 }) {
-    const { isCurrentOrParentUrl } = useCurrentUrl();
+    const { currentUrl } = useCurrentUrl();
+    const activeItem = getActiveNavigationItem(
+        groups.flatMap((group) => group.items),
+        currentUrl,
+    );
     const [open, setOpen] = useState(false);
 
     return (
@@ -101,9 +106,7 @@ export function MobilePlatformNavigation({
                             </p>
                             <div className="space-y-1">
                                 {group.items.map((item) => {
-                                    const active = isCurrentOrParentUrl(
-                                        item.href,
-                                    );
+                                    const active = item === activeItem;
                                     const Icon = item.icon;
 
                                     return (
