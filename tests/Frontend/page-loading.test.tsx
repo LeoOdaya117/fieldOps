@@ -10,6 +10,7 @@ import {
     PageLoadingProvider,
 } from '@/features/page-loading/page-loading-provider';
 import { PageLoadingSkeleton } from '@/features/page-loading/page-loading-skeleton';
+import { useBackupPolling } from '@/features/backups/hooks/use-backup-polling';
 
 afterEach(() => {
     cleanup();
@@ -179,6 +180,62 @@ function renderBoundary(delay = 200) {
 }
 
 describe('PageLoadingProvider', () => {
+    it('keeps a background backup poll mounted until updated server props arrive', () => {
+        vi.useFakeTimers();
+        const cancel = vi.fn();
+        const getCached = vi.spyOn(router, 'getCached');
+        const reload = vi
+            .spyOn(router, 'reload')
+            .mockImplementation((options) => {
+                options?.onCancelToken?.({ cancel });
+                const backgroundVisit = {
+                    ...visit('backup-poll', '/settings/system/backups'),
+                    async: true,
+                };
+                document.dispatchEvent(
+                    new CustomEvent('inertia:before', {
+                        detail: { visit: backgroundVisit },
+                    }),
+                );
+                document.dispatchEvent(
+                    new CustomEvent('inertia:start', {
+                        detail: { visit: backgroundVisit },
+                    }),
+                );
+            });
+
+        function BackupPoll({ busy }: { busy: boolean }) {
+            useBackupPolling(busy);
+
+            return <button disabled={busy}>Create backup</button>;
+        }
+
+        const view = (busy: boolean) => (
+            <PageLoadingProvider>
+                <PageLoadingBoundary>
+                    <BackupPoll busy={busy} />
+                </PageLoadingBoundary>
+            </PageLoadingProvider>
+        );
+        const { rerender } = render(view(true));
+        act(() => vi.advanceTimersByTime(4000));
+        expect(reload).toHaveBeenCalledOnce();
+        act(() => vi.advanceTimersByTime(1000));
+        expect(getCached).not.toHaveBeenCalled();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Create backup' }),
+        ).toBeDisabled();
+        expect(cancel).not.toHaveBeenCalled();
+
+        rerender(view(false));
+        expect(
+            screen.getByRole('button', { name: 'Create backup' }),
+        ).toBeEnabled();
+        act(() => vi.advanceTimersByTime(12000));
+        expect(reload).toHaveBeenCalledOnce();
+    });
+
     it('shows the destination family only after the delay and clears on finish', () => {
         vi.useFakeTimers();
         renderBoundary();

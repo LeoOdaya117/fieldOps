@@ -1,6 +1,7 @@
 import {
     Bell,
     Clock3,
+    DatabaseBackup,
     Files,
     Globe2,
     LayoutGrid,
@@ -10,6 +11,7 @@ import {
     Users,
 } from 'lucide-react';
 import { index as notificationsIndex } from '@/routes/notifications';
+import { index as backupsIndex } from '@/routes/system-settings/backups';
 import type { Auth, NavItem } from '@/types';
 
 export type NavigationGroup = {
@@ -19,6 +21,7 @@ export type NavigationGroup = {
 
 type NavigationDefinition = NavItem & {
     permission: string | null;
+    superAdminOnly?: boolean;
 };
 
 const navigationDefinitions: Array<{
@@ -104,6 +107,13 @@ const navigationDefinitions: Array<{
                 icon: Settings2,
                 permission: 'settings.view',
             },
+            {
+                title: 'Backup & Restore',
+                href: backupsIndex.url(),
+                icon: DatabaseBackup,
+                permission: null,
+                superAdminOnly: true,
+            },
         ],
     },
 ];
@@ -118,7 +128,10 @@ export function getNavigationGroups(auth: Auth): NavigationGroup[] {
             label: group.label,
             items: group.items
                 .filter(
-                    (item) => item.permission === null || can(item.permission),
+                    (item) =>
+                        (!item.superAdminOnly ||
+                            auth.authorization.isSuperAdmin) &&
+                        (item.permission === null || can(item.permission)),
                 )
                 .map((item): NavItem => ({
                     title: item.title,

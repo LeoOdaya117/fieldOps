@@ -67,3 +67,21 @@ Append meaningful architectural or workflow decisions with their date, context, 
 - **Context:** The report renderer switched reports with eight or more columns to landscape, while users expect a consistent portrait page format.
 - **Decision:** Render every PDF and Print report on A4 portrait pages. Use compact table typography when a report has eight or more columns.
 - **Rationale:** Every report now opens and prints with the same page orientation, while wide tables use less space per cell to fit the portrait page.
+
+## 2026-10-04 — Keep database recovery independent of database state
+
+- **Context:** Restore removes and replaces the configured application database, including queues, sessions, users and audit rows.
+- **Decision:** Store signed packages, operation history, locks and a login epoch on private durable local storage; execute through a separately supervised filesystem runner. Require operator writer coordination, maintenance and a verified safety backup before replacement. Recover explicitly through the CLI with retained packages; do not retry a failed restore or automatically migrate.
+- **Rationale:** Recovery remains available with damaged database state, history survives replacement, and an external login epoch prevents historical session-version collisions. Single-host locking and matching engine major/migration fingerprint bound the first version.
+
+## 2026-10-04 — Preserve mounted content during background status reloads
+
+- **Context:** Inertia async status reloads triggered the page skeleton after its delay, unmounting the polling hook and cancelling the request before backup completion reached the UI.
+- **Decision:** Exclude async visits from navigation loading boundaries and explicitly hide progress for backup status reloads. Test slow requests through the actual loading boundary.
+- **Rationale:** Background requests can update server state without interrupting their own owner, while normal navigation retains the existing skeleton behavior.
+
+## 2026-10-04 — Restore a signed table scope as one dependency group
+
+- **Context:** Operators requested table-level backups and restores with recorded creator, timestamp, table list, and a searchable audit trail.
+- **Decision:** Keep full database backup as the default. Selected backups expand the bidirectional foreign-key graph and registered FieldOps logical links, then sign both requested and included tables with creator and audit metadata in format version 2. Restore the recorded selection as a whole after taking a full safety package. CLI `--recovery` is restricted to full-database packages.
+- **Rationale:** Related rows travel together, operators can see why tables were included, and a damaged full restore cannot be reopened through an unrelated partial import. Complex database objects with uncertain scoped dependencies fail closed.

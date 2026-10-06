@@ -28,6 +28,7 @@ Detected repository context, refreshed 2026-09-26 with `$project-init`. This is 
 - `resources/css/theme.css`: semantic light and dark design tokens.
 - `app/Actions/`, `app/Http/`, `app/Models/`, and `app/Policies/`: backend workflows, request handling, persistence, and authorization.
 - `tests/Feature/`, `tests/Unit/`, `tests/Frontend/`, and `tests/e2e/`: PHPUnit feature/unit, Vitest frontend, and Playwright browser coverage.
+- `app/Actions/Backups/`, `app/Console/Commands/Backups*.php`, and `resources/js/features/backups/`: signed database backup/restore, external filesystem state and independent CLI runner; the settings page is restricted to active, verified Super Admins. Global HTTP and Artisan writer leases coordinate single-host restore maintenance (`docs/database-backups.md`, `config/backups.php`, `bootstrap/app.php`).
 - `vitest.config.ts` runs `tests/Frontend/**/*.test.{ts,tsx}` in jsdom; `playwright.config.ts` covers mobile, tablet, and desktop projects.
 - `.agents/skills/`: project-local Codex workflows.
 - `.codex/agents/`: project-scoped Codex agent definitions.
@@ -49,3 +50,5 @@ Refresh this list from manifests and current project instructions when commands 
 ## Verification status
 
 This context was verified against `AGENTS.md`, `docs/architecture.md`, Composer/npm manifests, `bootstrap/app.php`, `routes/web.php`, `routes/settings.php`, `resources/js/app.tsx`, `resources/js/features/page-loading/`, `resources/views/app.blade.php`, test configs, CI workflow, and the current directory layout on 2026-09-27. Package versions are reported as declared constraints. Re-run `$project-init` after significant architecture or tooling changes.
+
+2026-10-04 feature-build reconciliation verified the database backup/restore feature paths above, persistent authentication epoch, async-loading exclusion, and disposable engine rehearsal workflow from their source. Exact-version engine/Docker verification is pending as recorded in the backup plan.

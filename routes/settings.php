@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Backups\BackupController;
 use App\Http\Controllers\RecordStatus\RecordStatusController;
 use App\Http\Controllers\Settings\OrganizationAddressController;
 use App\Http\Controllers\Settings\OrganizationLocationController;
@@ -26,6 +27,23 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::patch('settings/system', [SystemSettingsController::class, 'update'])
         ->middleware(['verified', 'can:settings.update', RequirePassword::class])
         ->name('system-settings.update');
+
+    Route::prefix('settings/system/backups')->name('system-settings.backups.')
+        ->middleware(['verified', 'backup-admin'])->group(function (): void {
+            Route::get('/', [BackupController::class, 'index'])->name('index');
+            Route::get('/status', [BackupController::class, 'index'])->middleware('throttle:60,1')->name('status');
+            Route::get('/create', [BackupController::class, 'create'])->name('create');
+            Route::get('/audit', [BackupController::class, 'audit'])->name('audit');
+            Route::get('/tables', [BackupController::class, 'tables'])->middleware('throttle:30,1')->name('tables');
+            Route::get('/{backup}', [BackupController::class, 'show'])->whereUuid('backup')->name('show');
+            Route::middleware([RequirePassword::class, 'throttle:6,1'])->group(function (): void {
+                Route::post('/', [BackupController::class, 'store'])->name('store');
+                Route::post('/upload', [BackupController::class, 'upload'])->name('upload');
+                Route::get('/{backup}/download', [BackupController::class, 'download'])->whereUuid('backup')->name('download');
+                Route::delete('/{backup}', [BackupController::class, 'destroy'])->whereUuid('backup')->name('destroy');
+                Route::post('/{backup}/restore', [BackupController::class, 'restore'])->whereUuid('backup')->name('restore');
+            });
+        });
 
     Route::get('settings/system/layout', [PlatformLayoutController::class, 'edit'])
         ->middleware(['verified', 'can:settings.view'])

@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Middleware\ApplySystemSettings;
+use App\Http\Middleware\BackupWriterLease;
 use App\Http\Middleware\BlockBlockedIpAddress;
 use App\Http\Middleware\EnforceIdleSession;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RequireBackupAdministrator;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->prepend(BackupWriterLease::class);
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         $middleware->web(append: [
@@ -35,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'active' => EnsureActiveUser::class,
+            'backup-admin' => RequireBackupAdministrator::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

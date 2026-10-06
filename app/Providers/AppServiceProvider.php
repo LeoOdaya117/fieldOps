@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Actions\Backups\ConsoleWriterLease;
+use App\Http\Middleware\BackupWriterLease;
 use App\Listeners\SnapshotUserSessionVersion;
 use App\Models\AccessAuditEvent;
 use App\Models\BlockedIpAddress;
@@ -22,6 +24,8 @@ use App\Policies\VisitLogPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Events\CommandFinished;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +42,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(BackupWriterLease::class);
+        $this->app->singleton(ConsoleWriterLease::class);
     }
 
     /**
@@ -49,6 +54,8 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         Event::listen(Login::class, SnapshotUserSessionVersion::class);
+        Event::listen(CommandStarting::class, fn (CommandStarting $event) => app(ConsoleWriterLease::class)->starting($event));
+        Event::listen(CommandFinished::class, fn (CommandFinished $event) => app(ConsoleWriterLease::class)->finished($event));
 
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);

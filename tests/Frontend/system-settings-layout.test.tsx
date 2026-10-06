@@ -44,8 +44,37 @@ describe('system settings navigation', () => {
         expect(
             screen.getByRole('link', { name: 'Layout themes' }),
         ).toHaveAttribute('href', '/settings/system/layout');
-        expect(screen.getByRole('link', { name: 'Address' })).toHaveAttribute('href', '/settings/system/address');
-        expect(screen.getByRole('link', { name: 'Map' })).toHaveAttribute('href', '/settings/system/map');
-        expect(screen.getByRole('link', { name: 'Platform images' })).toHaveAttribute('href', '/settings/system/platform-images');
+        expect(screen.getByRole('link', { name: 'Address' })).toHaveAttribute(
+            'href',
+            '/settings/system/address',
+        );
+        expect(screen.getByRole('link', { name: 'Map' })).toHaveAttribute(
+            'href',
+            '/settings/system/map',
+        );
+        expect(
+            screen.getByRole('link', { name: 'Platform images' }),
+        ).toHaveAttribute('href', '/settings/system/platform-images');
+    });
+
+    it('keeps the dedicated backup workspace out of settings sections', () => {
+        usePageMock.mockReturnValue({
+            url: '/settings/system/backups',
+            props: { auth: { authorization: { isSuperAdmin: true } } },
+        });
+        const { rerender } = render(
+            <SystemSettingsLayout>Backup content</SystemSettingsLayout>,
+        );
+        expect(
+            screen.queryByRole('link', { name: 'Backup & Restore' }),
+        ).not.toBeInTheDocument();
+        usePageMock.mockReturnValue({
+            url: '/settings/system',
+            props: { auth: { authorization: { isSuperAdmin: false } } },
+        });
+        rerender(<SystemSettingsLayout>Settings content</SystemSettingsLayout>);
+        expect(
+            screen.queryByRole('link', { name: 'Backup & Restore' }),
+        ).not.toBeInTheDocument();
     });
 });

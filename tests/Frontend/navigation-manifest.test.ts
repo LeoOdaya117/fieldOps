@@ -24,6 +24,7 @@ describe('navigation manifest', () => {
         ]);
         expect(destinations).not.toContain('Repository');
         expect(destinations).not.toContain('Documentation');
+        expect(destinations).not.toContain('Backup & Restore');
     });
 
     it('shows all permission-gated destinations to Super Admin', () => {
@@ -44,5 +45,6 @@ describe('navigation manifest', () => {
         expect(destinations).toContain('Blocked IPs');
         expect(destinations).toContain('Countries');
         expect(destinations).toContain('Timezones');
+        expect(destinations).toContain('Backup & Restore');
     });
 });
