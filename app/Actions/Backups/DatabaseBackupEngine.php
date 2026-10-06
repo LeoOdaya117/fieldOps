@@ -390,7 +390,96 @@ class DatabaseBackupEngine
             && config('permission.cache.store') !== config('cache.default')) {
             throw new RuntimeException('Restore requires permission caching in the default application cache store.');
         }
+        $this->assertBackupPathSeparation($cacheDriver);
         $this->runtimeTables();
+    }
+
+    private function assertBackupPathSeparation(string $cacheDriver): void
+    {
+        $runtimePaths = [];
+        if (config('session.driver') === 'file') {
+            $runtimePaths[] = (string) config('session.files');
+        }
+        if ($cacheDriver === 'file') {
+            $store = 'cache.stores.'.config('cache.default');
+            $runtimePaths[] = (string) config($store.'.path');
+            $runtimePaths[] = (string) config($store.'.lock_path');
+        }
+
+        $backupRoot = $this->canonicalFilesystemPath((string) config('backups.root'));
+        foreach ($runtimePaths as $runtimePath) {
+            if ($this->pathsOverlap($backupRoot, $this->canonicalFilesystemPath($runtimePath))) {
+                throw new RuntimeException('The private backup directory must be separate from file-session and file-cache runtime directories.');
+            }
+        }
+    }
+
+    private function canonicalFilesystemPath(string $path): string
+    {
+        $path = trim($path);
+        if ($path === '') {
+            throw new RuntimeException('Backup and runtime storage paths must be configured before restore.');
+        }
+
+        $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $path);
+        $isAbsolute = str_starts_with($path, DIRECTORY_SEPARATOR)
+            || preg_match('/\\A[A-Za-z]:'.preg_quote(DIRECTORY_SEPARATOR, '/').'/', $path) === 1;
+        if (! $isAbsolute) {
+            $path = base_path($path);
+        }
+
+        $resolvedPath = realpath($path);
+        if ($resolvedPath !== false) {
+            if ($resolvedPath === DIRECTORY_SEPARATOR) {
+                return DIRECTORY_SEPARATOR;
+            }
+            if (DIRECTORY_SEPARATOR === '\\' && preg_match('/\\A[A-Za-z]:[\\\\\/]*\\z/', $resolvedPath, $drive) === 1) {
+                return substr($resolvedPath, 0, 2).DIRECTORY_SEPARATOR;
+            }
+
+            return rtrim($resolvedPath, '/\\');
+        }
+        if ($path === DIRECTORY_SEPARATOR) {
+            return DIRECTORY_SEPARATOR;
+        }
+        if (DIRECTORY_SEPARATOR === '\\' && preg_match('/\\A[A-Za-z]:[\\\\\/]*\\z/', $path, $drive) === 1) {
+            return substr($path, 0, 2).DIRECTORY_SEPARATOR;
+        }
+
+        $missingSegments = [];
+        $candidate = rtrim($path, '/\\');
+        while (($resolved = realpath($candidate)) === false) {
+            $parent = dirname($candidate);
+            if ($parent === $candidate) {
+                throw new RuntimeException('Backup and runtime storage paths could not be resolved safely.');
+            }
+            array_unshift($missingSegments, basename($candidate));
+            $candidate = $parent;
+        }
+
+        foreach ($missingSegments as $segment) {
+            if ($segment === '' || $segment === '.') {
+                continue;
+            }
+            $resolved = $segment === '..' ? dirname($resolved) : $resolved.DIRECTORY_SEPARATOR.$segment;
+        }
+
+        return rtrim($resolved, '/\\');
+    }
+
+    private function pathsOverlap(string $first, string $second): bool
+    {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $first = strtolower($first);
+            $second = strtolower($second);
+        }
+
+        $firstPrefix = rtrim($first, '/\\').DIRECTORY_SEPARATOR;
+        $secondPrefix = rtrim($second, '/\\').DIRECTORY_SEPARATOR;
+
+        return $first === $second
+            || str_starts_with($first, $secondPrefix)
+            || str_starts_with($second, $firstPrefix);
     }
 
     /** @return list<string> */

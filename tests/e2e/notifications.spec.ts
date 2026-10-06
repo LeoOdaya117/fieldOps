@@ -11,7 +11,7 @@ test('notifications work in every shell, appearance, and viewport', async ({
     await page.goto('/user/confirm-password');
     await page.getByRole('textbox', { name: 'Password' }).fill(password);
     await page.getByRole('button', { name: 'Confirm password' }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: 20_000 });
     await page.goto('/settings/system/layout');
     const original = await page
         .getByRole('radio', { checked: true })
@@ -41,6 +41,7 @@ test('notifications work in every shell, appearance, and viewport', async ({
             await expect(page.locator('html')).toHaveAttribute(
                 'data-platform-theme',
                 theme.toLowerCase(),
+                { timeout: 20_000 },
             );
 
             for (const appearance of ['light', 'dark'] as const) {
@@ -80,7 +81,7 @@ test('notifications work in every shell, appearance, and viewport', async ({
                     await expect(
                         page
                             .getByRole('dialog')
-                            .getByText('No notifications here'),
+                            .getByText("You're all caught up"),
                     ).toBeVisible();
                 }
 

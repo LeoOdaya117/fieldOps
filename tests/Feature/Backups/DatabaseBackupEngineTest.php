@@ -150,6 +150,50 @@ class DatabaseBackupEngineTest extends TestCase
         app(DatabaseBackupEngine::class)->assertCompatible($this->manifest(), true);
     }
 
+    public function test_restore_rejects_backup_storage_overlapping_file_sessions_before_database_access(): void
+    {
+        config([
+            'backups.root' => $this->root.'/backup-child',
+            'session.files' => $this->root,
+        ]);
+        DB::shouldReceive('connection')->never();
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('must be separate from file-session and file-cache runtime directories');
+        app(DatabaseBackupEngine::class)->assertCompatible($this->manifest(), true);
+    }
+
+    public function test_restore_rejects_backup_storage_overlapping_active_file_cache_paths_before_database_access(): void
+    {
+        config([
+            'backups.root' => $this->root.'/backup-child',
+            'session.driver' => 'database',
+            'cache.default' => 'file',
+            'cache.stores.file.driver' => 'file',
+            'cache.stores.file.path' => $this->root,
+            'cache.stores.file.lock_path' => $this->root.'/locks',
+        ]);
+        DB::shouldReceive('connection')->never();
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('must be separate from file-session and file-cache runtime directories');
+        app(DatabaseBackupEngine::class)->assertCompatible($this->manifest(), true);
+    }
+
+    public function test_restore_rejects_backup_storage_overlapping_separate_file_cache_lock_path_before_database_access(): void
+    {
+        config([
+            'backups.root' => $this->root.'/backup-child',
+            'session.driver' => 'database',
+            'cache.default' => 'file',
+            'cache.stores.file.driver' => 'file',
+            'cache.stores.file.path' => $this->root.'/cache',
+            'cache.stores.file.lock_path' => $this->root,
+        ]);
+        DB::shouldReceive('connection')->never();
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('must be separate from file-session and file-cache runtime directories');
+        app(DatabaseBackupEngine::class)->assertCompatible($this->manifest(), true);
+    }
+
     public function test_supported_custom_runtime_table_names_pass_preflight(): void
     {
         config([

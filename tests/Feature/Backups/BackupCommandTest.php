@@ -81,6 +81,7 @@ class BackupCommandTest extends TestCase
     public function test_recovery_requires_an_existing_maintenance_marker(): void
     {
         $execute = Mockery::mock(ExecuteBackupOperation::class);
+        $execute->shouldReceive('interruptAbandoned')->once();
         $execute->shouldNotReceive('inline');
         $this->app->instance(ExecuteBackupOperation::class, $execute);
         $package = Mockery::mock(BackupPackage::class);
@@ -103,6 +104,7 @@ class BackupCommandTest extends TestCase
             ->andReturn(['scope' => 'tables']);
         $this->app->instance(BackupPackage::class, $package);
         $execute = Mockery::mock(ExecuteBackupOperation::class);
+        $execute->shouldReceive('interruptAbandoned')->once();
         $execute->shouldNotReceive('inline');
         $this->app->instance(ExecuteBackupOperation::class, $execute);
         $this->artisan('backups:restore', ['source' => $backup['id'], '--database' => DB::connection()->getDatabaseName(),
@@ -199,6 +201,7 @@ class BackupCommandTest extends TestCase
         $engine->shouldReceive('assertCompatible')->once()->with($manifest, false);
         $this->app->instance(DatabaseBackupEngine::class, $engine);
         $execute = Mockery::mock(ExecuteBackupOperation::class);
+        $execute->shouldReceive('interruptAbandoned')->once();
         $execute->shouldReceive('inline')->once()->with('restore', $backup['id'], false, $this->cliContext())->andReturn(['status' => 'succeeded']);
         $this->app->instance(ExecuteBackupOperation::class, $execute);
         $this->artisan('backups:restore', [
@@ -214,6 +217,7 @@ class BackupCommandTest extends TestCase
         $import->shouldReceive('handle')->once()->with($source, false, $this->cliContext())->andReturn(['id' => $id]);
         $this->app->instance(ImportBackupPackage::class, $import);
         $execute = Mockery::mock(ExecuteBackupOperation::class);
+        $execute->shouldReceive('interruptAbandoned')->once();
         $execute->shouldReceive('inline')->once()->with('restore', $id, false, $this->cliContext())->andReturn(['status' => 'succeeded']);
         $this->app->instance(ExecuteBackupOperation::class, $execute);
         $this->artisan('backups:restore', [

@@ -22,10 +22,12 @@ use App\Models\VisitLog;
 use App\Notifications\ExportNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -35,6 +37,23 @@ use Tests\TestCase;
 class ExportTest extends TestCase
 {
     use RefreshDatabase;
+
+    private ?string $backupRoot = null;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->backupRoot = storage_path('framework/testing/export-test-backups-'.Str::uuid());
+        config(['backups.root' => $this->backupRoot]);
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->backupRoot !== null) {
+            File::deleteDirectory($this->backupRoot);
+        }
+        parent::tearDown();
+    }
 
     public function test_print_and_pdf_snapshot_selected_country_columns_in_table_order_with_actor_names(): void
     {
