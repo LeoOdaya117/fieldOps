@@ -81,17 +81,3 @@ php vendor/bin/phpunit --filter=DatabaseBackupIntegrationTest
 Run this against MySQL 8.4 and MariaDB 11.4 before release. Browser tests default to read-only UI/access checks. `E2E_BACKUPS_RUNNER=1` enables backup creation/download/delete on an isolated configured application with a running backup worker; it tests restore confirmation without submitting destructive replacement. CLI/lifecycle tests cover actual recovery semantics.
 
 `.github/workflows/database-backups.yml` runs the disposable round trip against both engines, builds the application image/native clients, and exercises CLI recovery from a missing migration table while maintenance remains active. It also verifies retained safety packages, external operation history, runtime cleanup, and removal of additional current objects.
-
-### Original full-database rehearsal — 2026-10-04
-
-An isolated MySQL 8.0.30 server passed the native CLI restore/recovery rehearsal (27 assertions), including the safety package, schema objects, Unicode/binary data, inactive records, extra-table removal, session/job cleanup, persistent operation history and recovery with the migration table missing. A supervised-runner browser rehearsal passed creation, download, signed reupload, identical downloaded bytes, deletion and guarded restore confirmation. Read-only browser checks also passed on mobile, tablet and desktop in both themes with no accessibility violations.
-
-The original implementation's repository CI passed with 302 backend tests and 247 frontend tests; the real-engine test is intentionally skipped in the default suite. MySQL 8.4/MariaDB 11.4 matrix executions and the Docker image build remain required before release because those servers and a running Docker daemon were unavailable locally. The npm high-severity audit threshold passed, with three existing moderate Vitest-related advisories still reported.
-
-### Selected-table extension rehearsal — 2026-10-04
-
-The completed local `composer ci:check` passed with 340 backend tests and 251 frontend tests; four opt-in engine tests were skipped by the default suite. PHPStan, Pint, ESLint, Prettier, TypeScript and the production build passed. Composer audit found no advisories; npm's high-severity threshold passed with the same three existing moderate Vitest-related advisories.
-
-A disposable MySQL 8.0.30 rehearsal passed all four real-engine tests (80 assertions): selected schema/data restoration preserved unrelated tables/views, a new inbound foreign-key dependency was rejected before replacement, complex scoped objects were rejected, and an invalid partial import retained maintenance and recovered through the full safety package. Playwright passed seven browser cases with two expected runner skips on non-desktop projects, covering authorization, selected-table create/upload/download, restore confirmation, audit retention, Axe checks, and mobile, tablet and desktop light/dark screenshots. The final heading-level fix passed all 15 focused backup UI tests and final lint, formatting and type checks.
-
-MySQL 8.4/MariaDB 11.4 matrix execution and the Docker image build remain required before release because those exact runtimes and a Docker daemon were unavailable locally.
