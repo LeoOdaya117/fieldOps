@@ -17,6 +17,8 @@ class ExecuteBackupOperation
     {
         $runner = $this->store->lock('runner');
         try {
+            $this->interruptAbandoned();
+
             return $this->processNext();
         } finally {
             $this->store->unlock($runner);
@@ -33,7 +35,7 @@ class ExecuteBackupOperation
     {
         $runner = $this->store->lock('runner');
         try {
-            $this->store->interruptAbandoned();
+            $this->interruptAbandoned();
             $this->store->queue($type, $backupId, $recovery, $context);
 
             return $this->processNext();
@@ -45,7 +47,6 @@ class ExecuteBackupOperation
     /** @return array<string, mixed>|null */
     private function processNext(): ?array
     {
-        $this->store->interruptAbandoned();
         $operation = $this->store->synchronized(function (): ?array {
             $queued = array_values(array_filter($this->store->operations(), static fn (array $record): bool => $record['status'] === 'queued'));
             $operation = array_pop($queued);
@@ -89,8 +90,28 @@ class ExecuteBackupOperation
         }
         $operation['finished_at'] = now()->toIso8601String();
         $this->store->saveOperation($operation);
+        $this->notifyBackupCreator($operation);
 
         return $operation;
+    }
+
+    /** Call while holding the independent runner lock. */
+    public function interruptAbandoned(): void
+    {
+        foreach ($this->store->interruptAbandoned() as $operation) {
+            $this->notifyBackupCreator($operation);
+        }
+    }
+
+    /** @param array<string, mixed> $operation */
+    private function notifyBackupCreator(array $operation): void
+    {
+        try {
+            app(NotifyBackupOperationCreator::class)->notifyOperation($operation);
+        } catch (Throwable $exception) {
+            // A notification problem must not change a successfully completed backup.
+            report($exception);
+        }
     }
 
     /** @param array<string, mixed> $context

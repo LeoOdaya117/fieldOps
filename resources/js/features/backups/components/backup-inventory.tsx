@@ -19,8 +19,9 @@ export function BackupInventory({
     prerequisites,
     databaseName,
     busy,
+    createdOperationId,
 }: BackupPageProps) {
-    const notice = useBackupPolling(busy);
+    const notice = useBackupPolling(busy, operations, createdOperationId);
     const ready =
         prerequisites.length > 0 && prerequisites.every((item) => item.ready);
     const actions = useBackupActions({

@@ -44,7 +44,7 @@ class BackupsRestore extends Command
             // Recover stale running records only after proving no live runner owns them.
             $runner = $store->lock('runner');
             try {
-                $store->interruptAbandoned();
+                $execute->interruptAbandoned();
             } finally {
                 $store->unlock($runner);
             }

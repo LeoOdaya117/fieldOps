@@ -34,7 +34,7 @@ export function BackupCreate({
     });
     const uploadInput = useRef<HTMLInputElement>(null);
     const [tableSearch, setTableSearch] = useState('');
-    const notice = useBackupPolling(busy);
+    const notice = useBackupPolling(busy, operations);
     const ready =
         prerequisites.length > 0 && prerequisites.every((item) => item.ready);
     const pending =

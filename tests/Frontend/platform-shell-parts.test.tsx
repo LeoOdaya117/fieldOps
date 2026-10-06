@@ -26,7 +26,7 @@ vi.mock('@inertiajs/react', () => ({
         </a>
     ),
     usePage: () => ({
-        url: '/dashboard',
+        url: '/settings/system/backups',
         props: {
             system: {
                 name: 'FieldOps',
@@ -38,6 +38,41 @@ vi.mock('@inertiajs/react', () => ({
 import { MobilePlatformNavigation } from '@/components/platform-shell-parts';
 
 describe('MobilePlatformNavigation', () => {
+    it('marks the specific destination active without activating its parent', async () => {
+        const user = userEvent.setup();
+
+        render(
+            <MobilePlatformNavigation
+                groups={[
+                    {
+                        label: 'System',
+                        items: [
+                            {
+                                title: 'System settings',
+                                href: '/settings/system',
+                            },
+                            {
+                                title: 'Backup & Restore',
+                                href: '/settings/system/backups',
+                            },
+                        ],
+                    },
+                ]}
+            />,
+        );
+
+        await user.click(
+            screen.getByRole('button', { name: 'Open navigation' }),
+        );
+
+        expect(
+            screen.getByRole('link', { name: 'System settings' }),
+        ).not.toHaveAttribute('aria-current');
+        expect(
+            screen.getByRole('link', { name: 'Backup & Restore' }),
+        ).toHaveAttribute('aria-current', 'page');
+    });
+
     it('closes after selecting a navigation link', async () => {
         const user = userEvent.setup();
 

@@ -1,7 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { cn } from '@/lib/utils';
-import { getNavigationGroups } from '@/lib/navigation';
+import { getActiveNavigationItem, getNavigationGroups } from '@/lib/navigation';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { PlatformLogo } from '@/components/platform-logo';
 import {
@@ -18,7 +18,11 @@ export default function AppAtlasLayout({
 }: AppLayoutProps) {
     const { auth } = usePage().props;
     const groups = getNavigationGroups(auth);
-    const { isCurrentOrParentUrl } = useCurrentUrl();
+    const { currentUrl } = useCurrentUrl();
+    const activeItem = getActiveNavigationItem(
+        groups.flatMap((group) => group.items),
+        currentUrl,
+    );
 
     return (
         <div className="min-h-screen bg-background">
@@ -54,9 +58,7 @@ export default function AppAtlasLayout({
                                 </p>
                                 <div className="space-y-0.5">
                                     {group.items.map((item) => {
-                                        const active = isCurrentOrParentUrl(
-                                            item.href,
-                                        );
+                                        const active = item === activeItem;
                                         const Icon = item.icon;
 
                                         return (

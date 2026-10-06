@@ -75,6 +75,8 @@ class BackupHttpTest extends TestCase
         $this->assertCount(1, $operations);
         $this->assertSame('queued', $operations[0]['status']);
         $this->assertEmpty(app(BackupStore::class)->backups());
+        $this->get(route('system-settings.backups.index'))->assertInertia(fn ($page) => $page
+            ->component('backups/index')->where('createdOperationId', $operations[0]['id']));
         $this->post(route('system-settings.backups.store'))->assertSessionHasErrors('operation');
     }
 

@@ -6,6 +6,7 @@ use App\Actions\Backups\BackupPackage;
 use App\Actions\Backups\BackupStore;
 use App\Actions\Backups\DatabaseBackupEngine;
 use App\Actions\Backups\ExecuteBackupOperation;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -87,6 +88,76 @@ class BackupLifecycleTest extends TestCase
         $this->assertFileExists($store->packagePath((string) $operation['backup_id']));
         $this->assertEmpty(glob($store->root().'/tmp/*'));
         $this->assertFalse($store->busy());
+    }
+
+    public function test_background_backup_notifies_its_web_creator_once_after_success(): void
+    {
+        $store = app(BackupStore::class);
+        $creator = User::factory()->create();
+        $actor = ['id' => (string) $creator->getKey(), 'name' => $creator->name, 'source' => 'web'];
+        $engine = $this->engine();
+        $engine->shouldReceive('info')->once()->with(false)->andReturn($this->manifest());
+        $engine->shouldReceive('dump')->once()->andReturnUsing(static fn (string $path) => file_put_contents($path, 'CREATE TABLE example (id int);'));
+        $package = Mockery::mock(BackupPackage::class);
+        $package->shouldReceive('create')->once()->andReturnUsing(function (string $sql, array $info, string $path): array {
+            file_put_contents($path, 'signed-package');
+
+            return $this->manifest();
+        });
+        $package->shouldReceive('inspect')->once()->andReturn($this->manifest());
+        $queued = $store->queue('backup', null, false, ['actor' => $actor]);
+        $this->assertSame(0, $creator->notifications()->count());
+
+        $execute = new ExecuteBackupOperation($store, $package, $engine);
+        $operation = $execute->next();
+        $this->assertSame('succeeded', $operation['status']);
+        $notification = $creator->notifications()->sole();
+        $this->assertSame('backup.ready', $notification->data['event']);
+        $this->assertSame($operation['backup_id'], $notification->data['backupId']);
+        $this->assertSame($queued['id'], $notification->data['operationId']);
+        $this->assertNull($execute->next());
+        $this->assertSame(1, $creator->notifications()->count());
+    }
+
+    public function test_failed_background_backup_notifies_web_creator_without_leaking_client_errors(): void
+    {
+        $store = app(BackupStore::class);
+        $creator = User::factory()->create();
+        $engine = $this->engine();
+        $engine->shouldReceive('info')->once()->with(false)->andThrow(new \PDOException('client password and SQL details'));
+        $queued = $store->queue('backup', null, false, [
+            'actor' => ['id' => (string) $creator->getKey(), 'name' => $creator->name, 'source' => 'web'],
+        ]);
+
+        $operation = (new ExecuteBackupOperation($store, Mockery::mock(BackupPackage::class), $engine))->next();
+        $this->assertSame('failed', $operation['status']);
+        $notification = $creator->notifications()->sole();
+        $this->assertSame('backup.failed', $notification->data['event']);
+        $this->assertNull($notification->data['backupId']);
+        $this->assertSame($queued['id'], $notification->data['operationId']);
+        $this->assertStringNotContainsString('password', $notification->data['body']);
+        $this->assertStringNotContainsString('SQL details', $notification->data['body']);
+        $this->assertStringNotContainsString('password', (string) $operation['error']);
+    }
+
+    public function test_interrupted_background_backup_notifies_its_web_creator_once_when_the_runner_recovers(): void
+    {
+        $store = app(BackupStore::class);
+        $creator = User::factory()->create();
+        $queued = $store->queue('backup', null, false, [
+            'actor' => ['id' => (string) $creator->getKey(), 'name' => $creator->name, 'source' => 'web'],
+        ]);
+        $queued['status'] = 'running';
+        $store->saveOperation($queued);
+        $execute = new ExecuteBackupOperation($store, Mockery::mock(BackupPackage::class), Mockery::mock(DatabaseBackupEngine::class));
+
+        $this->assertNull($execute->next());
+        $this->assertSame('interrupted', $store->operations()[0]['status']);
+        $notification = $creator->notifications()->sole();
+        $this->assertSame('backup.failed', $notification->data['event']);
+        $this->assertSame($queued['id'], $notification->data['operationId']);
+        $this->assertNull($execute->next());
+        $this->assertSame(1, $creator->notifications()->count());
     }
 
     public function test_abandoned_running_restore_is_interrupted_and_never_retried(): void

@@ -88,6 +88,7 @@ export type BackupCommonProps = {
 export type BackupPageProps = BackupCommonProps & {
     backups: PaginatedBackups<Backup>;
     filters: BackupFilters;
+    createdOperationId?: string | null;
 };
 export type BackupCreateProps = BackupCommonProps & {
     tableCatalog: TableCatalogEntry[];

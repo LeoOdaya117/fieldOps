@@ -251,10 +251,13 @@ class BackupStore
         $this->write($this->root().'/operations/'.$id.'.json', $operation);
     }
 
-    /** Call only while holding the independent runner lock. */
-    public function interruptAbandoned(): void
+    /** Call only while holding the independent runner lock.
+     * @return list<array<string, mixed>>
+     */
+    public function interruptAbandoned(): array
     {
-        $this->synchronized(function (): void {
+        return $this->synchronized(function (): array {
+            $interrupted = [];
             foreach ($this->operations() as $operation) {
                 if ($operation['status'] === 'running') {
                     $operation['status'] = 'interrupted';
@@ -262,8 +265,11 @@ class BackupStore
                     $operation['error'] = 'The runner stopped before completion. Inspect the database and use CLI recovery if maintenance is active.';
                     $this->recordAudit($operation['type'].'.interrupted', $operation, $operation['backup_id'], (string) $operation['id']);
                     $this->saveOperation($operation);
+                    $interrupted[] = $operation;
                 }
             }
+
+            return $interrupted;
         });
     }
 

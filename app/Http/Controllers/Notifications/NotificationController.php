@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Notifications;
 
+use App\Actions\Backups\NotifyBackupOperationCreator;
 use App\Actions\Notifications\ReadNotificationInbox;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Notifications\InboxRequest;
@@ -15,9 +16,10 @@ use Inertia\Response;
 
 class NotificationController extends Controller
 {
-    public function index(InboxRequest $request, ReadNotificationInbox $inbox): Response|RedirectResponse
+    public function index(InboxRequest $request, ReadNotificationInbox $inbox, NotifyBackupOperationCreator $backupNotifications): Response|RedirectResponse
     {
         $user = $request->user();
+        $backupNotifications->reconcileFor($user);
         $filter = $request->validated('filter', 'all');
         $query = $user->notifications()->reorder()->orderByDesc('created_at')->orderByDesc('id');
         if ($filter === 'unread') {
@@ -37,9 +39,12 @@ class NotificationController extends Controller
         ]);
     }
 
-    public function summary(InboxRequest $request, ReadNotificationInbox $inbox): JsonResponse
+    public function summary(InboxRequest $request, ReadNotificationInbox $inbox, NotifyBackupOperationCreator $backupNotifications): JsonResponse
     {
-        return response()->json($inbox->summary($request->user()))->header('Cache-Control', 'private, no-store');
+        $user = $request->user();
+        $backupNotifications->reconcileFor($user);
+
+        return response()->json($inbox->summary($user))->header('Cache-Control', 'private, no-store');
     }
 
     public function update(UpdateNotificationRequest $request, string $notification): RedirectResponse

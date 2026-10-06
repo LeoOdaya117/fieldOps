@@ -119,7 +119,9 @@ export function NotificationRow({
                     >
                         {item.type === 'export.ready'
                             ? 'Open export'
-                            : 'View details'}
+                            : item.type === 'backup.ready'
+                              ? 'View backup'
+                              : 'View details'}
                     </Button>
                 )}
                 <Button
@@ -143,17 +145,20 @@ export function NotificationRow({
 export function NotificationList({
     items,
     onOpen,
+    emptyTitle = 'No notifications here',
+    emptyMessage = 'New updates will appear here when there is something to review.',
 }: {
     items: NotificationItem[];
     onOpen?: () => void;
+    emptyTitle?: string;
+    emptyMessage?: string;
 }) {
     if (!items.length) {
         return (
             <div className="px-4 py-12 text-center">
-                <p className="font-medium">No notifications here</p>
+                <p className="font-medium">{emptyTitle}</p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                    New updates will appear here when there is something to
-                    review.
+                    {emptyMessage}
                 </p>
             </div>
         );

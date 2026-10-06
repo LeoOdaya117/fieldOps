@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { index as notificationsIndex } from '@/routes/notifications';
 import { index as backupsIndex } from '@/routes/system-settings/backups';
+import { toUrl } from '@/lib/utils';
 import type { Auth, NavItem } from '@/types';
 
 export type NavigationGroup = {
@@ -117,6 +118,54 @@ const navigationDefinitions: Array<{
         ],
     },
 ];
+
+function normalizePathname(url: string): string | null {
+    try {
+        return (
+            new URL(url, 'http://fieldops.local').pathname.replace(
+                /\/+$/,
+                '',
+            ) || '/'
+        );
+    } catch {
+        return null;
+    }
+}
+
+export function getActiveNavigationItem(
+    items: readonly NavItem[],
+    currentUrl: string,
+): NavItem | undefined {
+    const currentPath = normalizePathname(currentUrl);
+
+    if (!currentPath) {
+        return undefined;
+    }
+
+    let activeItem: NavItem | undefined;
+    let activePathLength = -1;
+
+    for (const item of items) {
+        const itemPath = normalizePathname(toUrl(item.href));
+
+        if (!itemPath) {
+            continue;
+        }
+
+        const matches =
+            currentPath === itemPath ||
+            (itemPath === '/'
+                ? currentPath.startsWith('/')
+                : currentPath.startsWith(`${itemPath}/`));
+
+        if (matches && itemPath.length > activePathLength) {
+            activeItem = item;
+            activePathLength = itemPath.length;
+        }
+    }
+
+    return activeItem;
+}
 
 export function getNavigationGroups(auth: Auth): NavigationGroup[] {
     const can = (permission: string) =>

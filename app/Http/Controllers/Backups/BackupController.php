@@ -31,6 +31,7 @@ class BackupController extends Controller
         return Inertia::render('backups/index', [...$this->common($store, $engine),
             'backups' => $store->paginate($store->backups(), $filters, route('system-settings.backups.index')),
             'filters' => $filters,
+            'createdOperationId' => $request->session()->get('backupOperationId'),
         ]);
     }
 
@@ -103,12 +104,12 @@ class BackupController extends Controller
             $scope = $request->validated('scope') === 'tables'
                 ? $engine->backupScope($request->validated('requested_tables'))
                 : ['scope' => 'database', 'requested_tables' => [], 'tables' => [], 'dependency_edges' => []];
-            $store->queue('backup', null, false, [...$scope, ...$request->auditContext()]);
+            $operation = $store->queue('backup', null, false, [...$scope, ...$request->auditContext()]);
         } catch (RuntimeException $exception) {
             throw ValidationException::withMessages(['operation' => $this->safeError($exception)]);
         }
 
-        return to_route('system-settings.backups.index');
+        return to_route('system-settings.backups.index')->with('backupOperationId', $operation['id']);
     }
 
     public function upload(UploadBackupRequest $request, ImportBackupPackage $import): RedirectResponse
