@@ -89,7 +89,7 @@ class BackupHttpTest extends TestCase
         foreach (['index', 'status'] as $route) {
             $this->get(route('system-settings.backups.'.$route))->assertOk()
                 ->assertInertia(fn ($page) => $page->component('backups/index')
-                    ->where('backups.data', [])->where('backups.total', 0)->where('operations', [])->where('databaseName', ':memory:')
+                    ->where('backups.data', [])->where('backups.total', 0)->where('operations', [])->where('databaseName', DB::connection()->getDatabaseName())
                     ->where('busy', false)->where('prerequisites.0.ready', false)
                     ->missing('root')->missing('signing_key')->missing('password'));
         }
