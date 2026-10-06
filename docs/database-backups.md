@@ -60,7 +60,7 @@ Recovery requires a **full database package**, an existing backup maintenance ma
 
 If database authentication/server availability is broken, repair that prerequisite before using recovery commands. If local backup storage is unavailable, restore it (including the authentication generation) first. Keep original `APP_KEY` when restoring encrypted application values.
 
-## Disposable verification
+## Optional real-engine integration tests
 
 The regular PHPUnit tests use SQLite and fake native operations. Real-engine integration is explicit opt-in, creates a randomly named `fieldops_backup_test_*` schema and removes only that schema. Use a disposable server with the event scheduler OFF; credentials must allow creating/dropping its test schema. Never point it at a shared production server.
 
@@ -78,6 +78,4 @@ $env:BACKUP_TEST_MYSQL_CLIENT = '<absolute-mysql-path>'
 php vendor/bin/phpunit --filter=DatabaseBackupIntegrationTest
 ```
 
-Run this against MySQL 8.4 and MariaDB 11.4 before release. Browser tests default to read-only UI/access checks. `E2E_BACKUPS_RUNNER=1` enables backup creation/download/delete on an isolated configured application with a running backup worker; it tests restore confirmation without submitting destructive replacement. CLI/lifecycle tests cover actual recovery semantics.
-
-`.github/workflows/database-backups.yml` runs the disposable round trip against both engines, builds the application image/native clients, and exercises CLI recovery from a missing migration table while maintenance remains active. It also verifies retained safety packages, external operation history, runtime cleanup, and removal of additional current objects.
+The opt-in integration test can be run against a disposable MySQL or MariaDB server when engine-specific verification is needed; it is not part of the required pull-request checks. Browser tests default to read-only UI/access checks. `E2E_BACKUPS_RUNNER=1` enables backup creation/download/delete on an isolated configured application with a running backup worker; it tests restore confirmation without submitting destructive replacement. CLI/lifecycle tests cover actual recovery semantics.

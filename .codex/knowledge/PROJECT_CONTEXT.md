@@ -51,4 +51,4 @@ Refresh this list from manifests and current project instructions when commands 
 
 This context was verified against `AGENTS.md`, `docs/architecture.md`, Composer/npm manifests, `bootstrap/app.php`, `routes/web.php`, `routes/settings.php`, `resources/js/app.tsx`, `resources/js/features/page-loading/`, `resources/views/app.blade.php`, test configs, CI workflow, and the current directory layout on 2026-09-27. Package versions are reported as declared constraints. Re-run `$project-init` after significant architecture or tooling changes.
 
-2026-10-04 feature-build reconciliation verified the database backup/restore feature paths above, persistent authentication epoch, async-loading exclusion, and disposable engine rehearsal workflow from their source. Exact-version engine/Docker verification is pending as recorded in the backup plan.
+2026-10-04 feature-build reconciliation verified the database backup/restore feature paths above, persistent authentication epoch, and async-loading exclusion. Real-engine integration is opt-in and no dedicated database rehearsal workflow is maintained.

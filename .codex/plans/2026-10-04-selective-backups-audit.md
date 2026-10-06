@@ -29,9 +29,9 @@ Extend the existing database recovery feature with selected-table backup and res
 ## Verification and release boundaries
 
 - PHPUnit: graph closure/cycles/composite/self-FKs/unknown identifiers, signed scope tampering/legacy compatibility, scoped dispatch/unrelated data preservation, actor provenance/audit persistence, filters/pagination/authorization and safety/recovery paths.
-- Native disposable engine rehearsal includes selected data/schema, unchanged unrelated objects, complex-object selection rejection, new inbound dependency rejection, FK integrity, and full safety recovery after partial failure.
+- Optional disposable-engine integration covers selected data/schema, unchanged unrelated objects, complex-object selection rejection, new inbound dependency rejection, FK integrity, and full safety recovery after partial failure.
 - Vitest/Playwright: selection/dependency preview, inventory/detail/audit navigation, confirmations, search/pagination, busy/error states, keyboard/accessibility and mobile/tablet/desktop light/dark presentation.
-- Run required CI/audits/build and record only observed results. Existing exact MySQL 8.4/MariaDB 11.4 and Docker image release checks remain pending locally until those runtimes are available.
+- Run required CI/audits/build and record only observed results. Real-engine integration can be run manually against disposable schemas when needed; it is not a required PR check.
 
 ## Progress
 

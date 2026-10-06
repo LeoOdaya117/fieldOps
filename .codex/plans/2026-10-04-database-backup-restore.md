@@ -22,7 +22,7 @@ Add a Backup & Restore page under System Settings for active, verified Super Adm
 ## Required verification
 
 - PHPUnit authorization, confirmation, throttling, validation, integrity/compatibility, locking, private downloads and failure paths.
-- Real MySQL 8.4/MariaDB 11.4 round-trip rehearsal including changed schema/data, relationships, binary/text and inactive records; additional objects removed.
+- Optional, manually invoked disposable MySQL/MariaDB round-trip verification; it is not a required pull-request check.
 - Interrupted runner, disk failure, safety failure, partial import, DB unavailable, drain failure and CLI recovery. Verify persistent history, invalid sessions, no queued-job replay.
 - Vitest/Playwright critical flows, error/status states, themes, accessibility and responsive layouts.
 - Required formatting, lint/types/static analysis, tests, build and dependency audits. Document supervision, signing-key/APP_KEY preservation, permissions, credentials, upload limits, maintenance coordination and recovery.
@@ -35,7 +35,7 @@ Single application host, durable private storage, same engine family/major versi
 
 - 2026-10-04: inspected canonical guide, knowledge, current MySQL configuration, file sessions/cache, sync queue and Docker MySQL 8.4. Architecture mapping and QA scenario review delegated before implementation.
 - Implemented private signed ZIP/gzip packages, atomic external metadata/history, exclusive filesystem operation runner, native engine clients, temporary credential files, HTTP/console writer leases, maintenance coordination, verified safety snapshots, explicit CLI recovery, and persistent session invalidation. Added authorized settings routes, Form Requests, typed React workspace, password/database-name confirmations, private downloads, polling and accessible failure/history states.
-- Added Laragon/deployment/recovery documentation, Docker engine clients and independent runner service, configurable upload/expanded limits, and a disposable real-engine CI matrix for MySQL 8.4 and MariaDB 11.4.
+- Added Laragon/deployment/recovery documentation, Docker engine clients and independent runner service, and configurable upload/expanded limits. Real-engine integration remains opt-in; the dedicated CI rehearsal workflow was removed at the user's request.
 - Backend and frontend specialists added engine and CLI failure coverage and browser upload/download/delete coverage. Independent architecture review identified and resolved effective database configuration, deferred writer drain, event scheduler coordination, configured runtime cleanup, login-file override, and package recovery protection issues. The final review found no additional material issue in the addressed paths.
 - The real browser runner rehearsal exposed background Inertia polling triggering navigation skeletons and cancelling itself. Page loading now excludes async visits; slow-poll and busy-state regressions cover this fix.
 - Focused PHPUnit backup suite: 68 passed, 1 opt-in integration skipped, 304 assertions (69 cases). Real isolated MySQL 8.0.30 CLI rehearsal: 1 passed, 27 assertions, including safety backup, schema/data/Unicode/binary/relationship/inactive-record restoration, additional object removal, runtime clearing, persistent history and damaged-migration-table recovery during maintenance.
@@ -49,4 +49,4 @@ Single application host, durable private storage, same engine family/major versi
 - Restore accepts isolated supported file/database runtime stores; external/shared cache/session/queue stores and split database hosts fail closed. Runtime cleanup rejects business table names and verifies expected columns before deletion.
 - A filesystem authentication epoch supplements per-user session versions to prevent old versions colliding after historical restore. Deploying this change requires existing users to sign in once.
 - Server database events and external writers require operator coordination. After a forced runner termination, recovery operators must also stop orphaned native clients and confirm active import queries have ended; PHP locks cannot prove those processes finished.
-- Exact MySQL 8.4 and MariaDB 11.4 rehearsals and the Docker image build could not run locally because those native servers are unavailable and the Docker daemon is not running. The CI workflow and documented opt-in test provide those required release checks; their results must be observed before release.
+- The opt-in real-engine test remains available for deployment-specific verification. A dedicated MySQL/MariaDB CI rehearsal is not required for this feature.
