@@ -69,6 +69,16 @@ test('notifications work in every shell, appearance, and viewport', async ({
                     .getByRole('dialog')
                     .getByRole('list', { name: 'Notification list' })
                     .getByRole('listitem');
+                const emptyPreview = page
+                    .getByRole('dialog')
+                    .getByText("You're all caught up");
+
+                await expect
+                    .poll(async () =>
+                        (await previewRows.count()) > 0 ||
+                        (await emptyPreview.isVisible().catch(() => false)),
+                    )
+                    .toBe(true);
 
                 if (await previewRows.count()) {
                     await expect(
@@ -78,11 +88,7 @@ test('notifications work in every shell, appearance, and viewport', async ({
                             .first(),
                     ).toBeVisible();
                 } else {
-                    await expect(
-                        page
-                            .getByRole('dialog')
-                            .getByText("You're all caught up"),
-                    ).toBeVisible();
+                    await expect(emptyPreview).toBeVisible();
                 }
 
                 expect(
