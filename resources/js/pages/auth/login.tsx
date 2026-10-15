@@ -7,9 +7,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-/* @chisel-registration */
-import { register } from '@/routes';
-/* @end-chisel-registration */
+import { landingAssets } from '@/features/landing/data';
+import {
+    browserLocationPayload,
+    useBrowserLocation,
+} from '@/hooks/use-browser-location';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 /* @chisel-passkeys */
@@ -22,16 +24,26 @@ type Props = {
 };
 
 export default function Login({ status, canResetPassword }: Props) {
+    const {
+        location,
+        request: requestLocation,
+        status: locationStatus,
+    } = useBrowserLocation();
+
     return (
         <>
             <Head title="Log in" />
 
             {/* @chisel-passkeys */}
-            <PasskeyVerify />
+            <PasskeyVerify location={location} />
             {/* @end-chisel-passkeys */}
 
             <Form
                 {...store.form()}
+                transform={(data) => ({
+                    ...data,
+                    ...browserLocationPayload(location),
+                })}
                 resetOnSuccess={['password']}
                 className="flex flex-col gap-6"
             >
@@ -46,7 +58,6 @@ export default function Login({ status, canResetPassword }: Props) {
                                     name="email"
                                     required
                                     autoFocus
-                                    tabIndex={1}
                                     autoComplete="email"
                                     placeholder="email@example.com"
                                 />
@@ -60,7 +71,6 @@ export default function Login({ status, canResetPassword }: Props) {
                                         <TextLink
                                             href={request()}
                                             className="ml-auto text-sm"
-                                            tabIndex={5}
                                         >
                                             Forgot your password?
                                         </TextLink>
@@ -70,7 +80,6 @@ export default function Login({ status, canResetPassword }: Props) {
                                     id="password"
                                     name="password"
                                     required
-                                    tabIndex={2}
                                     autoComplete="current-password"
                                     placeholder="Password"
                                 />
@@ -78,18 +87,41 @@ export default function Login({ status, canResetPassword }: Props) {
                             </div>
 
                             <div className="flex items-center space-x-3">
-                                <Checkbox
-                                    id="remember"
-                                    name="remember"
-                                    tabIndex={3}
-                                />
+                                <Checkbox id="remember" name="remember" />
                                 <Label htmlFor="remember">Remember me</Label>
                             </div>
 
                             <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => void requestLocation()}
+                                disabled={
+                                    locationStatus === 'pending' ||
+                                    locationStatus === 'available'
+                                }
+                            >
+                                {locationStatus === 'pending'
+                                    ? 'Requesting location…'
+                                    : locationStatus === 'available'
+                                      ? 'Location access granted'
+                                      : 'Allow location access'}
+                            </Button>
+                            <p
+                                className="text-center text-xs text-muted-foreground"
+                                aria-live="polite"
+                            >
+                                {locationStatus === 'idle'
+                                    ? 'Allow browser location so it can be recorded with this login.'
+                                    : locationStatus === 'pending'
+                                      ? 'Respond to the browser location permission prompt.'
+                                      : locationStatus === 'available'
+                                        ? 'Browser location will be included with this login.'
+                                        : 'Browser location is unavailable. Use HTTPS or localhost and allow permission if prompted.'}
+                            </p>
+                            <Button
                                 type="submit"
-                                className="mt-4 w-full"
-                                tabIndex={4}
+                                className="mt-2 w-full"
                                 disabled={processing}
                                 data-test="login-button"
                             >
@@ -97,24 +129,20 @@ export default function Login({ status, canResetPassword }: Props) {
                                 Log in
                             </Button>
                         </div>
-
-                        {/* @chisel-registration */}
-                        <div className="text-center text-sm text-muted-foreground">
-                            Don't have an account?{' '}
-                            <TextLink href={register()} tabIndex={5}>
-                                Sign up
-                            </TextLink>
-                        </div>
-                        {/* @end-chisel-registration */}
                     </>
                 )}
             </Form>
 
             {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                <div className="mb-4 text-center text-sm font-medium text-success">
                     {status}
                 </div>
             )}
+
+            <p className="text-center text-sm text-muted-foreground">
+                Need an account?{' '}
+                <TextLink href="/register">Request access</TextLink>
+            </p>
         </>
     );
 }
@@ -122,4 +150,8 @@ export default function Login({ status, canResetPassword }: Props) {
 Login.layout = {
     title: 'Log in to your account',
     description: 'Enter your email and password below to log in',
+    artwork: {
+        src: landingAssets.fieldWorkerServiceVan,
+        alt: 'Field worker checking a service van beside a city water tower',
+    },
 };

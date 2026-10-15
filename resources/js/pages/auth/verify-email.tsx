@@ -1,18 +1,40 @@
 // Components
-import { Form, Head } from '@inertiajs/react';
-import TextLink from '@/components/text-link';
+import { Form, Head, router } from '@inertiajs/react';
+import { useState } from 'react';
+import type { MouseEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    browserLocationPayload,
+    requestBrowserLocation,
+} from '@/hooks/use-browser-location';
 import { logout } from '@/routes';
 import { send } from '@/routes/verification';
 
 export default function VerifyEmail({ status }: { status?: string }) {
+    const [loggingOut, setLoggingOut] = useState(false);
+
+    const handleLogout = async (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+
+        if (loggingOut) {
+            return;
+        }
+
+        setLoggingOut(true);
+        const location = await requestBrowserLocation();
+
+        router.post(logout(), browserLocationPayload(location), {
+            onFinish: () => setLoggingOut(false),
+        });
+    };
+
     return (
         <>
             <Head title="Email verification" />
 
             {status === 'verification-link-sent' && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                <div className="mb-4 text-center text-sm font-medium text-success">
                     A new verification link has been sent to the email address
                     you provided during registration.
                 </div>
@@ -26,12 +48,15 @@ export default function VerifyEmail({ status }: { status?: string }) {
                             Resend verification email
                         </Button>
 
-                        <TextLink
-                            href={logout()}
-                            className="mx-auto block text-sm"
+                        <button
+                            type="button"
+                            className="mx-auto block cursor-pointer text-sm text-foreground underline decoration-border underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current"
+                            onClick={handleLogout}
+                            disabled={loggingOut}
+                            aria-busy={loggingOut}
                         >
-                            Log out
-                        </TextLink>
+                            {loggingOut ? 'Logging out…' : 'Log out'}
+                        </button>
                     </>
                 )}
             </Form>

@@ -115,7 +115,8 @@ return [
     */
 
     'limiters' => [
-        'login' => 'login',
+        // The action-based limiter counts failed logins and clears after success.
+        'login' => null,
         /* @chisel-2fa */
         'two-factor' => 'two-factor',
         /* @end-chisel-2fa */
@@ -167,9 +168,6 @@ return [
     */
 
     'features' => [
-        /* @chisel-registration */
-        Features::registration(),
-        /* @end-chisel-registration */
         Features::resetPasswords(),
         /* @chisel-email-verification */
         Features::emailVerification(),

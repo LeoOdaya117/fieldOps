@@ -1,0 +1,516 @@
+import {
+    act,
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type {
+    NotificationItem,
+    NotificationSummary,
+} from '@/features/notifications/types';
+
+const mocks = vi.hoisted(() => ({
+    page: {
+        props: {
+            notifications: {
+                total: 0,
+                unread: 0,
+                items: [],
+            } as NotificationSummary,
+            system: { timezone: 'Asia/Manila' },
+        },
+    },
+    patch: vi.fn(),
+    transform: vi.fn(),
+    visit: vi.fn(),
+    navigateExport: vi.fn(),
+    reload: vi.fn(),
+    mobile: false,
+}));
+vi.mock('@inertiajs/react', () => ({
+    usePage: () => mocks.page,
+    useForm: () => ({
+        patch: mocks.patch,
+        transform: mocks.transform,
+        processing: false,
+        errors: {},
+    }),
+    router: { visit: mocks.visit, reload: mocks.reload },
+    Head: () => null,
+    Link: ({
+        href,
+        children,
+        ...props
+    }: {
+        href: string | { url: string };
+        children: ReactNode;
+    }) => (
+        <a href={typeof href === 'string' ? href : href.url} {...props}>
+            {children}
+        </a>
+    ),
+}));
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => mocks.mobile }));
+vi.mock('@/features/exports/lib/browser-download', () => ({
+    startBrowserDownload: mocks.navigateExport,
+}));
+
+import { NotificationProvider } from '@/features/notifications/notification-provider';
+import { NotificationBell } from '@/features/notifications/components/notification-bell';
+import { NotificationRow } from '@/features/notifications/components/notification-list';
+import NotificationsPage from '@/pages/notifications/index';
+
+const item: NotificationItem = {
+    id: 'a1',
+    type: 'registration.submitted',
+    title: 'Registration awaiting review',
+    body: 'An applicant submitted a registration.',
+    createdAt: '2026-09-13T00:00:00Z',
+    readAt: null,
+    actionUrl: '/access/users/registrations/1',
+};
+const fetched = vi.fn();
+function bell() {
+    return render(
+        <NotificationProvider>
+            <NotificationBell />
+        </NotificationProvider>,
+    );
+}
+
+beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.mobile = false;
+    mocks.page.props.notifications = { total: 1, unread: 1, items: [item] };
+    fetched.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => mocks.page.props.notifications,
+    });
+    vi.stubGlobal('fetch', fetched);
+    Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: 'visible',
+    });
+});
+afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+});
+
+describe('notifications', () => {
+    it.each([0, 1, 99, 100])(
+        'announces the exact %i count and bounds its badge',
+        (count) => {
+            mocks.page.props.notifications = {
+                total: count,
+                unread: count,
+                items: [],
+            };
+            bell();
+            const trigger = screen.getByRole('button', {
+                name: `Notifications, ${count} unread`,
+            });
+            expect(trigger.textContent).toBe(
+                count ? (count > 99 ? '99+' : String(count)) : '',
+            );
+        },
+    );
+
+    it.each([false, true])(
+        'opens an accessible preview without marking read (mobile=%s)',
+        async (mobile) => {
+            mocks.mobile = mobile;
+            bell();
+            const trigger = screen.getByRole('button', {
+                name: 'Notifications, 1 unread',
+            });
+            fireEvent.click(trigger);
+            expect(await screen.findByRole('dialog')).toBeVisible();
+            expect(await screen.findByText(item.title)).toBeVisible();
+            expect(screen.getByText('Unread', { exact: true })).toBeVisible();
+            expect(
+                screen.getByRole('link', { name: 'View all notifications' }),
+            ).toHaveAttribute('href', '/notifications');
+            await waitFor(() => expect(fetched).toHaveBeenCalledTimes(1));
+            expect(mocks.patch).not.toHaveBeenCalled();
+            fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+            await waitFor(() =>
+                expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+            );
+            await waitFor(() => expect(trigger).toHaveFocus());
+        },
+    );
+
+    it.each([false, true])(
+        'keeps the notification panel within its maximum height (mobile=%s)',
+        async (mobile) => {
+            mocks.mobile = mobile;
+            bell();
+            fireEvent.click(
+                screen.getByRole('button', { name: 'Notifications, 1 unread' }),
+            );
+
+            expect(await screen.findByRole('dialog')).toHaveStyle({
+                maxHeight: mobile
+                    ? 'min(32rem, 85dvh)'
+                    : 'min(32rem, calc(100dvh - 6rem))',
+            });
+        },
+    );
+
+    it('shows only unread items in the bell preview', async () => {
+        const readItem = {
+            ...item,
+            id: 'read-item',
+            title: 'Already read update',
+            readAt: '2026-09-13T00:01:00Z',
+        };
+        mocks.page.props.notifications = {
+            total: 2,
+            unread: 1,
+            items: [readItem, item],
+        };
+        bell();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Notifications, 1 unread' }),
+        );
+
+        expect(await screen.findByText(item.title)).toBeVisible();
+        expect(screen.queryByText(readItem.title)).not.toBeInTheDocument();
+    });
+
+    it('shows a skeleton while refreshing the notification preview', async () => {
+        let resolveSummary: (value: {
+            ok: boolean;
+            status: number;
+            json: () => Promise<NotificationSummary>;
+        }) => void = () => {};
+        fetched.mockReturnValue(
+            new Promise((resolve) => {
+                resolveSummary = resolve;
+            }),
+        );
+        bell();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Notifications, 1 unread' }),
+        );
+
+        expect(
+            await screen.findByRole('status', {
+                name: 'Loading notifications',
+            }),
+        ).toBeVisible();
+        expect(
+            screen.getByRole('heading', { name: 'Notifications' }),
+        ).toBeVisible();
+        expect(
+            screen.getByRole('link', { name: 'View all notifications' }),
+        ).toBeVisible();
+        expect(screen.queryByText(item.title)).not.toBeInTheDocument();
+
+        await act(async () => {
+            resolveSummary({
+                ok: true,
+                status: 200,
+                json: async () => ({ total: 1, unread: 1, items: [item] }),
+            });
+        });
+
+        expect(await screen.findByText(item.title)).toBeVisible();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    it('keeps the empty state hidden until an empty refresh completes', async () => {
+        const readItem = {
+            ...item,
+            id: 'already-read',
+            title: 'Already read update',
+            readAt: '2026-09-13T00:01:00Z',
+        };
+        mocks.page.props.notifications = {
+            total: 35,
+            unread: 0,
+            items: [readItem],
+        };
+        let resolveSummary: (value: {
+            ok: boolean;
+            status: number;
+            json: () => Promise<NotificationSummary>;
+        }) => void = () => {};
+        fetched.mockReturnValue(
+            new Promise((resolve) => {
+                resolveSummary = resolve;
+            }),
+        );
+        bell();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Notifications, 0 unread' }),
+        );
+
+        expect(
+            await screen.findByRole('status', {
+                name: 'Loading notifications',
+            }),
+        ).toBeVisible();
+        expect(
+            screen.queryByText('No notifications here'),
+        ).not.toBeInTheDocument();
+
+        await act(async () => {
+            resolveSummary({
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    total: 35,
+                    unread: 0,
+                    items: [readItem],
+                }),
+            });
+        });
+
+        expect(await screen.findByText("You're all caught up")).toBeVisible();
+        expect(screen.queryByText(readItem.title)).not.toBeInTheDocument();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    it('polls only while visible and stops after expiry', async () => {
+        vi.useFakeTimers();
+        bell();
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(60_000);
+        });
+        expect(fetched).toHaveBeenCalledTimes(1);
+        Object.defineProperty(document, 'visibilityState', {
+            configurable: true,
+            value: 'hidden',
+        });
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(60_000);
+        });
+        expect(fetched).toHaveBeenCalledTimes(1);
+        fetched.mockResolvedValue({ status: 401, ok: false });
+        Object.defineProperty(document, 'visibilityState', {
+            configurable: true,
+            value: 'visible',
+        });
+        await act(async () => {
+            fireEvent(document, new Event('visibilitychange'));
+        });
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(120_000);
+        });
+        expect(fetched).toHaveBeenCalledTimes(2);
+    });
+
+    it('preserves the preview on failure and retries', async () => {
+        fetched.mockRejectedValueOnce(new Error('Connection interrupted'));
+        bell();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Notifications, 1 unread' }),
+        );
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Connection interrupted',
+        );
+        expect(screen.getByText(item.title)).toBeVisible();
+        fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+        await waitFor(() =>
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument(),
+        );
+    });
+
+    it('marks read before navigating and supports unread and failure states', async () => {
+        const { rerender } = render(
+            <ul>
+                <NotificationRow item={item} />
+            </ul>,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'View details' }));
+        expect(mocks.transform.mock.calls[0][0]()).toEqual({ read: true });
+        expect(mocks.visit).not.toHaveBeenCalled();
+        act(() => mocks.patch.mock.calls[0][1].onSuccess());
+        expect(mocks.visit).toHaveBeenCalledWith(item.actionUrl);
+        rerender(
+            <ul>
+                <NotificationRow item={{ ...item, readAt: item.createdAt }} />
+            </ul>,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Mark as unread' }));
+        expect(mocks.transform.mock.lastCall?.[0]()).toEqual({ read: false });
+        act(() => mocks.patch.mock.lastCall?.[1].onNetworkError());
+        expect(screen.getByRole('alert')).toHaveTextContent('Could not update');
+    });
+
+    it('opens a ready export with browser navigation only after marking it read', () => {
+        const exportItem: NotificationItem = {
+            ...item,
+            id: 'export-1',
+            type: 'export.ready',
+            title: 'Your export is ready',
+            actionUrl: '/exports/artifacts/print/view',
+        };
+        const onOpen = vi.fn();
+        render(
+            <ul>
+                <NotificationRow item={exportItem} onOpen={onOpen} />
+            </ul>,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Open export' }));
+        expect(mocks.transform.mock.calls[0][0]()).toEqual({ read: true });
+        expect(mocks.navigateExport).not.toHaveBeenCalled();
+        expect(mocks.visit).not.toHaveBeenCalled();
+
+        act(() => mocks.patch.mock.calls[0][1].onSuccess());
+        expect(onOpen).toHaveBeenCalledTimes(1);
+        expect(mocks.navigateExport).toHaveBeenCalledWith(exportItem.actionUrl);
+        expect(mocks.visit).not.toHaveBeenCalled();
+    });
+
+    it('opens the completed database backup details after marking the notice read', () => {
+        const backupItem: NotificationItem = {
+            ...item,
+            id: 'backup-notification-1',
+            type: 'backup.ready',
+            title: 'Database backup ready',
+            body: 'Your backup has completed and is available in Backup & Restore.',
+            actionUrl: '/settings/system/backups/backup-1',
+        };
+
+        render(
+            <ul>
+                <NotificationRow item={backupItem} />
+            </ul>,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'View backup' }));
+        expect(mocks.transform.mock.calls[0][0]()).toEqual({ read: true });
+        expect(mocks.visit).not.toHaveBeenCalled();
+
+        act(() => mocks.patch.mock.calls[0][1].onSuccess());
+        expect(mocks.visit).toHaveBeenCalledWith(backupItem.actionUrl);
+    });
+
+    it('keeps a failed export notification open for retry', () => {
+        render(
+            <ul>
+                <NotificationRow
+                    item={{
+                        ...item,
+                        type: 'export.ready',
+                        actionUrl: '/exports/artifacts/1/download',
+                    }}
+                />
+            </ul>,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Open export' }));
+        act(() => mocks.patch.mock.calls[0][1].onNetworkError());
+
+        expect(mocks.navigateExport).not.toHaveBeenCalled();
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Could not update this notification',
+        );
+    });
+
+    it('renders filters, pagination, counts, and an empty inbox', () => {
+        mocks.page.props.notifications = { total: 25, unread: 3, items: [] };
+        render(
+            <NotificationProvider>
+                <NotificationsPage
+                    filter="unread"
+                    inbox={{
+                        data: [],
+                        total: 3,
+                        current_page: 1,
+                        last_page: 2,
+                        prev_page_url: null,
+                        next_page_url: '/notifications?filter=unread&page=2',
+                    }}
+                />
+            </NotificationProvider>,
+        );
+        expect(
+            screen.getByRole('heading', { name: 'Notifications' }),
+        ).toBeVisible();
+        expect(screen.getByText(/25 total · 3 unread/)).toBeVisible();
+        expect(screen.getByRole('link', { name: 'Unread' })).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(screen.getByRole('link', { name: 'Next' })).toHaveAttribute(
+            'href',
+            '/notifications?filter=unread&page=2',
+        );
+        expect(screen.getByText('No notifications here')).toBeVisible();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Mark all as read' }),
+        );
+        expect(mocks.patch).toHaveBeenCalledWith(
+            '/notifications/read-all',
+            expect.objectContaining({ preserveScroll: true }),
+        );
+    });
+
+    it('updates counts from polling and from subsequent Inertia props', async () => {
+        const rendered = bell();
+        fetched.mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({ total: 2, unread: 2, items: [item] }),
+        });
+        await act(async () => {
+            fireEvent(window, new Event('focus'));
+        });
+        expect(
+            screen.getByRole('button', { name: 'Notifications, 2 unread' }),
+        ).toBeVisible();
+        mocks.page.props.notifications = { total: 2, unread: 0, items: [] };
+        rendered.rerender(
+            <NotificationProvider>
+                <NotificationBell />
+            </NotificationProvider>,
+        );
+        expect(
+            screen.getByRole('button', { name: 'Notifications, 0 unread' }),
+        ).toBeVisible();
+    });
+
+    it('cancels an old refresh when Inertia replaces the summary', async () => {
+        let release: (value: unknown) => void = () => {};
+        fetched.mockReturnValue(
+            new Promise((resolve) => {
+                release = resolve;
+            }),
+        );
+        const rendered = bell();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Notifications, 1 unread' }),
+        );
+        fireEvent(window, new Event('focus'));
+        expect(fetched).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole('status')).toBeVisible();
+        mocks.page.props.notifications = { total: 1, unread: 0, items: [] };
+        rendered.rerender(
+            <NotificationProvider>
+                <NotificationBell />
+            </NotificationProvider>,
+        );
+        await act(async () => {
+            release({
+                ok: true,
+                status: 200,
+                json: async () => ({ total: 1, unread: 1, items: [item] }),
+            });
+        });
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Notifications, 0 unread' }),
+        ).toBeVisible();
+    });
+});

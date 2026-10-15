@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Actions\Notifications\ReadNotificationInbox;
+use App\Support\PlatformBranding;
+use App\Support\SystemSettings;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,12 +38,55 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        $authorization = [
+            'role' => null,
+            'permissions' => [],
+            'isSuperAdmin' => false,
+        ];
+
+        if ($user !== null) {
+            $user->loadMissing('roles');
+            $role = $user->roles->first();
+            $authorization = [
+                'role' => $role === null ? null : [
+                    'id' => $role->getKey(),
+                    'name' => $role->name,
+                    'displayName' => $role->display_name,
+                    'isSystem' => (bool) $role->is_system,
+                ],
+                'permissions' => $user->isActive() && $user->isSuperAdmin()
+                    ? config('rbac.permissions', [])
+                    : $user->getAllPermissions()->pluck('name')->values()->all(),
+                'isSuperAdmin' => $user->isActive() && $user->isSuperAdmin(),
+            ];
+        }
+
         return [
             ...parent::share($request),
-            'name' => config('app.name'),
-            'auth' => [
-                'user' => $request->user(),
+            'name' => SystemSettings::name(),
+            'system' => [
+                'name' => SystemSettings::name(),
+                'timezone' => SystemSettings::timezone(),
+                'theme' => SystemSettings::theme(),
+                'idleTimeoutSeconds' => SystemSettings::idleTimeoutSeconds(),
+                'branding' => PlatformBranding::values(),
             ],
+            'auth' => [
+                'user' => $user?->makeHidden(['roles', 'permissions']),
+                'authorization' => $authorization,
+            ],
+            'flash' => [
+                'success' => fn (): mixed => $request->session()->get('success'),
+                'error' => fn (): mixed => $request->session()->get('error'),
+                'warning' => fn (): mixed => $request->session()->get('warning'),
+                'info' => fn (): mixed => $request->session()->get('info'),
+                'message' => fn (): mixed => $request->session()->get('message'),
+                'exportResult' => fn (): mixed => $request->session()->get('exportResult'),
+            ],
+            'notifications' => fn (): array => $user !== null && $user->isActive() && $user->email_verified_at !== null
+                ? app(ReadNotificationInbox::class)->summary($user)
+                : ['total' => 0, 'unread' => 0, 'items' => []],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

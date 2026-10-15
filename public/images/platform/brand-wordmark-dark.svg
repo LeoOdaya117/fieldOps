@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 100" role="img" aria-labelledby="title">
+  <title id="title">FieldOps</title>
+  <g fill="none" stroke="#ffffff" stroke-width="9" stroke-linejoin="round">
+    <path d="M48 11 84 32v36L48 89 12 68V32z"/>
+    <path d="m12 32 36 21 36-21M48 53v36" opacity=".72"/>
+  </g>
+  <text x="112" y="66" fill="#ffffff" font-family="Instrument Sans,Arial,sans-serif" font-size="48" font-weight="750" letter-spacing="-2">FieldOps</text>
+</svg>

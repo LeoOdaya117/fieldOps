@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Init"
+  short_description: "Refresh verified project architecture knowledge."
+  default_prompt: "Use $project-init to inspect this repository and update its saved project knowledge."

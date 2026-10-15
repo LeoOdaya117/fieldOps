@@ -1,5 +1,10 @@
-import AppLayoutTemplate from '@/layouts/app/app-sidebar-layout';
+import { usePage } from '@inertiajs/react';
+import { NotificationProvider } from '@/features/notifications/notification-provider';
+import { FlashAlert } from '@/components/flash-alert';
+import { PlatformRuntime } from '@/components/platform-runtime';
 import type { BreadcrumbItem } from '@/types';
+import { platformLayoutRegistry } from '@/lib/platform-themes';
+import { dashboard } from '@/routes';
 
 export default function AppLayout({
     breadcrumbs = [],
@@ -8,9 +13,20 @@ export default function AppLayout({
     breadcrumbs?: BreadcrumbItem[];
     children: React.ReactNode;
 }) {
+    const { system } = usePage().props;
+    const AppLayoutTemplate = platformLayoutRegistry[system.theme];
+    const resolvedBreadcrumbs =
+        breadcrumbs[0]?.title === 'Dashboard'
+            ? breadcrumbs
+            : [{ title: 'Dashboard', href: dashboard() }, ...breadcrumbs];
+
     return (
-        <AppLayoutTemplate breadcrumbs={breadcrumbs}>
-            {children}
-        </AppLayoutTemplate>
+        <NotificationProvider>
+            <PlatformRuntime />
+            <AppLayoutTemplate breadcrumbs={resolvedBreadcrumbs}>
+                <FlashAlert />
+                {children}
+            </AppLayoutTemplate>
+        </NotificationProvider>
     );
 }

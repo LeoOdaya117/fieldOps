@@ -10,13 +10,17 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
+        "ext-intl": "*",
+        "dompdf/dompdf": "~3.1",
         "inertiajs/inertia-laravel": "^3.0",
         "laravel/chisel": "^0.1.0",
         "laravel/fortify": "^1.37.2",
         "laravel/framework": "^13.17",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
-        "laravel/wayfinder": "^0.1.14"
+        "laravel/wayfinder": "^0.1.14",
+        "phpoffice/phpspreadsheet": "5.10.0",
+        "spatie/laravel-permission": "^8.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",
@@ -42,11 +46,12 @@
     },
     "scripts": {
         "setup": [
-            "composer install",
+            "composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
+            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --force",
-            "npm install",
+            "npm ci --no-audit --no-fund",
             "npm run build"
         ],
         "dev": [
@@ -64,6 +69,8 @@
             "npm run lint:check",
             "npm run format:check",
             "npm run types:check",
+            "npm run test:unit -- --run",
+            "npm run build",
             "@test"
         ],
         "types:check": [
@@ -107,6 +114,9 @@
     },
     "config": {
         "optimize-autoloader": true,
+        "platform": {
+            "php": "8.3.0"
+        },
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {

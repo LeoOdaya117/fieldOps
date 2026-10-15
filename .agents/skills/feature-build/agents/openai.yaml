@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature Build"
+  short_description: "Implement a saved plan and verify the integrated change."
+  default_prompt: "Use $feature-build to implement the selected saved feature plan."

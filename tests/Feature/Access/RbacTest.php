@@ -1,0 +1,677 @@
+<?php
+
+namespace Tests\Feature\Access;
+
+use App\Actions\Rbac\AssignRoleToUser;
+use App\Actions\Rbac\ChangeUserStatus;
+use App\Actions\Rbac\InviteUser;
+use App\Enums\RoleName;
+use App\Enums\UserStatus;
+use App\Models\AccessAuditEvent;
+use App\Models\Role;
+use App\Models\User;
+use App\Models\UserInvitation;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Testing\Fluent\AssertableJson as Assert;
+use Illuminate\Validation\ValidationException;
+use Tests\TestCase;
+
+class RbacTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_user_without_a_role_cannot_open_the_dashboard(): void
+    {
+        $user = User::factory()->create();
+        $user->roles()->detach();
+
+        $this->actingAs($user)->get(route('dashboard'))->assertForbidden();
+    }
+
+    public function test_super_admin_can_open_access_management_without_two_factor_confirmation(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+
+        $this->assertTrue($owner->isActive());
+        $this->assertTrue($owner->isSuperAdmin());
+        $this->assertNull($owner->two_factor_confirmed_at);
+
+        $this->actingAs($owner)->get(route('access.users.index'))->assertOk();
+    }
+
+    public function test_access_index_payloads_include_standard_audit_fields(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+
+        $this->actingAs($owner);
+
+        $user = User::factory()->create([
+            'name' => 'Audited user',
+            'email' => 'audited-user@example.com',
+        ]);
+        $role = Role::query()->create([
+            'name' => 'audited_role',
+            'guard_name' => 'web',
+            'display_name' => 'Audited role',
+            'description' => 'Audit payload test role.',
+            'is_system' => false,
+        ]);
+        UserInvitation::query()->create([
+            'email' => 'audited-invitation@example.com',
+            'role_id' => $role->id,
+            'invited_by' => $owner->id,
+            'token_hash' => UserInvitation::hashToken('audit-test-token'),
+            'expires_at' => now()->addDay(),
+        ]);
+
+        $this->get(route('access.users.index', ['search' => 'Audited user']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('users.data.0.id', $user->id)
+                ->where('users.data.0.createdBy.id', $owner->id)
+                ->where('users.data.0.updatedBy.id', $owner->id)
+                ->where('users.data.0.recordStatus', 1)
+                ->has('users.data.0.createdAt')
+                ->has('users.data.0.updatedAt')
+                ->where('invitations.0.createdBy.id', $owner->id)
+                ->where('invitations.0.updatedBy.id', $owner->id)
+                ->where('invitations.0.recordStatus', 1)
+                ->has('invitations.0.createdAt')
+                ->has('invitations.0.updatedAt'));
+
+        $this->get(route('access.roles.index', ['search' => 'Audited role']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('roles.data.0.id', $role->id)
+                ->where('roles.data.0.createdBy.id', $owner->id)
+                ->where('roles.data.0.updatedBy.id', $owner->id)
+                ->where('roles.data.0.recordStatus', 1)
+                ->has('roles.data.0.createdAt')
+                ->has('roles.data.0.updatedAt'));
+    }
+
+    public function test_access_indexes_sort_audit_columns_without_audit_filters(): void
+    {
+        $owner = User::factory()->create(['name' => 'Audit owner']);
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+
+        $this->actingAs($owner);
+        $user = User::factory()->create([
+            'name' => 'Filterable user',
+            'email' => 'filterable-user@example.com',
+        ]);
+        $role = Role::query()->create([
+            'name' => 'filterable_role',
+            'guard_name' => 'web',
+            'display_name' => 'Filterable role',
+            'description' => 'Audit filter test role.',
+            'is_system' => false,
+        ]);
+        UserInvitation::query()->create([
+            'email' => 'filterable-invitation@example.com',
+            'role_id' => $role->id,
+            'invited_by' => $owner->id,
+            'token_hash' => UserInvitation::hashToken('filterable-invitation-token'),
+            'expires_at' => now()->addDay(),
+        ]);
+
+        $this->get(route('access.users.index', [
+            'search' => 'Filterable user',
+            'created_by' => $owner->email,
+            'sort' => 'created_by',
+            'direction' => 'desc',
+        ]))->assertInertia(fn (Assert $page) => $page
+            ->where('users.data.0.id', $user->id)
+            ->where('filters.sort', 'created_by')
+            ->where('filters.direction', 'desc')
+            ->missing('filters.createdBy')
+            ->where('filters.recordStatus', 'active'));
+
+        $this->get(route('access.users.index', [
+            'invitation_search' => 'filterable-invitation@example.com',
+            'invitation_created_by' => $owner->email,
+            'invitation_sort' => 'created_by',
+            'invitation_direction' => 'desc',
+        ]))->assertInertia(fn (Assert $page) => $page
+            ->where('invitations.0.email', 'filterable-invitation@example.com')
+            ->where('invitationFilters.sort', 'created_by')
+            ->where('invitationFilters.direction', 'desc')
+            ->missing('invitationFilters.createdBy'));
+
+        $this->get(route('access.roles.index', [
+            'search' => 'Filterable role',
+            'created_by' => $owner->email,
+            'sort' => 'created_by',
+            'direction' => 'desc',
+        ]))->assertInertia(fn (Assert $page) => $page
+            ->where('roles.data.0.id', $role->id)
+            ->where('filters.sort', 'created_by')
+            ->where('filters.direction', 'desc')
+            ->missing('filters.createdBy')
+            ->where('filters.recordStatus', 'active'));
+    }
+
+    public function test_super_admin_can_view_audit_history(): void
+    {
+        $owner = User::factory()->withTwoFactor()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+
+        $this->actingAs($owner)->get(route('access.audit.index'))->assertOk();
+    }
+
+    public function test_access_resources_have_authorized_details_pages(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+        $user = User::factory()->create();
+        $role = Role::query()->where('name', RoleName::User->value)->firstOrFail();
+        $event = AccessAuditEvent::query()->create([
+            'event' => 'test.details',
+            'subject_type' => User::class,
+            'subject_id' => (string) $user->id,
+            'occurred_at' => now(),
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('access.users.show', $user))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('access/user-show'));
+        $this->actingAs($owner)
+            ->get(route('access.roles.show', $role))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('access/role-show'));
+        $this->actingAs($owner)
+            ->get(route('access.audit.show', $event))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('access/audit-show'));
+    }
+
+    public function test_admin_cannot_grant_super_admin_or_permissions_they_do_not_have(): void
+    {
+        $admin = User::factory()->withTwoFactor()->create();
+        $admin->syncRoles(RoleName::Admin->value);
+        $target = User::factory()->create();
+        $owner = Role::query()->where('name', RoleName::SuperAdmin->value)->firstOrFail();
+
+        $this->actingAs($admin)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->patch(route('access.users.role', $target), ['role_id' => $owner->id])
+            ->assertForbidden();
+
+        $this->assertSame(RoleName::User->value, $target->fresh()->roles->first()->name);
+    }
+
+    public function test_admin_can_create_a_custom_role_with_permissions_they_have(): void
+    {
+        $admin = User::factory()->withTwoFactor()->create();
+        $admin->syncRoles(RoleName::Admin->value);
+
+        $this->actingAs($admin)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->post(route('access.roles.store'), [
+                'name' => 'quality_reviewer',
+                'display_name' => 'Quality reviewer',
+                'description' => 'Reviews completed work.',
+                'permissions' => ['dashboard.view', 'audit.view'],
+            ])
+            ->assertRedirect(route('access.roles.index'));
+
+        $this->assertDatabaseHas('roles', ['name' => 'quality_reviewer', 'is_system' => 0]);
+        $this->assertDatabaseHas('roles', [
+            'name' => 'quality_reviewer',
+            'created_by' => $admin->id,
+            'updated_by' => $admin->id,
+            'record_status' => 1,
+        ]);
+        $role = Role::query()->where('name', 'quality_reviewer')->firstOrFail();
+        $this->assertSame(['audit.view', 'dashboard.view'], $role->permissions()->orderBy('name')->pluck('name')->all());
+    }
+
+    public function test_admin_can_open_dedicated_role_create_and_edit_pages_but_not_protected_role_edit(): void
+    {
+        $admin = User::factory()->create();
+        $admin->syncRoles(RoleName::Admin->value);
+        $custom = Role::query()->create([
+            'name' => 'quality_reviewer',
+            'guard_name' => 'web',
+            'display_name' => 'Quality reviewer',
+            'description' => 'Reviews completed work.',
+            'is_system' => false,
+        ]);
+        $protected = Role::query()->where('name', RoleName::Admin->value)->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('access.roles.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('access/roles')
+                ->where('canCreate', true)
+                ->has('roles'));
+
+        $this->actingAs($admin)
+            ->get(route('access.roles.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('access/role-create')
+                ->has('permissions'));
+
+        $this->actingAs($admin)
+            ->get(route('access.roles.edit', $custom))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('access/role-edit')
+                ->where('role.name', 'quality_reviewer'));
+
+        $this->actingAs($admin)
+            ->get(route('access.roles.edit', $protected))
+            ->assertForbidden();
+    }
+
+    public function test_admin_can_open_direct_user_creation_page_and_optional_invitation_page(): void
+    {
+        $admin = User::factory()->create();
+        $admin->syncRoles(RoleName::Admin->value);
+
+        $this->actingAs($admin)
+            ->get(route('access.users.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('access/user-create')
+                ->has('roles'));
+
+        $this->actingAs($admin)
+            ->get(route('access.users.invite.create'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('access/user-invite')
+                ->has('roles'));
+    }
+
+    public function test_basic_user_cannot_open_direct_creation_or_invitation_pages(): void
+    {
+        $user = User::factory()->create();
+        $user->syncRoles(RoleName::User->value);
+
+        $this->actingAs($user)
+            ->get(route('access.users.create'))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->get(route('access.users.invite.create'))
+            ->assertForbidden();
+    }
+
+    public function test_super_admin_can_manage_system_roles_without_read_only_restrictions(): void
+    {
+        $superAdmin = User::factory()->create();
+        $superAdmin->syncRoles(RoleName::SuperAdmin->value);
+        $protected = Role::query()->where('name', RoleName::Admin->value)->firstOrFail();
+
+        $this->actingAs($superAdmin)
+            ->get(route('access.roles.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('canManageSystemRoles', true)
+                ->where('canCreate', true));
+
+        $this->actingAs($superAdmin)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->patch(route('access.roles.update', $protected), [
+                'name' => $protected->name,
+                'display_name' => 'Operations administrator',
+                'description' => $protected->description,
+                'permissions' => config('rbac.permissions'),
+            ])
+            ->assertRedirect(route('access.roles.index'));
+
+        $this->assertDatabaseHas('roles', [
+            'id' => $protected->id,
+            'display_name' => 'Operations administrator',
+        ]);
+    }
+
+    public function test_super_admin_can_bulk_suspend_users_through_the_access_endpoint(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+        $targets = User::factory()->count(2)->create();
+
+        $this->actingAs($owner)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->from(route('access.users.index'))
+            ->patch(route('access.users.bulk.suspend'), [
+                'ids' => $targets->pluck('id')->all(),
+            ])
+            ->assertRedirect(route('access.users.index'));
+
+        $targets->each(fn (User $target) => $this->assertSame(
+            UserStatus::Suspended,
+            $target->fresh()->status,
+        ));
+        $this->assertSame(2, AccessAuditEvent::query()->where('event', 'user.suspended')->count());
+    }
+
+    public function test_standard_admin_cannot_bulk_delete_a_system_role(): void
+    {
+        $admin = User::factory()->create();
+        $admin->syncRoles(RoleName::Admin->value);
+        $systemRole = Role::query()->where('name', RoleName::Admin->value)->firstOrFail();
+
+        $this->actingAs($admin)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->delete(route('access.roles.bulk.destroy'), ['ids' => [$systemRole->id]])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('roles', ['id' => $systemRole->id]);
+    }
+
+    public function test_role_deletion_marks_the_record_deleted_without_removing_it(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+        $role = Role::query()->create([
+            'name' => 'temporary_role',
+            'guard_name' => 'web',
+            'display_name' => 'Temporary role',
+            'description' => 'Used for a soft-delete assertion.',
+            'is_system' => false,
+        ]);
+
+        $this->actingAs($owner)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->delete(route('access.roles.destroy', $role))
+            ->assertRedirect(route('access.roles.index'));
+
+        $this->assertDatabaseHas('roles', [
+            'id' => $role->id,
+            'record_status' => 0,
+        ]);
+        $this->assertNull(Role::query()->whereKey($role->id)->first());
+        $this->assertTrue(Role::withTrashed()->whereKey($role->id)->firstOrFail()->trashed());
+
+        $bulkRole = Role::query()->create([
+            'name' => 'bulk_temporary_role',
+            'guard_name' => 'web',
+            'display_name' => 'Bulk temporary role',
+            'is_system' => false,
+        ]);
+
+        $this->assertSame(1, Role::withTrashed()->whereKey($bulkRole->id)->delete());
+        $this->assertDatabaseHas('roles', [
+            'id' => $bulkRole->id,
+            'record_status' => 0,
+        ]);
+    }
+
+    public function test_roles_with_unaccepted_invitations_cannot_be_deleted_or_bulk_deleted(): void
+    {
+        $superAdmin = User::factory()->create();
+        $superAdmin->syncRoles(RoleName::SuperAdmin->value);
+        $expiredRole = Role::query()->create([
+            'name' => 'expired_invitation_role',
+            'guard_name' => 'web',
+            'display_name' => 'Expired invitation role',
+            'is_system' => false,
+        ]);
+        $bulkRole = Role::query()->create([
+            'name' => 'inactive_invitation_role',
+            'guard_name' => 'web',
+            'display_name' => 'Inactive invitation role',
+            'is_system' => false,
+        ]);
+
+        UserInvitation::query()->create([
+            'email' => 'expired-role-invite@example.com',
+            'role_id' => $expiredRole->id,
+            'invited_by' => $superAdmin->id,
+            'token_hash' => UserInvitation::hashToken('expired-role-invite-token'),
+            'expires_at' => now()->subDay(),
+        ]);
+        $inactiveInvitation = UserInvitation::query()->create([
+            'email' => 'inactive-role-invite@example.com',
+            'role_id' => $bulkRole->id,
+            'invited_by' => $superAdmin->id,
+            'token_hash' => UserInvitation::hashToken('inactive-role-invite-token'),
+            'expires_at' => now()->subDay(),
+        ]);
+        $inactiveInvitation->forceFill(['record_status' => 0])->saveQuietly();
+
+        $this->actingAs($superAdmin)->withSession(['auth.password_confirmed_at' => time()])
+            ->from(route('access.roles.index'))
+            ->delete(route('access.roles.destroy', $expiredRole))
+            ->assertSessionHasErrors('role');
+
+        $this->delete(route('access.roles.bulk.destroy'), ['ids' => [$bulkRole->id]])
+            ->assertSessionHasErrors('role');
+
+        $this->assertSame(1, Role::query()->findOrFail($expiredRole->id)->record_status);
+        $this->assertSame(1, Role::query()->findOrFail($bulkRole->id)->record_status);
+    }
+
+    public function test_bulk_user_status_requires_at_least_one_selected_user(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+
+        $this->actingAs($owner)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->patch(route('access.users.bulk.suspend'), ['ids' => []])
+            ->assertSessionHasErrors('ids');
+    }
+
+    public function test_role_index_applies_search_and_type_filters(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+        Role::query()->create([
+            'name' => 'regional_manager',
+            'guard_name' => 'web',
+            'display_name' => 'Regional manager',
+            'description' => 'Coordinates regional work.',
+            'is_system' => false,
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('access.roles.index', ['search' => 'regional', 'type' => 'custom']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.search', 'regional')
+                ->where('filters.type', 'custom')
+                ->has('roles.data', 1)
+                ->where('roles.data.0.name', 'regional_manager'));
+    }
+
+    public function test_role_index_accepts_an_allowlisted_sort(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+
+        $this->actingAs($owner)
+            ->get(route('access.roles.index', [
+                'sort' => 'permissions_count',
+                'direction' => 'desc',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.sort', 'permissions_count')
+                ->where('filters.direction', 'desc'));
+    }
+
+    public function test_access_tables_default_to_fifty_rows_and_accept_one_hundred(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+
+        $this->actingAs($owner)
+            ->get(route('access.roles.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.perPage', 50)
+                ->where('roles.per_page', 50));
+
+        $this->actingAs($owner)
+            ->get(route('access.users.index', ['per_page' => 100]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.perPage', 100)
+                ->where('users.per_page', 100));
+
+        $this->actingAs($owner)
+            ->get(route('access.audit.index', ['per_page' => 100]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.perPage', 100)
+                ->where('events.per_page', 100));
+    }
+
+    public function test_access_table_page_size_falls_back_for_unrecognized_values(): void
+    {
+        $owner = User::factory()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+
+        $this->actingAs($owner)
+            ->get(route('access.roles.index', ['per_page' => 101]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.perPage', 50)
+                ->where('roles.per_page', 50));
+    }
+
+    public function test_last_active_super_admin_cannot_be_suspended_or_reassigned(): void
+    {
+        $owner = User::factory()->withTwoFactor()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+        $actor = User::factory()->create();
+
+        $this->expectException(ValidationException::class);
+        app(ChangeUserStatus::class)->suspend($owner, $actor);
+    }
+
+    public function test_admin_cannot_suspend_a_super_admin_even_when_another_remains(): void
+    {
+        $admin = User::factory()->withTwoFactor()->create();
+        $admin->syncRoles(RoleName::Admin->value);
+        $target = User::factory()->create();
+        $target->syncRoles(RoleName::SuperAdmin->value);
+        $remaining = User::factory()->create();
+        $remaining->syncRoles(RoleName::SuperAdmin->value);
+
+        $this->actingAs($admin)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->patch(route('access.users.suspend', $target))
+            ->assertForbidden();
+
+        try {
+            app(ChangeUserStatus::class)->suspend($target, $admin);
+            $this->fail('An Admin must not suspend a Super Admin.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('status', $exception->errors());
+        }
+
+        $this->assertSame(UserStatus::Active, $target->fresh()->status);
+        $this->assertTrue($remaining->fresh()->isSuperAdmin());
+    }
+
+    public function test_admin_cannot_demote_a_super_admin_even_when_another_remains(): void
+    {
+        $admin = User::factory()->withTwoFactor()->create();
+        $admin->syncRoles(RoleName::Admin->value);
+        $target = User::factory()->create();
+        $target->syncRoles(RoleName::SuperAdmin->value);
+        $remaining = User::factory()->create();
+        $remaining->syncRoles(RoleName::SuperAdmin->value);
+        $userRole = Role::query()->where('name', RoleName::User->value)->firstOrFail();
+
+        $this->actingAs($admin)
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->patch(route('access.users.role', $target), ['role_id' => $userRole->id])
+            ->assertForbidden();
+
+        try {
+            app(AssignRoleToUser::class)->execute($target, $userRole, $admin);
+            $this->fail('An Admin must not demote a Super Admin.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('role_id', $exception->errors());
+        }
+
+        $this->assertSame(RoleName::SuperAdmin->value, $target->fresh()->roles->first()->name);
+        $this->assertTrue($remaining->fresh()->isSuperAdmin());
+    }
+
+    public function test_suspended_users_cannot_authenticate(): void
+    {
+        $user = User::factory()->create();
+        $user->forceFill(['status' => UserStatus::Suspended])->save();
+
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password']);
+
+        $this->assertGuest();
+    }
+
+    public function test_invitation_can_be_accepted_once_with_a_role(): void
+    {
+        Notification::fake();
+        $owner = User::factory()->withTwoFactor()->create();
+        $owner->syncRoles(RoleName::SuperAdmin->value);
+        $role = Role::query()->where('name', RoleName::User->value)->firstOrFail();
+
+        $result = app(InviteUser::class)->execute('invite@example.com', $role, $owner);
+        $invitation = $result['invitation'];
+
+        $response = $this->post(route('invitation.store', ['token' => $result['token']]), [
+            'name' => 'Invited User',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ]);
+
+        $response->assertRedirect(route('dashboard'));
+        $user = User::query()->where('email', 'invite@example.com')->firstOrFail();
+        $this->assertTrue($user->hasRole(RoleName::User->value));
+        $this->assertSame(UserStatus::Active, $user->status);
+        $this->assertNotNull($user->email_verified_at);
+        $this->assertNotNull($invitation->fresh()->accepted_at);
+        $this->assertDatabaseHas('access_audit_events', ['event' => 'invitation.accepted', 'subject_id' => (string) $user->id]);
+
+        $this->post(route('invitation.store', ['token' => $result['token']]), [
+            'name' => 'Invited User',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+        ])->assertSessionHasErrors('token');
+    }
+
+    public function test_access_audit_events_are_immutable(): void
+    {
+        $event = AccessAuditEvent::query()->create(['event' => 'test', 'occurred_at' => now()]);
+
+        $this->expectException(\LogicException::class);
+        $event->update(['event' => 'changed']);
+    }
+
+    public function test_bootstrap_command_assigns_super_admin_only_when_one_does_not_exist(): void
+    {
+        $user = User::factory()->create();
+
+        $this->artisan('rbac:bootstrap-super-admin', ['email' => $user->email])
+            ->assertExitCode(0);
+
+        $this->assertTrue($user->fresh()->hasRole(RoleName::SuperAdmin->value));
+
+        $anotherUser = User::factory()->create();
+        $this->artisan('rbac:bootstrap-super-admin', ['email' => $anotherUser->email])
+            ->assertExitCode(1);
+
+        $this->assertFalse($anotherUser->fresh()->hasRole(RoleName::SuperAdmin->value));
+    }
+
+    public function test_bootstrap_command_requires_an_active_verified_user(): void
+    {
+        $unverified = User::factory()->unverified()->create();
+
+        $this->artisan('rbac:bootstrap-super-admin', ['email' => $unverified->email])
+            ->assertExitCode(1);
+
+        $suspended = User::factory()->create(['status' => UserStatus::Suspended]);
+        $this->artisan('rbac:bootstrap-super-admin', ['email' => $suspended->email])
+            ->assertExitCode(1);
+
+        $this->assertFalse($unverified->fresh()->hasRole(RoleName::SuperAdmin->value));
+        $this->assertFalse($suspended->fresh()->hasRole(RoleName::SuperAdmin->value));
+    }
+}

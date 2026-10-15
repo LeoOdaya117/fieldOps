@@ -1,16 +1,20 @@
-import AuthLayoutTemplate from '@/layouts/auth/auth-simple-layout';
+import AuthLayoutTemplate from '@/layouts/auth/auth-split-layout';
+import { FlashAlert } from '@/components/flash-alert';
+import type { AuthLayoutProps } from '@/types';
 
 export default function AuthLayout({
     title = '',
     description = '',
+    artwork,
     children,
-}: {
-    title?: string;
-    description?: string;
-    children: React.ReactNode;
-}) {
+}: AuthLayoutProps) {
     return (
-        <AuthLayoutTemplate title={title} description={description}>
+        <AuthLayoutTemplate
+            title={title}
+            description={description}
+            artwork={artwork}
+        >
+            <FlashAlert />
             {children}
         </AuthLayoutTemplate>
     );

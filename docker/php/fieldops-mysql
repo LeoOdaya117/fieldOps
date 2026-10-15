@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /opt/mysql/lib/loader --library-path /opt/mysql/lib /opt/mysql/bin/mysql "$@"

@@ -1,4 +1,7 @@
+import type { NotificationSummary } from '@/features/notifications/types';
 import type { Auth } from '@/types/auth';
+import type { PlatformBranding, PlatformTheme } from '@/types/system';
+import type { ExportResult } from '@/features/exports/types';
 
 declare module 'react' {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -12,7 +15,23 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             auth: Auth;
+            system: {
+                name: string;
+                timezone: string;
+                theme: PlatformTheme;
+                idleTimeoutSeconds: number;
+                branding: PlatformBranding;
+            };
+            notifications?: NotificationSummary;
             sidebarOpen: boolean;
+            flash?: {
+                success?: string | string[] | null;
+                error?: string | string[] | null;
+                warning?: string | string[] | null;
+                info?: string | string[] | null;
+                message?: string | string[] | null;
+                exportResult?: ExportResult | null;
+            };
             [key: string]: unknown;
         };
     }

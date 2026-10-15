@@ -1,0 +1,219 @@
+import { Activity } from 'lucide-react';
+import { IndexPage, IndexPageSection } from '@/components/index-page';
+import SearchFilterSheet from '@/components/search-filter-sheet';
+import { DataTable } from '@/components/ui/data-table';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import { AdaptiveSelect } from '@/components/ui/adaptive-select';
+import { Input } from '@/components/ui/input';
+import { DEFAULT_PAGE_SIZE } from '@/components/ui/page-size-select';
+import { visitLogTableColumns } from '@/features/access/visit-log-table-model';
+import type {
+    VisitLog,
+    VisitLogTableFilters,
+} from '@/features/access/visit-log-table-model';
+import { dashboard } from '@/routes';
+import { index as visitLogsIndex } from '@/routes/access/visit-logs';
+
+type PaginatedVisitLogs = {
+    data: VisitLog[];
+    current_page: number;
+    last_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+    per_page?: number;
+    links?: { url: string | null; label: string; active: boolean }[];
+};
+
+type Props = {
+    logs: PaginatedVisitLogs;
+    eventTypes: string[];
+    filters: VisitLogTableFilters;
+};
+
+function optionLabel(value: string): string {
+    return value
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+export default function VisitLogsPage({ logs, eventTypes, filters }: Props) {
+    const pageSize = logs.per_page ?? filters.perPage ?? DEFAULT_PAGE_SIZE;
+    const previousUrl = logs.links?.find((link) =>
+        link.label.includes('Previous'),
+    )?.url;
+    const nextUrl = logs.links?.find((link) =>
+        link.label.includes('Next'),
+    )?.url;
+
+    const tableActions = (
+        <SearchFilterSheet
+            action={visitLogsIndex.url()}
+            resetHref={visitLogsIndex.url()}
+            title="Search and filter visits"
+            description="Narrow activity by keyword, event, status, or date."
+            activeFilterCount={
+                [
+                    filters.keyword,
+                    filters.event,
+                    filters.statusCode,
+                    filters.from,
+                    filters.to,
+                ].filter(Boolean).length
+            }
+            pageSize={pageSize}
+            keyword={
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="visit-keyword"
+                        className="text-sm font-medium"
+                    >
+                        Keyword
+                    </label>
+                    <Input
+                        id="visit-keyword"
+                        name="keyword"
+                        defaultValue={filters.keyword}
+                        placeholder="IP address, location, name, or email"
+                        autoFocus
+                    />
+                </div>
+            }
+            dateRange={
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="visit-date-range"
+                        className="text-sm font-medium"
+                    >
+                        Date range
+                    </label>
+                    <DateRangePicker
+                        id="visit-date-range"
+                        from={filters.from}
+                        to={filters.to}
+                        fromName="from"
+                        toName="to"
+                        label="Visit date range"
+                    />
+                </div>
+            }
+        >
+            <div className="grid gap-2">
+                <label htmlFor="visit-event" className="text-sm font-medium">
+                    Event
+                </label>
+                <AdaptiveSelect
+                    id="visit-event"
+                    name="event"
+                    multiple
+                    defaultValue={filters.event}
+                    placeholder="All events"
+                    options={[
+                        { value: '', label: 'All events' },
+                        ...eventTypes.map((event) => ({
+                            value: event,
+                            label: optionLabel(event),
+                        })),
+                    ]}
+                />
+            </div>
+            <div className="grid gap-2">
+                <label htmlFor="visit-status" className="text-sm font-medium">
+                    Response status
+                </label>
+                <Input
+                    id="visit-status"
+                    name="status_code"
+                    inputMode="numeric"
+                    defaultValue={filters.statusCode}
+                    placeholder="403"
+                />
+            </div>
+        </SearchFilterSheet>
+    );
+
+    return (
+        <IndexPage
+            title="Visit logs"
+            description="Review successful logins and logouts with request and browser location context."
+        >
+            <IndexPageSection>
+                <DataTable
+                    caption="FieldOps visit logs"
+                    className="min-w-max"
+                    containerClassName="rounded-none border-0 shadow-none ring-0"
+                    scrollContainerClassName="px-4"
+                    data={logs.data}
+                    tableColumns={() =>
+                        visitLogTableColumns({
+                            filters,
+                            firstRowNumber: logs.from ?? 1,
+                        })
+                    }
+                    actions={tableActions}
+                    exportOptions={{
+                        dataset: 'visit-logs',
+                        permissionNamespaces: ['visit_logs'],
+                        filters: {
+                            keyword: filters.keyword,
+                            event: filters.event,
+                            outcome: filters.outcome,
+                            status_code: filters.statusCode,
+                            from: filters.from,
+                            to: filters.to,
+                            sort: filters.sort,
+                            direction: filters.direction,
+                        },
+                    }}
+                    emptyState={
+                        <div className="flex flex-col items-center gap-3 text-center">
+                            <span className="flex size-10 items-center justify-center rounded-full bg-link/10 text-link">
+                                <Activity className="size-5" />
+                            </span>
+                            <p className="text-sm font-medium">
+                                No visits match the current filters.
+                            </p>
+                            <p className="max-w-md text-sm text-muted-foreground">
+                                Login and logout activity will appear here after
+                                users authenticate.
+                            </p>
+                        </div>
+                    }
+                    columnVisibility={{
+                        storageKey: 'access.visit-logs',
+                        defaultVisibleKeys: [
+                            'occurred_at',
+                            'ip_address',
+                            'location',
+                            'user',
+                            'event',
+                            'request',
+                            'status',
+                            'user_agent',
+                        ],
+                    }}
+                    getRowKey={(log) => log.id}
+                    pagination={{
+                        currentPage: logs.current_page,
+                        lastPage: logs.last_page,
+                        total: logs.total,
+                        from: logs.from,
+                        to: logs.to,
+                        pageSize,
+                        links: logs.links,
+                        itemLabel: 'visits',
+                        previousUrl,
+                        nextUrl,
+                    }}
+                />
+            </IndexPageSection>
+        </IndexPage>
+    );
+}
+
+VisitLogsPage.layout = {
+    breadcrumbs: [
+        { title: 'Dashboard', href: dashboard() },
+        { title: 'Visit logs', href: visitLogsIndex() },
+    ],
+};

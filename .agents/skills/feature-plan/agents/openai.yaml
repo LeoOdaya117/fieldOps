@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature Plan"
+  short_description: "Create a durable, repository-grounded feature plan."
+  default_prompt: "Use $feature-plan to plan this feature and save the plan under .codex/plans/."

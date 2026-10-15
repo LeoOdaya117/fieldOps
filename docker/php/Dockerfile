@@ -1,3 +1,12 @@
+FROM mysql:8.4 AS mysql-clients
+
+# Keep the official client's own runtime together instead of mixing Oracle Linux
+# libraries into Debian's system library directories.
+RUN mkdir -p /opt/mysql/bin /opt/mysql/lib \
+    && cp /usr/bin/mysql /usr/bin/mysqldump /opt/mysql/bin/ \
+    && ldd /usr/bin/mysql /usr/bin/mysqldump | awk '{for (i=1;i<=NF;i++) if ($i ~ /^\//) print $i}' | sort -u | xargs -I '{}' cp -L '{}' /opt/mysql/lib/ \
+    && cp -L /lib64/ld-linux* /opt/mysql/lib/loader
+
 FROM php:8.4-apache
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -5,13 +14,36 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git \
+        mariadb-client \
         unzip \
         libfreetype6-dev \
+        libasound2 \
+        libatk-bridge2.0-0 \
+        libatk1.0-0 \
+        libatspi2.0-0 \
+        libcairo2 \
+        libcups2 \
+        libdbus-1-3 \
+        libdrm2 \
+        libgbm1 \
+        libglib2.0-0 \
+        libgtk-3-0 \
         libicu-dev \
         libjpeg62-turbo-dev \
         libonig-dev \
         libpng-dev \
+        libnss3 \
+        libpango-1.0-0 \
+        libsqlite3-dev \
+        libx11-xcb1 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxkbcommon0 \
+        libxrandr2 \
+        libxshmfence1 \
         libzip-dev \
+        fonts-liberation \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" \
         bcmath \
@@ -20,6 +52,7 @@ RUN apt-get update \
         mbstring \
         opcache \
         pdo_mysql \
+        pdo_sqlite \
         zip \
     && a2enmod rewrite headers \
     && rm -rf /var/lib/apt/lists/*
@@ -29,6 +62,13 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY --from=mysql-clients /opt/mysql /opt/mysql
+COPY docker/php/fieldops-mysql docker/php/fieldops-mysqldump /usr/local/bin/
+RUN chmod +x /usr/local/bin/fieldops-mysql /usr/local/bin/fieldops-mysqldump \
+    && fieldops-mysql --version \
+    && fieldops-mysqldump --version \
+    && mariadb --version \
+    && mariadb-dump --version
 
 WORKDIR /var/www/html
 
