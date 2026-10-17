@@ -14,6 +14,7 @@ Detected repository context, refreshed 2026-09-26 with `$project-init`. This is 
 ## Request and application flow
 
 - `bootstrap/app.php` registers `routes/web.php`, `routes/console.php`, health path `/up`, and web middleware including blocked-IP checks, appearance/system settings, idle-session enforcement, and Inertia request handling.
+- Idle-session browser coordination uses an authenticated random session scope shared through Inertia; local activity storage and cross-tab messages are partitioned by that scope, while server activity cookies remain bound to the Laravel session (`app/Http/Middleware/HandleInertiaRequests.php`, `app/Support/IdleSessionActivity.php`, `resources/js/features/session/use-idle-session.ts`).
 - `routes/web.php` defines public registration/invitation entry points and authenticated route groups for dashboard, notifications, media assets, access management, audit, IP blocks, visit logs, and system reference data.
 - `routes/settings.php` defines profile, security, appearance, and protected system settings routes.
 - Typical backend flow is route -> middleware -> Form Request -> controller -> action/model -> Inertia response, with Policy or authorization checks as applicable. See `docs/architecture.md`.

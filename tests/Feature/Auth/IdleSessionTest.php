@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class IdleSessionTest extends TestCase
@@ -19,6 +20,47 @@ class IdleSessionTest extends TestCase
     {
         CarbonImmutable::setTestNow();
         parent::tearDown();
+    }
+
+    public function test_authenticated_pages_share_a_stable_random_idle_session_scope(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('auth.user.id', $user->id)
+                ->has('auth.sessionScope'));
+
+        $scope = session('auth.idle_activity_scope');
+
+        $this->assertIsString($scope);
+        $this->assertMatchesRegularExpression('/^[0-9a-f-]{36}$/i', $scope);
+        $this->assertNotSame($this->app['session']->getId(), $scope);
+
+        $this->get(route('home'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('auth.sessionScope', $scope));
+
+        session()->forget('auth.idle_activity_scope');
+
+        $this->get(route('home'))->assertOk();
+
+        $renewedScope = session('auth.idle_activity_scope');
+        $this->assertIsString($renewedScope);
+        $this->assertNotSame($scope, $renewedScope);
+    }
+
+    public function test_guest_pages_do_not_receive_an_idle_session_scope(): void
+    {
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('auth.user', null)
+                ->where('auth.sessionScope', null));
+
+        $this->assertNull(session('auth.idle_activity_scope'));
     }
 
     public function test_heartbeat_refreshes_an_encrypted_http_only_activity_cookie(): void

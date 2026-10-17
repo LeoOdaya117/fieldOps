@@ -6,6 +6,7 @@ use App\Actions\Notifications\ReadNotificationInbox;
 use App\Support\PlatformBranding;
 use App\Support\SystemSettings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -39,6 +40,17 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
+        $sessionScope = null;
+
+        if ($user !== null && $request->hasSession()) {
+            $sessionScope = $request->session()->get('auth.idle_activity_scope');
+
+            if (! is_string($sessionScope) || $sessionScope === '') {
+                $sessionScope = (string) Str::uuid();
+                $request->session()->put('auth.idle_activity_scope', $sessionScope);
+            }
+        }
+
         $authorization = [
             'role' => null,
             'permissions' => [],
@@ -75,6 +87,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user?->makeHidden(['roles', 'permissions']),
                 'authorization' => $authorization,
+                'sessionScope' => $sessionScope,
             ],
             'flash' => [
                 'success' => fn (): mixed => $request->session()->get('success'),
