@@ -85,3 +85,9 @@ Append meaningful architectural or workflow decisions with their date, context, 
 - **Context:** Operators requested table-level backups and restores with recorded creator, timestamp, table list, and a searchable audit trail.
 - **Decision:** Keep full database backup as the default. Selected backups expand the bidirectional foreign-key graph and registered FieldOps logical links, then sign both requested and included tables with creator and audit metadata in format version 2. Restore the recorded selection as a whole after taking a full safety package. CLI `--recovery` is restricted to full-database packages.
 - **Rationale:** Related rows travel together, operators can see why tables were included, and a damaged full restore cannot be reopened through an unrelated partial import. Complex database objects with uncertain scoped dependencies fail closed.
+
+## 2026-10-17 — Scope idle activity coordination to the authenticated session
+
+- **Context:** Origin-wide localStorage and BroadcastChannel names allowed stale browser state from an earlier setup or another session to trigger logout or affect the current login.
+- **Decision:** Generate a random idle-activity scope in the authenticated Laravel session, share it in authenticated Inertia props, and namespace client activity storage and tab messages by that scope. Do not expose the Laravel session ID or use the scope for authorization.
+- **Rationale:** Browser storage can outlive database resets and logouts. Session-scoped coordination prevents stale state and unrelated tabs from crossing authentication boundaries while preserving same-session tab synchronization.

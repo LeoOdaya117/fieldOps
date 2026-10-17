@@ -17,6 +17,7 @@ export type User = {
 
 export type Auth = {
     user: User;
+    sessionScope: string | null;
     authorization: {
         role: {
             id: number;

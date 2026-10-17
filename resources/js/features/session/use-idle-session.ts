@@ -1,8 +1,9 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 
-const ACTIVITY_KEY = 'fieldops:last-activity';
-const CHANNEL_NAME = 'fieldops:session-activity';
+const ACTIVITY_KEY_PREFIX = 'fieldops:last-activity:';
+const CHANNEL_NAME_PREFIX = 'fieldops:session-activity:';
+const LEGACY_ACTIVITY_KEY = 'fieldops:last-activity';
 const HEARTBEAT_INTERVAL_MS = 60_000;
 
 function csrfToken(): string {
@@ -28,27 +29,39 @@ async function postActivity(): Promise<boolean> {
     return response.ok;
 }
 
-export function useIdleSession(enabled: boolean, timeoutSeconds: number) {
+export function useIdleSession(
+    enabled: boolean,
+    timeoutSeconds: number,
+    sessionScope: string | null,
+) {
     const lastActivityRef = useRef(0);
     const lastHeartbeatRef = useRef(0);
     const loggingOutRef = useRef(false);
 
     useEffect(() => {
-        if (!enabled || timeoutSeconds < 1) {
+        if (!enabled || !sessionScope || timeoutSeconds < 1) {
             return;
         }
 
-        const stored = Number(window.localStorage.getItem(ACTIVITY_KEY));
+        lastHeartbeatRef.current = 0;
+        loggingOutRef.current = false;
+
+        const activityKey = `${ACTIVITY_KEY_PREFIX}${sessionScope}`;
+        const channelName = `${CHANNEL_NAME_PREFIX}${sessionScope}`;
+        const stored = Number(window.localStorage.getItem(activityKey));
         lastActivityRef.current =
             Number.isFinite(stored) && stored > 0 ? stored : Date.now();
 
+        // This value predates session scoping and must never seed a new session.
+        window.localStorage.removeItem(LEGACY_ACTIVITY_KEY);
+
         const channel =
             'BroadcastChannel' in window
-                ? new BroadcastChannel(CHANNEL_NAME)
+                ? new BroadcastChannel(channelName)
                 : null;
 
         const broadcast = (timestamp: number) => {
-            window.localStorage.setItem(ACTIVITY_KEY, String(timestamp));
+            window.localStorage.setItem(activityKey, String(timestamp));
             channel?.postMessage({ type: 'activity', timestamp });
         };
 
@@ -102,7 +115,7 @@ export function useIdleSession(enabled: boolean, timeoutSeconds: number) {
         };
 
         const onStorage = (event: StorageEvent) => {
-            if (event.key === ACTIVITY_KEY && event.newValue !== null) {
+            if (event.key === activityKey && event.newValue !== null) {
                 receiveActivity(Number(event.newValue));
             }
         };
@@ -157,5 +170,5 @@ export function useIdleSession(enabled: boolean, timeoutSeconds: number) {
             channel?.close();
             window.clearInterval(interval);
         };
-    }, [enabled, timeoutSeconds]);
+    }, [enabled, timeoutSeconds, sessionScope]);
 }
