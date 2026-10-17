@@ -1,6 +1,6 @@
 # Session-scoped idle activity
 
-Status: implemented; full verification remains incomplete because this environment lacks the SQLite PDO driver and denies writes to the configured Vite build output.
+Status: implemented and verified.
 
 ## Goal and success criteria
 
@@ -61,7 +61,7 @@ Likely code boundaries: `HandleInertiaRequests`, `resources/js/types/auth.ts`, `
 ## Progress and verification
 
 - 2026-10-17: Added an authenticated random session scope to shared Inertia auth props and namespaced idle activity storage and BroadcastChannel messages with it. Added frontend coverage for stale legacy storage, same-session activity sync, cross-session isolation, and guest/no-scope behavior; added backend coverage for stable authenticated scope, scope renewal, and guest omission.
-- Passed: `npm.cmd run test:unit -- --run --configLoader runner tests/Frontend/idle-session.test.tsx` (6 tests); `npm.cmd run types:check`; `npm.cmd run lint:check`; `npm.cmd run format:check`; `npm.cmd exec -- eslint tests/Frontend/idle-session.test.tsx resources/js/features/session/use-idle-session.ts resources/js/components/platform-runtime.tsx resources/js/types/auth.ts`; focused Prettier check; `vendor\bin\pint --test app/Http/Middleware/HandleInertiaRequests.php tests/Feature/Auth/IdleSessionTest.php`; `vendor\bin\phpstan analyse`; and `git diff --check`.
-- Partial: Full frontend unit suite ran 37 files, with 266 tests passing and one unrelated timeout in `tests/Frontend/access.test.tsx` (`keeps role creation and editing on dedicated pages`; jsdom Mapbox canvas warning).
-- Blocked: `php artisan test --filter=IdleSessionTest` could not initialize SQLite because this PHP runtime has no SQLite PDO driver. `npm.cmd run build -- --configLoader runner` transformed the app but could not clear `public/build/assets` due to filesystem permission denial. The standard Vite build also cannot write its temporary config under `node_modules/.vite-temp`.
-- After fixing the lint findings in the new test mock, the full ESLint check passed. The focused idle-session suite was rerun after the final behavior edits and passed.
+- Passed: focused `IdleSessionTest` (6 tests, 52 assertions) and focused idle-session Vitest suite (6 tests).
+- Passed: `composer ci:check` (frontend lint, formatting, types, unit suite, production build, Pint, PHPStan, and Laravel suite; 356 tests with 4 skipped), `composer audit --locked --no-interaction`, and `npm.cmd audit --audit-level=high`.
+- Passed: `npm.cmd run test:e2e` against an isolated temporary SQLite database (52 passed, 5 skipped across mobile, tablet, and desktop). The first sandboxed attempt could not write export artifacts and screenshot captures; rerunning with the required write access passed.
+- The PHP CLI's bundled configuration does not enable SQLite PDO by default; verification enabled the installed SQLite extensions through a temporary PHP ini scan directory. E2E used a separate temporary database and did not touch the local development database.
