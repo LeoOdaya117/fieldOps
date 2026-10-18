@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
+import { AppearanceToggleButton } from '@/components/appearance-toggle-button';
 import { cn } from '@/lib/utils';
 import { getActiveNavigationItem, getNavigationGroups } from '@/lib/navigation';
 import { useCurrentUrl } from '@/hooks/use-current-url';
@@ -86,7 +87,8 @@ export default function AppRailLayout({
                         breadcrumbs={breadcrumbs}
                         className="hidden lg:block"
                     />
-                    <div className="mr-2 ml-auto">
+                    <div className="mr-2 ml-auto flex items-center gap-1">
+                        <AppearanceToggleButton />
                         <NotificationBell />
                     </div>
                     <PlatformUserButton className="" />

@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ChevronDown, Menu } from 'lucide-react';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
+import { AppearanceToggleButton } from '@/components/appearance-toggle-button';
 import AppLogo from '@/components/app-logo';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { PlatformLogo } from '@/components/platform-logo';
@@ -195,6 +196,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                     </nav>
 
                     <div className="ml-auto flex shrink-0 items-center gap-2">
+                        <AppearanceToggleButton />
                         <NotificationBell />
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
