@@ -154,6 +154,21 @@ test('an authenticated user can use the dashboard and theme settings', async ({
 }) => {
     await loginAsUser(page);
 
+    const headerThemeToggle = page.getByRole('button', { name: 'Dark mode' });
+    await expect(headerThemeToggle).toBeVisible();
+    const initialPressedState =
+        await headerThemeToggle.getAttribute('aria-pressed');
+    await headerThemeToggle.click();
+    await expect(headerThemeToggle).toHaveAttribute(
+        'aria-pressed',
+        initialPressedState === 'true' ? 'false' : 'true',
+    );
+    await page.goto('/dashboard');
+    await expect(headerThemeToggle).toHaveAttribute(
+        'aria-pressed',
+        initialPressedState === 'true' ? 'false' : 'true',
+    );
+
     const dashboardAccessibility = await new AxeBuilder({ page }).analyze();
     expect(dashboardAccessibility.violations).toEqual([]);
 

@@ -178,5 +178,23 @@ test('an Owner can compare, apply, and persist all five application layouts', as
                 name: new RegExp(`^${theme}\\b`, 'i'),
             }),
         ).toBeChecked();
+
+        await page.goto('/dashboard');
+        const headerThemeToggle = page.getByRole('button', {
+            name: 'Dark mode',
+        });
+        await expect(headerThemeToggle).toBeVisible();
+        const initialPressedState =
+            await headerThemeToggle.getAttribute('aria-pressed');
+        await headerThemeToggle.click();
+        await expect(headerThemeToggle).toHaveAttribute(
+            'aria-pressed',
+            initialPressedState === 'true' ? 'false' : 'true',
+        );
+        await headerThemeToggle.click();
+        await expect(headerThemeToggle).toHaveAttribute(
+            'aria-pressed',
+            initialPressedState ?? 'false',
+        );
     }
 });
