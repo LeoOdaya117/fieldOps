@@ -19,6 +19,7 @@ Detected repository context, refreshed 2026-09-26 with `$project-init`. This is 
 - `routes/settings.php` defines profile, security, appearance, and protected system settings routes.
 - Typical backend flow is route -> middleware -> Form Request -> controller -> action/model -> Inertia response, with Policy or authorization checks as applicable. See `docs/architecture.md`.
 - `resources/js/app.tsx` bootstraps Inertia and selects shared app, auth, settings, and system-settings layouts; page entry points are in `resources/js/pages/`.
+- Role-specific navigation uses the server-owned `config/navigation.php` catalog plus role-local `roles.custom_navigation_items`; `roles.navigation_items` stores selected built-in/custom keys in global display order. `roles.navigation_group_overrides` allows per-role labels for built-in entries, while custom entries store their label in their metadata. Laravel validates custom entries, resolves app-relative or HTTPS URLs, filters built-ins by permission, emits contiguous group segments (which may repeat when role entries interleave categories), and shares them as `auth.navigation` to the sidebar, header, and alternate layouts. Empty group labels do not render without a selected, accessible destination. Custom icons use a finite Lucide key map, and route policies/middleware remain authoritative (`app/Models/Role.php`, `app/Http/Requests/Access/SaveRoleRequest.php`, `app/Support/NavigationCatalog.php`, `resources/js/lib/navigation.ts`).
 
 ## Main areas
 
@@ -51,5 +52,7 @@ Refresh this list from manifests and current project instructions when commands 
 ## Verification status
 
 This context was verified against `AGENTS.md`, `docs/architecture.md`, Composer/npm manifests, `bootstrap/app.php`, `routes/web.php`, `routes/settings.php`, `resources/js/app.tsx`, `resources/js/features/page-loading/`, `resources/views/app.blade.php`, test configs, CI workflow, and the current directory layout on 2026-09-27. Package versions are reported as declared constraints. Re-run `$project-init` after significant architecture or tooling changes.
+
+2026-10-18 feature-build reconciliation verified the role-specific navigation catalog, per-role global order and group overrides, persisted built-in/custom selections, `auth.navigation` contract, and shared React navigation consumers.
 
 2026-10-04 feature-build reconciliation verified the database backup/restore feature paths above, persistent authentication epoch, and async-loading exclusion. Real-engine integration is opt-in and no dedicated database rehearsal workflow is maintained.

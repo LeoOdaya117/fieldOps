@@ -23,10 +23,16 @@ class RbacSeeder extends Seeder
                 'name' => $name,
                 'guard_name' => 'web',
             ]);
+            $isNewRole = ! $role->exists;
             $role->record_status = 1;
             $role->display_name = $definition['display_name'];
             $role->description = $definition['description'];
             $role->is_system = $definition['is_system'];
+
+            if ($isNewRole) {
+                $role->navigation_items = $definition['navigation'] ?? [];
+            }
+
             $role->save();
 
             $role->syncPermissions(array_map(

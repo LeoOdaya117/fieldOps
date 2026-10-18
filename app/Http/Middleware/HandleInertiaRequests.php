@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Actions\Notifications\ReadNotificationInbox;
+use App\Support\NavigationCatalog;
 use App\Support\PlatformBranding;
 use App\Support\SystemSettings;
 use Illuminate\Http\Request;
@@ -87,6 +88,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user?->makeHidden(['roles', 'permissions']),
                 'authorization' => $authorization,
+                'navigation' => app(NavigationCatalog::class)->forUser($user),
                 'sessionScope' => $sessionScope,
             ],
             'flash' => [

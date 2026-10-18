@@ -1,6 +1,14 @@
 import { Form } from '@inertiajs/react';
-import { ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import {
+    ChevronDown,
+    ChevronUp,
+    GripVertical,
+    Pencil,
+    Plus,
+    Trash2,
+} from 'lucide-react';
+import type { KeyboardEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActionLink } from '@/components/action-link';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -15,10 +23,29 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getNavigationIcon } from '@/lib/navigation';
+import type { NavigationIconKey } from '@/types';
 
 export type RolePermission = {
     id: number;
     name: string;
+};
+
+export type RoleNavigationItem = {
+    key: string;
+    title: string;
+    group: string;
+    permission: string | null;
+    iconKey: NavigationIconKey;
+    superAdminOnly: boolean;
+};
+
+export type RoleCustomNavigationItem = {
+    key: string;
+    title: string;
+    group: string;
+    url: string;
+    iconKey: NavigationIconKey;
 };
 
 export type EditableRole = {
@@ -27,15 +54,53 @@ export type EditableRole = {
     displayName: string;
     description: string | null;
     permissions: string[];
+    navigationItems: string[];
+    navigationGroupOverrides?: Record<string, string>;
+    customNavigationItems?: RoleCustomNavigationItem[];
 };
 
 type RoleFormProps = {
     action: string;
     method: 'post' | 'patch';
     permissions: RolePermission[];
+    navigationItems: RoleNavigationItem[];
+    customNavigationItems?: RoleCustomNavigationItem[];
+    customNavigationIconKeys?: NavigationIconKey[];
+    defaultNavigationItems?: string[];
     role?: EditableRole;
     submitLabel: string;
 };
+
+const roleFormTabs = [
+    { key: 'details', label: 'Details' },
+    { key: 'navigation', label: 'Navigation' },
+    { key: 'permissions', label: 'Permissions' },
+] as const;
+
+type RoleFormTab = (typeof roleFormTabs)[number]['key'];
+
+function roleFormTabForError(field: string): RoleFormTab | null {
+    if (
+        field === 'navigation_items' ||
+        field.startsWith('navigation_items.') ||
+        field === 'navigation_group_overrides' ||
+        field.startsWith('navigation_group_overrides.') ||
+        field === 'custom_navigation_items' ||
+        field.startsWith('custom_navigation_items.')
+    ) {
+        return 'navigation';
+    }
+
+    if (field === 'permissions' || field.startsWith('permissions.')) {
+        return 'permissions';
+    }
+
+    if (['name', 'display_name', 'description'].includes(field)) {
+        return 'details';
+    }
+
+    return null;
+}
 
 function permissionLabel(name: string): string {
     const [, ...actions] = name.split('.');
@@ -71,6 +136,13 @@ function permissionGroup(name: string): string {
 
 function groupLabel(value: string): string {
     return value
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function navigationIconLabel(value: string): string {
+    return value
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
         .replace(/[-_]/g, ' ')
         .replace(/\b\w/g, (character) => character.toUpperCase());
 }
@@ -112,13 +184,80 @@ function selectionState(names: string[], selectedPermissions: Set<string>) {
     };
 }
 
+function navigationItemLabel(
+    item: RoleNavigationItem | RoleCustomNavigationItem,
+    selectedIndex: number,
+): string {
+    const position =
+        selectedIndex < 0 ? 'not selected' : `position ${selectedIndex + 1}`;
+    const restriction =
+        'superAdminOnly' in item && item.superAdminOnly
+            ? ', Super Admin only'
+            : '';
+
+    return `${item.title}, ${item.group}, ${position}${restriction}`;
+}
+
+function createCustomNavigationKey(): string {
+    const uuid =
+        globalThis.crypto?.randomUUID?.() ??
+        'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+            const random = Math.floor(Math.random() * 16);
+            const value = character === 'x' ? random : (random & 0x3) | 0x8;
+
+            return value.toString(16);
+        });
+
+    return `custom_${uuid}`;
+}
+
+type CustomNavigationDraft = Pick<
+    RoleCustomNavigationItem,
+    'title' | 'group' | 'url' | 'iconKey'
+>;
+
+type CustomNavigationFocusTarget =
+    { type: 'add' } | { type: 'edit'; key: string };
+
+const emptyCustomNavigationDraft: CustomNavigationDraft = {
+    title: '',
+    group: '',
+    url: '',
+    iconKey: 'link',
+};
+
 export default function RoleForm({
     action,
     method,
     permissions = [],
+    navigationItems = [],
+    customNavigationItems: initialCustomNavigationItems = [],
+    customNavigationIconKeys = [
+        'bell',
+        'layoutGrid',
+        'users',
+        'shieldCheck',
+        'scrollText',
+        'files',
+        'globe2',
+        'clock3',
+        'settings2',
+        'databaseBackup',
+        'activity',
+        'map',
+        'folder',
+        'link',
+        'building',
+        'barChart',
+        'clipboard',
+        'briefcase',
+    ],
+    defaultNavigationItems,
     role,
     submitLabel,
 }: RoleFormProps) {
+    const [activeTab, setActiveTab] = useState<RoleFormTab>('details');
+    const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
     const groupedPermissions = permissionGroups(permissions);
     const [openPermissionGroup, setOpenPermissionGroup] = useState<
         string | null
@@ -135,6 +274,73 @@ export default function RoleForm({
                 ),
             ),
     );
+    const [customItems, setCustomItems] = useState<RoleCustomNavigationItem[]>(
+        () => role?.customNavigationItems ?? initialCustomNavigationItems,
+    );
+    const [navigationGroupOverrides, setNavigationGroupOverrides] = useState<
+        Record<string, string>
+    >(() => role?.navigationGroupOverrides ?? {});
+    const [createdNavigationGroupLabels, setCreatedNavigationGroupLabels] =
+        useState<string[]>([]);
+    const [navigationGroupLabelDraft, setNavigationGroupLabelDraft] =
+        useState('');
+    const [customDraft, setCustomDraft] = useState<CustomNavigationDraft>(
+        emptyCustomNavigationDraft,
+    );
+    const [customEditorOpen, setCustomEditorOpen] = useState(false);
+    const [editingCustomKey, setEditingCustomKey] = useState<string | null>(
+        null,
+    );
+    const [focusRestoreRequest, setFocusRestoreRequest] = useState(0);
+    const customTitleInputRef = useRef<HTMLInputElement>(null);
+    const addCustomButtonRef = useRef<HTMLButtonElement>(null);
+    const editCustomButtonRefs = useRef(new Map<string, HTMLButtonElement>());
+    const focusReturnTargetRef = useRef<CustomNavigationFocusTarget | null>(
+        null,
+    );
+    const [navigationOrder, setNavigationOrder] = useState<string[]>(() => {
+        const availableNavigation = new Set([
+            ...navigationItems.map((item) => item.key),
+            ...(
+                role?.customNavigationItems ?? initialCustomNavigationItems
+            ).map((item) => item.key),
+        ]);
+        const initialSelection = role
+            ? role.navigationItems
+            : (defaultNavigationItems ??
+              navigationItems.map((item) => item.key));
+
+        return initialSelection.filter((key) => availableNavigation.has(key));
+    });
+    const [draggedNavigationKey, setDraggedNavigationKey] = useState<
+        string | null
+    >(null);
+    const [navigationReorderAnnouncement, setNavigationReorderAnnouncement] =
+        useState('');
+    const draggedNavigationKeyRef = useRef<string | null>(null);
+    const selectedNavigation = new Set(navigationOrder);
+    const navigationItemsByKey = new Map<
+        string,
+        RoleNavigationItem | RoleCustomNavigationItem
+    >([
+        ...navigationItems.map((item) => [item.key, item] as const),
+        ...customItems.map((item) => [item.key, item] as const),
+    ]);
+    const allNavigationItems = [...navigationItems, ...customItems];
+    const navigationGroupLabels = Array.from(
+        new Set([
+            ...navigationItems.map(
+                (item) => navigationGroupOverrides[item.key] ?? item.group,
+            ),
+            ...customItems.map((item) => item.group),
+            ...createdNavigationGroupLabels,
+        ]),
+    ).filter((label) => label.trim().length > 0);
+    const selectedNavigationItems = navigationOrder.flatMap((key) => {
+        const item = navigationItemsByKey.get(key);
+
+        return item ? [item] : [];
+    });
     const selectedPermissionCount = allPermissionNames.filter((name) =>
         selectedPermissions.has(name),
     ).length;
@@ -153,6 +359,271 @@ export default function RoleForm({
             selection: selectionState(permissionNames, selectedPermissions),
         };
     });
+    const selectedNavigationKeys = selectedNavigationItems.map(
+        (item) => item.key,
+    );
+    const orderedNavigationItems = [
+        ...selectedNavigationItems,
+        ...allNavigationItems.filter(
+            (item) => !selectedNavigation.has(item.key),
+        ),
+    ].map((item) => ({
+        item,
+        selectedIndex: navigationOrder.indexOf(item.key),
+    }));
+    const editingCustomIndex = customItems.findIndex(
+        (item) => item.key === editingCustomKey,
+    );
+    const CustomPreviewIcon = getNavigationIcon(customDraft.iconKey);
+    const customItemKeys = new Set(customItems.map((item) => item.key));
+    const canAddCustomItem =
+        customDraft.title.trim().length > 0 &&
+        customDraft.group.trim().length > 0 &&
+        customDraft.url.trim().length > 0 &&
+        customItems.length < 20 &&
+        navigationOrder.length < 32;
+    const canAddNavigationGroupLabel =
+        navigationGroupLabelDraft.trim().length > 0 &&
+        !navigationGroupLabels.some(
+            (label) =>
+                label.toLowerCase() ===
+                navigationGroupLabelDraft.trim().toLowerCase(),
+        );
+
+    useEffect(() => {
+        if (customEditorOpen) {
+            customTitleInputRef.current?.focus();
+
+            return;
+        }
+
+        const target = focusReturnTargetRef.current;
+        const focusTarget =
+            target?.type === 'edit'
+                ? editCustomButtonRefs.current.get(target.key)
+                : addCustomButtonRef.current;
+
+        if (focusTarget) {
+            focusTarget.focus();
+        } else if (target) {
+            addCustomButtonRef.current?.focus();
+        }
+
+        focusReturnTargetRef.current = null;
+    }, [customEditorOpen, editingCustomKey, focusRestoreRequest]);
+
+    function setNavigationSelected(keys: string[], selected: boolean) {
+        setNavigationOrder((current) => {
+            if (selected) {
+                const currentKeys = new Set(current);
+                const additions = keys
+                    .filter(
+                        (key) =>
+                            navigationItemsByKey.has(key) &&
+                            !currentKeys.has(key),
+                    )
+                    .slice(0, Math.max(0, 32 - current.length));
+
+                return [...current, ...additions];
+            }
+
+            const removedKeys = new Set(keys);
+
+            return current.filter((key) => !removedKeys.has(key));
+        });
+    }
+
+    function moveNavigationItem(key: string, offset: -1 | 1) {
+        setNavigationOrder((current) => {
+            const currentIndex = current.indexOf(key);
+            const nextIndex = currentIndex + offset;
+
+            if (
+                currentIndex < 0 ||
+                nextIndex < 0 ||
+                nextIndex >= current.length
+            ) {
+                return current;
+            }
+
+            const next = [...current];
+
+            [next[currentIndex], next[nextIndex]] = [
+                next[nextIndex],
+                next[currentIndex],
+            ];
+
+            return next;
+        });
+    }
+
+    function reorderNavigationItem(
+        draggedKey: string,
+        targetKey: string,
+        placeAfter: boolean,
+    ) {
+        setNavigationOrder((current) => {
+            const sourceIndex = current.indexOf(draggedKey);
+            const targetIndex = current.indexOf(targetKey);
+
+            if (
+                sourceIndex < 0 ||
+                targetIndex < 0 ||
+                sourceIndex === targetIndex
+            ) {
+                return current;
+            }
+
+            const next = [...current];
+            const [draggedKeyAtIndex] = next.splice(sourceIndex, 1);
+            const insertionIndex = targetIndex + (placeAfter ? 1 : 0);
+            const adjustedInsertionIndex =
+                insertionIndex > sourceIndex
+                    ? insertionIndex - 1
+                    : insertionIndex;
+
+            next.splice(adjustedInsertionIndex, 0, draggedKeyAtIndex);
+
+            if (next.every((key, index) => key === current[index])) {
+                return current;
+            }
+
+            return next;
+        });
+    }
+
+    function openCustomDestinationEditor() {
+        setEditingCustomKey(null);
+        setCustomDraft(emptyCustomNavigationDraft);
+        setCustomEditorOpen(true);
+    }
+
+    function addCustomNavigationItem() {
+        const item: RoleCustomNavigationItem = {
+            key: createCustomNavigationKey(),
+            title: customDraft.title.trim(),
+            group: customDraft.group.trim(),
+            url: customDraft.url.trim(),
+            iconKey: customDraft.iconKey,
+        };
+
+        setCustomItems((current) => [...current, item]);
+        setNavigationOrder((current) => [...current, item.key]);
+        closeCustomDestinationEditor(
+            customItems.length + 1 >= 20 || navigationOrder.length + 1 >= 32
+                ? { type: 'edit', key: item.key }
+                : { type: 'add' },
+        );
+    }
+
+    function editCustomNavigationItem(item: RoleCustomNavigationItem) {
+        setEditingCustomKey(item.key);
+        setCustomDraft({
+            title: item.title,
+            group: item.group,
+            url: item.url,
+            iconKey: item.iconKey,
+        });
+        setCustomEditorOpen(true);
+    }
+
+    function updateCustomDraft(
+        field: keyof CustomNavigationDraft,
+        value: string,
+    ) {
+        const nextValue =
+            field === 'iconKey' ? (value as NavigationIconKey) : value;
+
+        if (editingCustomKey) {
+            setCustomItems((items) =>
+                items.map((item) =>
+                    item.key === editingCustomKey
+                        ? { ...item, [field]: nextValue }
+                        : item,
+                ),
+            );
+        }
+
+        setCustomDraft((current) => ({ ...current, [field]: nextValue }));
+    }
+
+    function addNavigationGroupLabel() {
+        const label = navigationGroupLabelDraft.trim();
+
+        if (
+            label.length === 0 ||
+            navigationGroupLabels.some(
+                (existing) => existing.toLowerCase() === label.toLowerCase(),
+            )
+        ) {
+            return;
+        }
+
+        setCreatedNavigationGroupLabels((current) => [...current, label]);
+        setNavigationGroupLabelDraft('');
+    }
+
+    function setNavigationItemGroup(key: string, group: string) {
+        const customItem = customItems.find((item) => item.key === key);
+
+        if (customItem) {
+            setCustomItems((items) =>
+                items.map((item) =>
+                    item.key === key ? { ...item, group } : item,
+                ),
+            );
+
+            if (editingCustomKey === key) {
+                setCustomDraft((current) => ({ ...current, group }));
+            }
+
+            return;
+        }
+
+        const builtInItem = navigationItems.find((item) => item.key === key);
+
+        if (!builtInItem) {
+            return;
+        }
+
+        setNavigationGroupOverrides((current) => {
+            const next = { ...current };
+
+            if (group === builtInItem.group) {
+                delete next[key];
+            } else {
+                next[key] = group;
+            }
+
+            return next;
+        });
+    }
+
+    function closeCustomDestinationEditor(
+        returnFocusTo: CustomNavigationFocusTarget = editingCustomKey
+            ? { type: 'edit', key: editingCustomKey }
+            : { type: 'add' },
+    ) {
+        focusReturnTargetRef.current = returnFocusTo;
+        setFocusRestoreRequest((request) => request + 1);
+        setEditingCustomKey(null);
+        setCustomDraft(emptyCustomNavigationDraft);
+        setCustomEditorOpen(false);
+    }
+
+    function removeCustomNavigationItem(key: string) {
+        const removedIndex = customItems.findIndex((item) => item.key === key);
+        const adjacentItem =
+            customItems[removedIndex + 1] ?? customItems[removedIndex - 1];
+
+        setCustomItems((current) => current.filter((item) => item.key !== key));
+        setNavigationOrder((current) => current.filter((item) => item !== key));
+        closeCustomDestinationEditor(
+            adjacentItem
+                ? { type: 'edit', key: adjacentItem.key }
+                : { type: 'add' },
+        );
+    }
 
     function setPermissionsSelected(names: string[], selected: boolean) {
         setSelectedPermissions((current) => {
@@ -170,69 +641,1057 @@ export default function RoleForm({
         });
     }
 
+    function handleTabKeyDown(
+        event: KeyboardEvent<HTMLButtonElement>,
+        currentIndex: number,
+    ) {
+        let nextIndex: number;
+
+        switch (event.key) {
+            case 'ArrowRight':
+                nextIndex = (currentIndex + 1) % roleFormTabs.length;
+                break;
+            case 'ArrowLeft':
+                nextIndex =
+                    (currentIndex - 1 + roleFormTabs.length) %
+                    roleFormTabs.length;
+                break;
+            case 'Home':
+                nextIndex = 0;
+                break;
+            case 'End':
+                nextIndex = roleFormTabs.length - 1;
+                break;
+            default:
+                return;
+        }
+
+        event.preventDefault();
+
+        const nextTab = roleFormTabs[nextIndex];
+
+        if (nextTab) {
+            setActiveTab(nextTab.key);
+            tabRefs.current[nextIndex]?.focus();
+        }
+    }
+
     return (
         <Card className="w-full">
             <CardHeader>
-                <CardTitle>Role details</CardTitle>
+                <CardTitle>Role settings</CardTitle>
                 <CardDescription>
-                    Define a clear name and grant only the permissions this role
-                    needs.
+                    Update role details, sidebar navigation, and permissions.
                 </CardDescription>
             </CardHeader>
-            <Form action={action} method={method} className="contents">
+            <Form
+                action={action}
+                method={method}
+                className="contents"
+                transform={(data) => ({
+                    ...data,
+                    navigation_items: selectedNavigationKeys,
+                    navigation_group_overrides: navigationGroupOverrides,
+                    custom_navigation_items: customItems,
+                })}
+                onError={(errors) => {
+                    const errorTab = Object.keys(errors)
+                        .map(roleFormTabForError)
+                        .find((tab): tab is RoleFormTab => tab !== null);
+
+                    if (errorTab) {
+                        setActiveTab(errorTab);
+                    }
+                }}
+            >
                 {({ processing, errors }) => (
                     <>
+                        <div className="border-b border-border px-4 sm:px-6">
+                            <div
+                                aria-label="Role sections"
+                                role="tablist"
+                                className="flex gap-1 overflow-x-auto"
+                            >
+                                {roleFormTabs.map((tab, index) => (
+                                    <button
+                                        key={tab.key}
+                                        ref={(element) => {
+                                            tabRefs.current[index] = element;
+                                        }}
+                                        id={`role-tab-${tab.key}`}
+                                        type="button"
+                                        role="tab"
+                                        aria-controls={`role-panel-${tab.key}`}
+                                        aria-selected={activeTab === tab.key}
+                                        tabIndex={
+                                            activeTab === tab.key ? 0 : -1
+                                        }
+                                        onClick={() => setActiveTab(tab.key)}
+                                        onKeyDown={(event) =>
+                                            handleTabKeyDown(event, index)
+                                        }
+                                        className={`-mb-px inline-flex min-h-11 shrink-0 items-center justify-center border-b-2 px-3 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none sm:px-4 ${
+                                            activeTab === tab.key
+                                                ? 'border-primary text-foreground'
+                                                : 'border-transparent text-muted-foreground hover:text-foreground'
+                                        }`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                         <CardContent className="space-y-6">
                             <div
-                                data-slot="role-details-fields"
-                                className="grid items-start gap-5 md:grid-cols-2"
+                                id="role-panel-details"
+                                role="tabpanel"
+                                aria-labelledby="role-tab-details"
+                                tabIndex={0}
+                                hidden={activeTab !== 'details'}
+                                className={
+                                    activeTab === 'details'
+                                        ? 'grid gap-6'
+                                        : 'hidden'
+                                }
                             >
-                                <div className="grid gap-2">
-                                    <Label htmlFor="role-name">Role key</Label>
-                                    <Input
-                                        id="role-name"
-                                        name="name"
-                                        placeholder="regional_manager"
-                                        defaultValue={role?.name ?? ''}
-                                        required
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        Use lowercase letters, numbers, dashes,
-                                        or underscores.
+                                <div className="grid gap-1">
+                                    <h2 className="text-sm font-medium text-foreground">
+                                        Role details
+                                    </h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        Give this role a clear name and
+                                        description.
                                     </p>
-                                    <InputError message={errors.name} />
                                 </div>
+                                <div
+                                    data-slot="role-details-fields"
+                                    className="grid items-start gap-5 md:grid-cols-2"
+                                >
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="role-name">
+                                            Role key
+                                        </Label>
+                                        <Input
+                                            id="role-name"
+                                            name="name"
+                                            placeholder="regional_manager"
+                                            defaultValue={role?.name ?? ''}
+                                            required
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Use lowercase letters, numbers,
+                                            dashes, or underscores.
+                                        </p>
+                                        <InputError message={errors.name} />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="role-display-name">
+                                            Display name
+                                        </Label>
+                                        <Input
+                                            id="role-display-name"
+                                            name="display_name"
+                                            placeholder="Regional manager"
+                                            defaultValue={
+                                                role?.displayName ?? ''
+                                            }
+                                            required
+                                        />
+                                        <InputError
+                                            message={errors.display_name}
+                                        />
+                                    </div>
+                                </div>
+
                                 <div className="grid gap-2">
-                                    <Label htmlFor="role-display-name">
-                                        Display name
+                                    <Label htmlFor="role-description">
+                                        Description
                                     </Label>
-                                    <Input
-                                        id="role-display-name"
-                                        name="display_name"
-                                        placeholder="Regional manager"
-                                        defaultValue={role?.displayName ?? ''}
-                                        required
+                                    <textarea
+                                        id="role-description"
+                                        name="description"
+                                        rows={3}
+                                        defaultValue={role?.description ?? ''}
+                                        placeholder="What is this role responsible for?"
+                                        className="min-h-24 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                                     />
-                                    <InputError message={errors.display_name} />
+                                    <InputError message={errors.description} />
                                 </div>
                             </div>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="role-description">
-                                    Description
-                                </Label>
-                                <textarea
-                                    id="role-description"
-                                    name="description"
-                                    rows={3}
-                                    defaultValue={role?.description ?? ''}
-                                    placeholder="What is this role responsible for?"
-                                    className="min-h-24 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                                />
-                                <InputError message={errors.description} />
-                            </div>
+                            <fieldset
+                                id="role-panel-navigation"
+                                role="tabpanel"
+                                aria-labelledby="role-tab-navigation"
+                                tabIndex={0}
+                                hidden={activeTab !== 'navigation'}
+                                className={
+                                    activeTab === 'navigation'
+                                        ? 'grid min-w-0 gap-3'
+                                        : 'hidden'
+                                }
+                                aria-describedby={
+                                    Object.keys(errors).some(
+                                        (field) =>
+                                            roleFormTabForError(field) ===
+                                            'navigation',
+                                    )
+                                        ? 'navigation-items-help navigation-items-error custom-navigation-error navigation-group-overrides-error'
+                                        : 'navigation-items-help'
+                                }
+                                aria-invalid={Object.keys(errors).some(
+                                    (field) =>
+                                        roleFormTabForError(field) ===
+                                        'navigation',
+                                )}
+                            >
+                                <legend className="text-sm font-medium">
+                                    Navigation
+                                </legend>
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <p
+                                            id="navigation-items-help"
+                                            className="max-w-2xl text-sm text-muted-foreground"
+                                        >
+                                            Choose destinations and set the
+                                            order this role sees them. Built-in
+                                            destinations still require their
+                                            permission; custom links do not
+                                            grant access to the destination.
+                                            Drag selected items by their handle
+                                            to reorder them, or use the move
+                                            buttons.
+                                        </p>
+                                    </div>
+                                    <div className="flex shrink-0 flex-wrap items-center gap-3">
+                                        <span className="text-xs text-muted-foreground tabular-nums">
+                                            {selectedNavigationKeys.length} of{' '}
+                                            {allNavigationItems.length} selected
+                                        </span>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                                setNavigationSelected(
+                                                    allNavigationItems.map(
+                                                        (item) => item.key,
+                                                    ),
+                                                    true,
+                                                )
+                                            }
+                                            disabled={
+                                                allNavigationItems.length ===
+                                                    0 ||
+                                                selectedNavigationKeys.length ===
+                                                    allNavigationItems.length
+                                            }
+                                        >
+                                            Select all
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                                setNavigationSelected(
+                                                    allNavigationItems.map(
+                                                        (item) => item.key,
+                                                    ),
+                                                    false,
+                                                )
+                                            }
+                                            disabled={
+                                                selectedNavigationKeys.length ===
+                                                0
+                                            }
+                                        >
+                                            Clear all
+                                        </Button>
+                                    </div>
+                                </div>
+                                <section
+                                    aria-label="Navigation group labels"
+                                    className="grid gap-3 rounded-xl border border-border bg-muted/15 p-3 sm:p-4"
+                                >
+                                    <div>
+                                        <h3 className="text-sm font-medium text-foreground">
+                                            Group labels
+                                        </h3>
+                                        <p
+                                            id="navigation-group-label-help"
+                                            className="text-xs text-muted-foreground"
+                                        >
+                                            Create labels, then assign them to
+                                            destinations. A label appears in the
+                                            sidebar when a selected destination
+                                            uses it.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                                        <div className="grid min-w-0 flex-1 gap-2">
+                                            <Label htmlFor="navigation-group-label">
+                                                New group label
+                                            </Label>
+                                            <Input
+                                                id="navigation-group-label"
+                                                value={
+                                                    navigationGroupLabelDraft
+                                                }
+                                                maxLength={60}
+                                                aria-describedby="navigation-group-label-help"
+                                                onChange={(event) =>
+                                                    setNavigationGroupLabelDraft(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                onKeyDown={(event) => {
+                                                    if (
+                                                        event.key === 'Enter' &&
+                                                        canAddNavigationGroupLabel
+                                                    ) {
+                                                        event.preventDefault();
+                                                        addNavigationGroupLabel();
+                                                    }
+                                                }}
+                                                placeholder="Operations"
+                                            />
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={addNavigationGroupLabel}
+                                            disabled={
+                                                !canAddNavigationGroupLabel
+                                            }
+                                        >
+                                            <Plus aria-hidden="true" />
+                                            Add label
+                                        </Button>
+                                    </div>
+                                    <ul
+                                        aria-label="Available group labels"
+                                        className="flex flex-wrap gap-2"
+                                    >
+                                        {navigationGroupLabels.map((label) => (
+                                            <li
+                                                key={label}
+                                                className="rounded-md border border-border bg-background px-2.5 py-1 text-xs text-foreground"
+                                            >
+                                                {label}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <InputError
+                                        id="navigation-group-overrides-error"
+                                        message={
+                                            errors.navigation_group_overrides ??
+                                            Object.keys(errors)
+                                                .filter((field) =>
+                                                    field.startsWith(
+                                                        'navigation_group_overrides.',
+                                                    ),
+                                                )
+                                                .map((field) => errors[field])
+                                                .find(Boolean)
+                                        }
+                                    />
+                                </section>
+                                <section
+                                    aria-label="Custom destinations"
+                                    className="grid gap-3 rounded-xl border border-border bg-muted/15 p-3 sm:p-4"
+                                >
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <h3 className="text-sm font-medium text-foreground">
+                                                Custom destinations
+                                            </h3>
+                                            <p className="text-xs text-muted-foreground">
+                                                Add role-specific links with a
+                                                title, group, URL, and icon.
+                                            </p>
+                                        </div>
+                                        {!customEditorOpen && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                ref={addCustomButtonRef}
+                                                onClick={
+                                                    openCustomDestinationEditor
+                                                }
+                                                disabled={
+                                                    customItems.length >= 20 ||
+                                                    navigationOrder.length >= 32
+                                                }
+                                            >
+                                                <Plus aria-hidden="true" />
+                                                Add destination
+                                            </Button>
+                                        )}
+                                    </div>
+                                    {customEditorOpen && (
+                                        <div
+                                            data-slot="custom-navigation-editor"
+                                            className="grid min-w-0 gap-3 rounded-lg border border-border bg-card p-3 sm:grid-cols-2 sm:p-4"
+                                        >
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="custom-navigation-title">
+                                                    Destination title
+                                                </Label>
+                                                <Input
+                                                    id="custom-navigation-title"
+                                                    ref={customTitleInputRef}
+                                                    value={customDraft.title}
+                                                    maxLength={80}
+                                                    onChange={(event) =>
+                                                        updateCustomDraft(
+                                                            'title',
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="Regional reports"
+                                                />
+                                                {editingCustomIndex >= 0 && (
+                                                    <InputError
+                                                        message={
+                                                            errors[
+                                                                `custom_navigation_items.${editingCustomIndex}.title`
+                                                            ]
+                                                        }
+                                                    />
+                                                )}
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="custom-navigation-group">
+                                                    Group label
+                                                </Label>
+                                                <select
+                                                    id="custom-navigation-group"
+                                                    value={customDraft.group}
+                                                    aria-invalid={Boolean(
+                                                        editingCustomIndex >=
+                                                            0 &&
+                                                        errors[
+                                                            `custom_navigation_items.${editingCustomIndex}.group`
+                                                        ],
+                                                    )}
+                                                    aria-describedby={
+                                                        editingCustomIndex >=
+                                                            0 &&
+                                                        errors[
+                                                            `custom_navigation_items.${editingCustomIndex}.group`
+                                                        ]
+                                                            ? 'custom-navigation-group-error'
+                                                            : undefined
+                                                    }
+                                                    onChange={(event) =>
+                                                        updateCustomDraft(
+                                                            'group',
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                                >
+                                                    <option value="">
+                                                        Choose a group
+                                                    </option>
+                                                    {navigationGroupLabels.map(
+                                                        (label) => (
+                                                            <option
+                                                                key={label}
+                                                                value={label}
+                                                            >
+                                                                {label}
+                                                            </option>
+                                                        ),
+                                                    )}
+                                                </select>
+                                                <InputError
+                                                    id="custom-navigation-group-error"
+                                                    message={
+                                                        editingCustomIndex >= 0
+                                                            ? errors[
+                                                                  `custom_navigation_items.${editingCustomIndex}.group`
+                                                              ]
+                                                            : undefined
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="grid gap-2 sm:col-span-2">
+                                                <Label htmlFor="custom-navigation-url">
+                                                    URL
+                                                </Label>
+                                                <Input
+                                                    id="custom-navigation-url"
+                                                    value={customDraft.url}
+                                                    maxLength={2048}
+                                                    onChange={(event) =>
+                                                        updateCustomDraft(
+                                                            'url',
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="/reports or https://example.com"
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    Use an app path beginning
+                                                    with / or a secure HTTPS
+                                                    address.
+                                                </p>
+                                                {editingCustomIndex >= 0 && (
+                                                    <InputError
+                                                        message={
+                                                            errors[
+                                                                `custom_navigation_items.${editingCustomIndex}.url`
+                                                            ]
+                                                        }
+                                                    />
+                                                )}
+                                            </div>
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="custom-navigation-icon">
+                                                    Icon
+                                                </Label>
+                                                <select
+                                                    id="custom-navigation-icon"
+                                                    value={customDraft.iconKey}
+                                                    onChange={(event) =>
+                                                        updateCustomDraft(
+                                                            'iconKey',
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                                >
+                                                    {customNavigationIconKeys.map(
+                                                        (iconKey) => (
+                                                            <option
+                                                                key={iconKey}
+                                                                value={iconKey}
+                                                            >
+                                                                {navigationIconLabel(
+                                                                    iconKey,
+                                                                )}
+                                                            </option>
+                                                        ),
+                                                    )}
+                                                </select>
+                                                {editingCustomIndex >= 0 && (
+                                                    <InputError
+                                                        message={
+                                                            errors[
+                                                                `custom_navigation_items.${editingCustomIndex}.iconKey`
+                                                            ]
+                                                        }
+                                                    />
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-3 rounded-md border border-border bg-muted/20 px-3 py-2 text-sm text-foreground">
+                                                <CustomPreviewIcon
+                                                    aria-hidden="true"
+                                                    className="size-5 shrink-0 text-muted-foreground"
+                                                />
+                                                <span className="min-w-0 truncate">
+                                                    {customDraft.title.trim() ||
+                                                        'Destination preview'}
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+                                                {editingCustomKey ? (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            closeCustomDestinationEditor()
+                                                        }
+                                                    >
+                                                        Done editing
+                                                    </Button>
+                                                ) : (
+                                                    <>
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            onClick={
+                                                                addCustomNavigationItem
+                                                            }
+                                                            disabled={
+                                                                !canAddCustomItem
+                                                            }
+                                                        >
+                                                            Add to navigation
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                closeCustomDestinationEditor(
+                                                                    {
+                                                                        type: 'add',
+                                                                    },
+                                                                )
+                                                            }
+                                                        >
+                                                            Cancel draft
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {customItems.length >= 20 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            A role can have up to 20 custom
+                                            destinations.
+                                        </p>
+                                    )}
+                                    <InputError
+                                        id="custom-navigation-error"
+                                        message={
+                                            errors.custom_navigation_items ??
+                                            Object.keys(errors)
+                                                .filter((field) =>
+                                                    field.startsWith(
+                                                        'custom_navigation_items.',
+                                                    ),
+                                                )
+                                                .map((field) => errors[field])
+                                                .find(Boolean)
+                                        }
+                                    />
+                                </section>
+                                {allNavigationItems.length === 0 ? (
+                                    <div className="rounded-xl border border-dashed border-border bg-muted/15 px-4 py-6 text-sm text-muted-foreground">
+                                        No navigation destinations are
+                                        configured yet. Add a custom destination
+                                        to get started.
+                                    </div>
+                                ) : (
+                                    <ol
+                                        aria-label="Navigation destinations"
+                                        className="grid gap-2"
+                                    >
+                                        {orderedNavigationItems.map(
+                                            ({ item, selectedIndex }) => {
+                                                const isCustom =
+                                                    customItemKeys.has(
+                                                        item.key,
+                                                    );
+                                                const customIndex =
+                                                    customItems.findIndex(
+                                                        (customItem) =>
+                                                            customItem.key ===
+                                                            item.key,
+                                                    );
+                                                const assignedGroup = isCustom
+                                                    ? item.group
+                                                    : (navigationGroupOverrides[
+                                                          item.key
+                                                      ] ?? item.group);
+                                                const groupError = isCustom
+                                                    ? errors[
+                                                          `custom_navigation_items.${customIndex}.group`
+                                                      ]
+                                                    : errors[
+                                                          `navigation_group_overrides.${item.key}`
+                                                      ];
+                                                const rowError =
+                                                    customIndex >= 0
+                                                        ? [
+                                                              'title',
+                                                              'url',
+                                                              'iconKey',
+                                                          ]
+                                                              .map(
+                                                                  (field) =>
+                                                                      errors[
+                                                                          `custom_navigation_items.${customIndex}.${field}`
+                                                                      ],
+                                                              )
+                                                              .find(Boolean)
+                                                        : undefined;
+                                                const Icon = getNavigationIcon(
+                                                    item.iconKey,
+                                                );
 
-                            <fieldset className="grid gap-3">
+                                                return (
+                                                    <li
+                                                        key={item.key}
+                                                        data-navigation-key={
+                                                            item.key
+                                                        }
+                                                        aria-label={navigationItemLabel(
+                                                            {
+                                                                ...item,
+                                                                group: assignedGroup,
+                                                            },
+                                                            selectedIndex,
+                                                        )}
+                                                        className="flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3"
+                                                        onDragOver={(event) => {
+                                                            const draggedKey =
+                                                                draggedNavigationKeyRef.current;
+
+                                                            if (
+                                                                !draggedKey ||
+                                                                selectedIndex <
+                                                                    0 ||
+                                                                draggedKey ===
+                                                                    item.key
+                                                            ) {
+                                                                return;
+                                                            }
+
+                                                            event.preventDefault();
+                                                            event.dataTransfer.dropEffect =
+                                                                'move';
+                                                            const bounds =
+                                                                event.currentTarget.getBoundingClientRect();
+
+                                                            reorderNavigationItem(
+                                                                draggedKey,
+                                                                item.key,
+                                                                event.clientY >=
+                                                                    bounds.top +
+                                                                        bounds.height /
+                                                                            2,
+                                                            );
+                                                        }}
+                                                        onDrop={(event) => {
+                                                            const draggedKey =
+                                                                draggedNavigationKeyRef.current;
+
+                                                            if (
+                                                                !draggedKey ||
+                                                                selectedIndex <
+                                                                    0
+                                                            ) {
+                                                                return;
+                                                            }
+
+                                                            event.preventDefault();
+                                                            const draggedItem =
+                                                                navigationItemsByKey.get(
+                                                                    draggedKey,
+                                                                );
+                                                            setNavigationReorderAnnouncement(
+                                                                `${draggedItem?.title ?? 'Navigation item'} reordered. Save changes to keep this order.`,
+                                                            );
+                                                        }}
+                                                    >
+                                                        {selectedIndex >= 0 && (
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                draggable
+                                                                aria-label={`Drag ${item.title} to reorder`}
+                                                                title="Drag to reorder"
+                                                                className="cursor-grab touch-pan-y text-muted-foreground active:cursor-grabbing"
+                                                                onDragStart={(
+                                                                    event,
+                                                                ) => {
+                                                                    draggedNavigationKeyRef.current =
+                                                                        item.key;
+                                                                    setDraggedNavigationKey(
+                                                                        item.key,
+                                                                    );
+                                                                    setNavigationReorderAnnouncement(
+                                                                        `Dragging ${item.title}. Drop it over another selected destination to reorder.`,
+                                                                    );
+                                                                    event.dataTransfer.effectAllowed =
+                                                                        'move';
+                                                                    event.dataTransfer.setData(
+                                                                        'text/plain',
+                                                                        item.key,
+                                                                    );
+                                                                }}
+                                                                onDragEnd={() => {
+                                                                    draggedNavigationKeyRef.current =
+                                                                        null;
+                                                                    setDraggedNavigationKey(
+                                                                        null,
+                                                                    );
+                                                                    setNavigationReorderAnnouncement(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.startsWith(
+                                                                                `Dragging ${item.title}.`,
+                                                                            )
+                                                                                ? `Reordering ${item.title} cancelled.`
+                                                                                : current,
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <GripVertical aria-hidden="true" />
+                                                            </Button>
+                                                        )}
+                                                        <span
+                                                            aria-hidden="true"
+                                                            className="w-7 shrink-0 text-center text-xs font-medium text-muted-foreground tabular-nums"
+                                                        >
+                                                            {selectedIndex >= 0
+                                                                ? selectedIndex +
+                                                                  1
+                                                                : null}
+                                                        </span>
+                                                        <label
+                                                            htmlFor={`navigation-${item.key}`}
+                                                            className="flex min-w-0 flex-1 cursor-pointer items-start gap-3"
+                                                        >
+                                                            <input
+                                                                id={`navigation-${item.key}`}
+                                                                type="checkbox"
+                                                                name="navigation_items[]"
+                                                                value={item.key}
+                                                                aria-label={
+                                                                    item.title
+                                                                }
+                                                                checked={selectedNavigation.has(
+                                                                    item.key,
+                                                                )}
+                                                                onChange={(
+                                                                    event,
+                                                                ) =>
+                                                                    setNavigationSelected(
+                                                                        [
+                                                                            item.key,
+                                                                        ],
+                                                                        event
+                                                                            .target
+                                                                            .checked,
+                                                                    )
+                                                                }
+                                                                className="mt-0.5 size-4 shrink-0 rounded border-input accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                                                disabled={
+                                                                    !selectedNavigation.has(
+                                                                        item.key,
+                                                                    ) &&
+                                                                    navigationOrder.length >=
+                                                                        32
+                                                                }
+                                                            />
+                                                            <span className="min-w-0 text-sm font-medium text-foreground">
+                                                                <span className="block">
+                                                                    {isCustom &&
+                                                                        Icon && (
+                                                                            <Icon
+                                                                                aria-hidden="true"
+                                                                                className="mr-1.5 inline size-4 align-text-bottom text-muted-foreground"
+                                                                            />
+                                                                        )}
+                                                                    {item.title}
+                                                                </span>
+                                                                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                                                                    {
+                                                                        assignedGroup
+                                                                    }
+                                                                </span>
+                                                                {'superAdminOnly' in
+                                                                    item &&
+                                                                    item.superAdminOnly && (
+                                                                        <span className="block text-xs font-normal text-muted-foreground">
+                                                                            Super
+                                                                            Admin
+                                                                            only
+                                                                        </span>
+                                                                    )}
+                                                            </span>
+                                                        </label>
+                                                        <div className="grid min-w-0 flex-1 gap-1 sm:max-w-48">
+                                                            <label
+                                                                htmlFor={`navigation-group-${item.key}`}
+                                                                className="sr-only"
+                                                            >
+                                                                Group for{' '}
+                                                                {item.title}
+                                                            </label>
+                                                            <select
+                                                                id={`navigation-group-${item.key}`}
+                                                                value={
+                                                                    assignedGroup
+                                                                }
+                                                                aria-invalid={Boolean(
+                                                                    groupError,
+                                                                )}
+                                                                aria-describedby={
+                                                                    groupError
+                                                                        ? `navigation-group-error-${item.key}`
+                                                                        : undefined
+                                                                }
+                                                                onChange={(
+                                                                    event,
+                                                                ) =>
+                                                                    setNavigationItemGroup(
+                                                                        item.key,
+                                                                        event
+                                                                            .target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                className="h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                                            >
+                                                                <option value="">
+                                                                    Choose a
+                                                                    group
+                                                                </option>
+                                                                {navigationGroupLabels.map(
+                                                                    (label) => (
+                                                                        <option
+                                                                            key={
+                                                                                label
+                                                                            }
+                                                                            value={
+                                                                                label
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                label
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                            <InputError
+                                                                id={`navigation-group-error-${item.key}`}
+                                                                message={
+                                                                    groupError
+                                                                }
+                                                            />
+                                                        </div>
+                                                        {isCustom && (
+                                                            <div className="flex shrink-0 gap-2">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    aria-label={`Edit ${item.title}`}
+                                                                    ref={(
+                                                                        element,
+                                                                    ) => {
+                                                                        if (
+                                                                            element
+                                                                        ) {
+                                                                            editCustomButtonRefs.current.set(
+                                                                                item.key,
+                                                                                element,
+                                                                            );
+                                                                        } else {
+                                                                            editCustomButtonRefs.current.delete(
+                                                                                item.key,
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                    onClick={() =>
+                                                                        editCustomNavigationItem(
+                                                                            item as RoleCustomNavigationItem,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <Pencil aria-hidden="true" />
+                                                                    <span className="sr-only sm:not-sr-only">
+                                                                        Edit
+                                                                    </span>
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    aria-label={`Remove ${item.title}`}
+                                                                    onClick={() =>
+                                                                        removeCustomNavigationItem(
+                                                                            item.key,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <Trash2 aria-hidden="true" />
+                                                                    <span className="sr-only sm:not-sr-only">
+                                                                        Remove
+                                                                    </span>
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                        {rowError && (
+                                                            <p className="w-full text-xs text-destructive sm:pl-10">
+                                                                {rowError}
+                                                            </p>
+                                                        )}
+                                                        {selectedIndex >= 0 && (
+                                                            <div className="ml-auto flex shrink-0 gap-2">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    aria-label={`Move ${item.title} up`}
+                                                                    onClick={() =>
+                                                                        moveNavigationItem(
+                                                                            item.key,
+                                                                            -1,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        selectedIndex ===
+                                                                        0
+                                                                    }
+                                                                >
+                                                                    <ChevronUp aria-hidden="true" />
+                                                                </Button>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    aria-label={`Move ${item.title} down`}
+                                                                    onClick={() =>
+                                                                        moveNavigationItem(
+                                                                            item.key,
+                                                                            1,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        selectedIndex ===
+                                                                        selectedNavigationItems.length -
+                                                                            1
+                                                                    }
+                                                                >
+                                                                    <ChevronDown aria-hidden="true" />
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </li>
+                                                );
+                                            },
+                                        )}
+                                    </ol>
+                                )}
+                                <p className="sr-only" aria-live="polite">
+                                    {navigationReorderAnnouncement ||
+                                        (draggedNavigationKey
+                                            ? `Dragging ${navigationItemsByKey.get(draggedNavigationKey)?.title ?? 'navigation item'}. Drop it over another selected destination to reorder.`
+                                            : '')}
+                                </p>
+                                <InputError
+                                    id="navigation-items-error"
+                                    message={errors.navigation_items}
+                                />
+                            </fieldset>
+
+                            <fieldset
+                                id="role-panel-permissions"
+                                role="tabpanel"
+                                aria-labelledby="role-tab-permissions"
+                                tabIndex={0}
+                                hidden={activeTab !== 'permissions'}
+                                className={
+                                    activeTab === 'permissions'
+                                        ? 'grid gap-3'
+                                        : 'hidden'
+                                }
+                            >
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div>
                                         <legend className="text-sm font-medium">

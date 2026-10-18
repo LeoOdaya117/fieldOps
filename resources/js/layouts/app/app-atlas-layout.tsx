@@ -1,8 +1,13 @@
 import { Link, usePage } from '@inertiajs/react';
+import { NavigationLink } from '@/components/navigation-link';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { AppearanceToggleButton } from '@/components/appearance-toggle-button';
 import { cn } from '@/lib/utils';
-import { getActiveNavigationItem, getNavigationGroups } from '@/lib/navigation';
+import {
+    getActiveNavigationItem,
+    getNavigationGroups,
+    getNavigationItemByKey,
+} from '@/lib/navigation';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { PlatformLogo } from '@/components/platform-logo';
 import {
@@ -19,6 +24,7 @@ export default function AppAtlasLayout({
 }: AppLayoutProps) {
     const { auth } = usePage().props;
     const groups = getNavigationGroups(auth);
+    const dashboard = getNavigationItemByKey(groups, 'dashboard');
     const { currentUrl } = useCurrentUrl();
     const activeItem = getActiveNavigationItem(
         groups.flatMap((group) => group.items),
@@ -32,12 +38,21 @@ export default function AppAtlasLayout({
                     groups={groups}
                     className="mr-2 text-background hover:bg-background/10 hover:text-background"
                 />
-                <Link href="/dashboard" className="flex items-center">
-                    <PlatformLogo
-                        variant="wordmark-on-dark"
-                        className="h-7 max-w-40"
-                    />
-                </Link>
+                {dashboard ? (
+                    <Link href={dashboard.href} className="flex items-center">
+                        <PlatformLogo
+                            variant="wordmark-on-dark"
+                            className="h-7 max-w-40"
+                        />
+                    </Link>
+                ) : (
+                    <div className="flex items-center">
+                        <PlatformLogo
+                            variant="wordmark-on-dark"
+                            className="h-7 max-w-40"
+                        />
+                    </div>
+                )}
                 <span className="ml-4 hidden border-l border-background/20 pl-4 text-xs font-medium text-background/70 sm:block">
                     Operations workspace
                 </span>
@@ -53,8 +68,8 @@ export default function AppAtlasLayout({
                         className="flex-1 space-y-6 overflow-y-auto px-4 py-6"
                         aria-label="Main navigation"
                     >
-                        {groups.map((group) => (
-                            <div key={group.label}>
+                        {groups.map((group, index) => (
+                            <div key={`${group.label}-${index}`}>
                                 <p className="px-3 pb-2 text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
                                     {group.label}
                                 </p>
@@ -64,9 +79,9 @@ export default function AppAtlasLayout({
                                         const Icon = item.icon;
 
                                         return (
-                                            <Link
-                                                key={item.title}
-                                                href={item.href}
+                                            <NavigationLink
+                                                key={item.key ?? item.title}
+                                                href={String(item.href)}
                                                 aria-current={
                                                     active ? 'page' : undefined
                                                 }
@@ -80,7 +95,7 @@ export default function AppAtlasLayout({
                                                     <Icon className="size-4" />
                                                 )}
                                                 {item.title}
-                                            </Link>
+                                            </NavigationLink>
                                         );
                                     })}
                                 </div>

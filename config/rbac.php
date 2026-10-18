@@ -42,6 +42,7 @@ return [
                 PermissionKey::FilesUpdate->value,
                 PermissionKey::FilesDelete->value,
             ],
+            'navigation' => ['notifications', 'dashboard', 'files'],
         ],
         RoleName::Admin->value => [
             'display_name' => 'Admin',
@@ -110,12 +111,20 @@ return [
                     'media_assets', 'countries', 'timezones',
                 ]),
             ],
+            'navigation' => [
+                'notifications', 'dashboard', 'users', 'roles', 'access_audit',
+                'blocked_ips', 'visit_logs', 'files', 'countries', 'timezones', 'system_settings',
+            ],
         ],
         RoleName::SuperAdmin->value => [
             'display_name' => 'Super Admin',
             'description' => 'Full enterprise access and platform administration controls.',
             'is_system' => true,
             'permissions' => PermissionKey::values(),
+            'navigation' => [
+                'notifications', 'dashboard', 'users', 'roles', 'access_audit',
+                'blocked_ips', 'visit_logs', 'files', 'countries', 'timezones', 'system_settings', 'backups',
+            ],
         ],
     ],
 ];

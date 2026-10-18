@@ -5,17 +5,23 @@ import Heading from '@/components/heading';
 import RoleForm from '@/features/access/components/role-form';
 import type {
     EditableRole,
+    RoleNavigationItem,
     RolePermission,
 } from '@/features/access/components/role-form';
+import type { NavigationIconKey } from '@/types';
 import { dashboard } from '@/routes';
 import { index as rolesIndex } from '@/routes/access/roles';
 
 export default function RoleEditPage({
     role,
     permissions,
+    navigationItems,
+    customNavigationIconKeys,
 }: {
     role: EditableRole;
     permissions?: RolePermission[];
+    navigationItems: RoleNavigationItem[];
+    customNavigationIconKeys?: NavigationIconKey[];
 }) {
     return (
         <>
@@ -35,6 +41,8 @@ export default function RoleEditPage({
                     action={`/access/roles/${role.id}`}
                     method="patch"
                     permissions={permissions ?? []}
+                    navigationItems={navigationItems}
+                    customNavigationIconKeys={customNavigationIconKeys}
                     role={role}
                     submitLabel="Save changes"
                 />

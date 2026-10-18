@@ -11,6 +11,9 @@ use Spatie\Permission\Models\Role as SpatieRole;
  * @property string|null $description
  * @property bool $is_system
  * @property string $status
+ * @property array<int, string>|null $navigation_items
+ * @property array<int, array{key: string, title: string, group: string, url: string, iconKey: string}>|null $custom_navigation_items
+ * @property array<string, string>|null $navigation_group_overrides
  * @property int $record_status
  * @property int|null $created_by
  * @property int|null $updated_by
@@ -32,6 +35,9 @@ class Role extends SpatieRole
         'record_status',
         'created_by',
         'updated_by',
+        'navigation_items',
+        'custom_navigation_items',
+        'navigation_group_overrides',
     ];
 
     protected function casts(): array
@@ -41,6 +47,9 @@ class Role extends SpatieRole
             'record_status' => 'integer',
             'created_by' => 'integer',
             'updated_by' => 'integer',
+            'navigation_items' => 'array',
+            'custom_navigation_items' => 'array',
+            'navigation_group_overrides' => 'array',
         ];
     }
 

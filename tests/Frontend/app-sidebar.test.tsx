@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const usePageMock = vi.hoisted(() => vi.fn());
@@ -80,7 +80,7 @@ describe('app sidebar navigation', () => {
         usePageMock.mockReset();
     });
 
-    it('shows system settings to administrators', () => {
+    it('renders the server-provided destinations without rebuilding permission rules', () => {
         usePageMock.mockReturnValue({
             url: '/access/users',
             props: {
@@ -88,9 +88,22 @@ describe('app sidebar navigation', () => {
                 auth: {
                     user: { name: 'Admin' },
                     authorization: {
-                        permissions: ['settings.view'],
+                        permissions: [],
                         isSuperAdmin: false,
                     },
+                    navigation: [
+                        {
+                            label: 'System',
+                            items: [
+                                {
+                                    key: 'system_settings',
+                                    title: 'System settings',
+                                    href: '/settings/system',
+                                    iconKey: 'settings2',
+                                },
+                            ],
+                        },
+                    ],
                 },
             },
         });
@@ -100,11 +113,14 @@ describe('app sidebar navigation', () => {
         expect(
             screen.getByRole('link', { name: 'System settings' }),
         ).toHaveAttribute('href', '/settings/system');
+        expect(
+            screen.queryByRole('link', { name: 'FieldOps' }),
+        ).not.toBeInTheDocument();
         expect(screen.queryByText('Repository')).not.toBeInTheDocument();
         expect(screen.queryByText('Documentation')).not.toBeInTheDocument();
     });
 
-    it('hides system settings from users without permission', () => {
+    it('does not expose destinations omitted by the server', () => {
         usePageMock.mockReturnValue({
             url: '/settings/profile',
             props: {
@@ -112,18 +128,106 @@ describe('app sidebar navigation', () => {
                 auth: {
                     user: { name: 'User' },
                     authorization: {
-                        permissions: [],
+                        permissions: ['users.view', 'settings.view'],
                         isSuperAdmin: false,
                     },
+                    navigation: [
+                        {
+                            label: 'Platform',
+                            items: [
+                                {
+                                    key: 'dashboard',
+                                    title: 'Dashboard',
+                                    href: '/dashboard',
+                                    iconKey: 'layoutGrid',
+                                },
+                            ],
+                        },
+                    ],
                 },
             },
         });
 
         render(<AppSidebar />);
 
+        expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
+            'href',
+            '/dashboard',
+        );
+        expect(screen.getByRole('link', { name: 'FieldOps' })).toHaveAttribute(
+            'href',
+            '/dashboard',
+        );
+        expect(
+            screen.queryByRole('link', { name: 'Users' }),
+        ).not.toBeInTheDocument();
         expect(
             screen.queryByRole('link', { name: 'System settings' }),
         ).not.toBeInTheDocument();
+    });
+
+    it('keeps cross-group order when the server repeats a group segment', () => {
+        usePageMock.mockReturnValue({
+            url: '/dashboard',
+            props: {
+                name: 'FieldOps',
+                auth: {
+                    user: { name: 'Operator' },
+                    authorization: { permissions: [], isSuperAdmin: false },
+                    navigation: [
+                        {
+                            label: 'Platform',
+                            items: [
+                                {
+                                    key: 'dashboard',
+                                    title: 'Dashboard',
+                                    href: '/dashboard',
+                                    iconKey: 'layoutGrid',
+                                },
+                            ],
+                        },
+                        {
+                            label: 'Access',
+                            items: [
+                                {
+                                    key: 'users',
+                                    title: 'Users',
+                                    href: '/access/users',
+                                    iconKey: 'users',
+                                },
+                            ],
+                        },
+                        {
+                            label: 'Platform',
+                            items: [
+                                {
+                                    key: 'notifications',
+                                    title: 'Notifications',
+                                    href: '/notifications',
+                                    iconKey: 'bell',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            },
+        });
+
+        render(<AppSidebar />);
+
+        const navigationTitles = screen
+            .getAllByRole('navigation')
+            .flatMap((navigation) =>
+                within(navigation)
+                    .getAllByRole('link')
+                    .map((link) => link.textContent),
+            );
+
+        expect(navigationTitles).toEqual([
+            'Dashboard',
+            'Users',
+            'Notifications',
+        ]);
     });
 
     it('shows security navigation to users with the matching permissions', () => {
@@ -137,6 +241,25 @@ describe('app sidebar navigation', () => {
                         permissions: ['ip_blocks.view', 'visit_logs.view'],
                         isSuperAdmin: false,
                     },
+                    navigation: [
+                        {
+                            label: 'Access',
+                            items: [
+                                {
+                                    key: 'blocked_ips',
+                                    title: 'Blocked IPs',
+                                    href: '/access/ip-blocks',
+                                    iconKey: 'shieldCheck',
+                                },
+                                {
+                                    key: 'visit_logs',
+                                    title: 'Visit logs',
+                                    href: '/access/visit-logs',
+                                    iconKey: 'scrollText',
+                                },
+                            ],
+                        },
+                    ],
                 },
             },
         });
@@ -162,6 +285,25 @@ describe('app sidebar navigation', () => {
                         permissions: ['countries.view', 'timezones.view'],
                         isSuperAdmin: false,
                     },
+                    navigation: [
+                        {
+                            label: 'System',
+                            items: [
+                                {
+                                    key: 'countries',
+                                    title: 'Countries',
+                                    href: '/system/countries',
+                                    iconKey: 'globe2',
+                                },
+                                {
+                                    key: 'timezones',
+                                    title: 'Timezones',
+                                    href: '/system/timezones',
+                                    iconKey: 'clock3',
+                                },
+                            ],
+                        },
+                    ],
                 },
             },
         });

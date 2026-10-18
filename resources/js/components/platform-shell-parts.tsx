@@ -1,7 +1,8 @@
-import { Link, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import { ChevronRight, Menu } from 'lucide-react';
 import type { ComponentProps } from 'react';
 import { useState } from 'react';
+import { NavigationLink } from '@/components/navigation-link';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { PlatformLogo } from '@/components/platform-logo';
 import { UserMenuContent } from '@/components/user-menu-content';
@@ -99,8 +100,8 @@ export function MobilePlatformNavigation({
                     className="flex-1 space-y-6 overflow-y-auto px-4 py-5"
                     aria-label="Mobile navigation"
                 >
-                    {groups.map((group) => (
-                        <div key={group.label}>
+                    {groups.map((group, index) => (
+                        <div key={`${group.label}-${index}`}>
                             <p className="px-3 pb-2 text-xs font-semibold text-muted-foreground">
                                 {group.label}
                             </p>
@@ -110,9 +111,12 @@ export function MobilePlatformNavigation({
                                     const Icon = item.icon;
 
                                     return (
-                                        <SheetClose asChild key={item.title}>
-                                            <Link
-                                                href={item.href}
+                                        <SheetClose
+                                            asChild
+                                            key={item.key ?? item.title}
+                                        >
+                                            <NavigationLink
+                                                href={String(item.href)}
                                                 onClick={() => setOpen(false)}
                                                 aria-current={
                                                     active ? 'page' : undefined
@@ -130,7 +134,7 @@ export function MobilePlatformNavigation({
                                                 {active && (
                                                     <ChevronRight className="ml-auto size-4" />
                                                 )}
-                                            </Link>
+                                            </NavigationLink>
                                         </SheetClose>
                                     );
                                 })}
