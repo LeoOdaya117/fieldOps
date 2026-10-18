@@ -8,7 +8,7 @@ use App\Models\User;
 class NavigationCatalog
 {
     /**
-     * @return list<array{key: string, title: string, group: string, permission: string|null, iconKey: string, superAdminOnly: bool}>
+     * @return list<array{key: string, title: string, group: string, href: string, permission: string|null, iconKey: string, superAdminOnly: bool}>
      */
     public function editorItems(): array
     {
@@ -20,6 +20,7 @@ class NavigationCatalog
                     'key' => $item['key'],
                     'title' => $item['title'],
                     'group' => $group['label'],
+                    'href' => route($item['route'], [], false),
                     'permission' => $item['permission'],
                     'iconKey' => $item['iconKey'],
                     'superAdminOnly' => (bool) ($item['superAdminOnly'] ?? false),

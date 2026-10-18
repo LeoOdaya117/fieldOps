@@ -75,6 +75,15 @@ test('role navigation checklist is keyboard-operable across themes and viewports
     );
     await expect(customEditor).toBeVisible();
     await expect(customEditor).toHaveClass(/sm:grid-cols-2/);
+    const routeSuggestions = customEditor.locator(
+        '#custom-navigation-route-options option',
+    );
+    await expect(routeSuggestions).toHaveCount(12);
+    await expect(
+        customEditor.locator(
+            '#custom-navigation-route-options option[value="/dashboard"]',
+        ),
+    ).toHaveAttribute('label', 'Dashboard - /dashboard');
     await page.getByLabel('Destination title').fill('Regional reports');
     await page.getByLabel('Group label').selectOption('Operations');
     await page.getByLabel('URL').fill('/reports/region');

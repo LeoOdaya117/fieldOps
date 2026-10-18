@@ -625,6 +625,7 @@ class RoleNavigationTest extends TestCase
                 ->has('navigationItems', 12)
                 ->where('navigationItems.0.key', 'notifications')
                 ->where('navigationItems.0.group', 'Platform')
+                ->where('navigationItems.0.href', route('notifications.index', [], false))
                 ->where('navigationItems.11.key', 'backups')
                 ->where('customNavigationItems', [])
                 ->has('customNavigationIconKeys')

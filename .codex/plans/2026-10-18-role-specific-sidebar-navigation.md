@@ -116,3 +116,9 @@ Extend `HandleInertiaRequests` to resolve the user's single assigned role's orde
 Role administrators can add labels and assign them to built-in or custom destinations from the Navigation tab. Built-in assignments are stored as per-role overrides; custom assignments stay with the custom destination. A sidebar heading appears only when a selected, accessible destination uses it, and labels do not change permissions.
 
 - **Verification:** Focused PHPUnit passed (22 tests, 308 assertions); the access and sidebar consumer Vitest suite passed (40 tests across five files). TypeScript, targeted ESLint, Prettier, and `git diff --check` passed. The role-navigation Playwright spec was updated for the group manager but could not run because global setup rejected the configured E2E administrator credentials.
+
+## Scope update — route suggestions for custom destinations (2026-10-18)
+
+The custom destination URL field now includes a native datalist built from the approved navigation catalog. It shows each built-in route as a suggestion with its title and relative path, while keeping free-form app paths and HTTPS URLs supported. Adding a catalog route automatically adds it to the suggestions.
+
+- **Verification:** Role navigation feature tests passed (22 tests, 310 assertions); access editor Vitest passed (25 tests). TypeScript, targeted ESLint, Prettier, PHPStan for `NavigationCatalog`, Pint for that file, and `git diff --check` passed.

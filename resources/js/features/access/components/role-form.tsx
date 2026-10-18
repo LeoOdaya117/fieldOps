@@ -35,6 +35,7 @@ export type RoleNavigationItem = {
     key: string;
     title: string;
     group: string;
+    href: string;
     permission: string | null;
     iconKey: NavigationIconKey;
     superAdminOnly: boolean;
@@ -1125,6 +1126,7 @@ export default function RoleForm({
                                                 </Label>
                                                 <Input
                                                     id="custom-navigation-url"
+                                                    list="custom-navigation-route-options"
                                                     value={customDraft.url}
                                                     maxLength={2048}
                                                     onChange={(event) =>
@@ -1135,10 +1137,24 @@ export default function RoleForm({
                                                     }
                                                     placeholder="/reports or https://example.com"
                                                 />
+                                                <datalist id="custom-navigation-route-options">
+                                                    {navigationItems.map(
+                                                        (item) => (
+                                                            <option
+                                                                key={item.key}
+                                                                value={
+                                                                    item.href
+                                                                }
+                                                                label={`${item.title} - ${item.href}`}
+                                                            />
+                                                        ),
+                                                    )}
+                                                </datalist>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Use an app path beginning
-                                                    with / or a secure HTTPS
-                                                    address.
+                                                    Choose a listed app route,
+                                                    enter another app path
+                                                    beginning with /, or use a
+                                                    secure HTTPS address.
                                                 </p>
                                                 {editingCustomIndex >= 0 && (
                                                     <InputError

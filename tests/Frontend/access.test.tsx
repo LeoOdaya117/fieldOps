@@ -31,6 +31,7 @@ const roleNavigationItems = [
         key: 'notifications',
         title: 'Notifications',
         group: 'Platform',
+        href: '/notifications',
         permission: null,
         iconKey: 'bell',
         superAdminOnly: false,
@@ -39,6 +40,7 @@ const roleNavigationItems = [
         key: 'dashboard',
         title: 'Dashboard',
         group: 'Platform',
+        href: '/dashboard',
         permission: 'dashboard.view',
         iconKey: 'layoutGrid',
         superAdminOnly: false,
@@ -47,6 +49,7 @@ const roleNavigationItems = [
         key: 'users',
         title: 'Users',
         group: 'Access',
+        href: '/access/users',
         permission: 'users.view',
         iconKey: 'users',
         superAdminOnly: false,
@@ -55,6 +58,7 @@ const roleNavigationItems = [
         key: 'roles',
         title: 'Roles',
         group: 'Access',
+        href: '/access/roles',
         permission: 'roles.view',
         iconKey: 'shieldCheck',
         superAdminOnly: false,
@@ -1282,6 +1286,27 @@ describe('access administration pages', () => {
             screen.getByRole('button', { name: 'Add destination' }),
         );
         expect(screen.getByLabelText('Destination title')).toHaveFocus();
+        const urlInput = screen.getByLabelText('URL');
+        expect(urlInput).toHaveAttribute(
+            'list',
+            'custom-navigation-route-options',
+        );
+        const routeSuggestions = document.querySelector(
+            '#custom-navigation-route-options',
+        );
+        expect(
+            Array.from(routeSuggestions?.querySelectorAll('option') ?? []).map(
+                (option) => [
+                    option.getAttribute('value'),
+                    option.getAttribute('label'),
+                ],
+            ),
+        ).toEqual([
+            ['/notifications', 'Notifications - /notifications'],
+            ['/dashboard', 'Dashboard - /dashboard'],
+            ['/access/users', 'Users - /access/users'],
+            ['/access/roles', 'Roles - /access/roles'],
+        ]);
         await user.click(screen.getByRole('button', { name: 'Cancel draft' }));
         expect(
             screen.getByRole('button', { name: 'Add destination' }),
