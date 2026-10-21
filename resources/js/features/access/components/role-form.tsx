@@ -402,6 +402,7 @@ export default function RoleForm({
     const selectedNavigationKeys = selectedNavigationItems.map(
         (item) => item.key,
     );
+    const isSuperAdminRole = roleKeyDraft === 'super_admin';
     const orderedNavigationItems = [
         ...selectedNavigationItems,
         ...allNavigationItems.filter(
@@ -446,10 +447,11 @@ export default function RoleForm({
         const blockedReason =
             'superAdminOnly' in previewItem &&
             previewItem.superAdminOnly &&
-            roleKeyDraft !== 'super_admin'
+            !isSuperAdminRole
                 ? 'Super Admin only'
                 : 'permission' in previewItem &&
                     previewItem.permission &&
+                    !isSuperAdminRole &&
                     !selectedPermissions.has(previewItem.permission)
                   ? `Requires ${previewItem.permission}`
                   : null;

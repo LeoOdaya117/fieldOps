@@ -1579,7 +1579,7 @@ describe('access administration pages', () => {
         ]);
     });
 
-    it('updates the preview from draft permissions and Super Admin identity', async () => {
+    it('applies Super Admin permissions and identity to the draft preview', async () => {
         const user = userEvent.setup();
         const backupItem = {
             key: 'backups',
@@ -1590,21 +1590,35 @@ describe('access administration pages', () => {
             iconKey: 'databaseBackup',
             superAdminOnly: true,
         };
+        const filesItem = {
+            key: 'files',
+            title: 'Files',
+            group: 'System',
+            href: '/files',
+            permission: 'files.view',
+            iconKey: 'files',
+            superAdminOnly: false,
+        };
         render(
             <RoleEditPage
                 permissions={[
                     { id: 1, name: 'dashboard.view' },
                     { id: 2, name: 'system_settings.manage_system' },
+                    { id: 3, name: 'files.view' },
                 ]}
-                navigationItems={[...roleNavigationItems, backupItem]}
+                navigationItems={[
+                    ...roleNavigationItems,
+                    backupItem,
+                    filesItem,
+                ]}
                 routeOptions={roleRouteOptions}
                 role={{
                     id: 7,
-                    name: 'super_admin',
-                    displayName: 'Super Admin',
+                    name: 'field_viewer',
+                    displayName: 'Field viewer',
                     description: null,
                     permissions: ['dashboard.view'],
-                    navigationItems: ['dashboard', 'backups'],
+                    navigationItems: ['dashboard', 'backups', 'files'],
                 }}
             />,
         );
@@ -1613,9 +1627,12 @@ describe('access administration pages', () => {
         let preview = screen.getByRole('navigation', {
             name: 'Draft sidebar',
         });
-        expect(
-            screen.getByRole('region', { name: 'Hidden by permissions' }),
-        ).toHaveTextContent('Requires system_settings.manage_system');
+        let hidden = screen.getByRole('region', {
+            name: 'Hidden by permissions',
+        });
+        expect(hidden).toHaveTextContent('Requires files.view');
+        expect(hidden).toHaveTextContent('Super Admin only');
+        expect(within(preview).queryByText('Files')).toBeNull();
         expect(within(preview).queryByText('Backup & Restore')).toBeNull();
 
         await user.click(screen.getByRole('tab', { name: 'Permissions' }));
@@ -1624,22 +1641,48 @@ describe('access administration pages', () => {
         );
         await user.click(screen.getByRole('tab', { name: 'Navigation' }));
         preview = screen.getByRole('navigation', { name: 'Draft sidebar' });
+        expect(within(preview).getByText('Files')).toBeInTheDocument();
+        expect(within(preview).queryByText('Backup & Restore')).toBeNull();
+        expect(
+            screen.getByRole('region', { name: 'Hidden by permissions' }),
+        ).toHaveTextContent('Super Admin only');
+
+        await user.click(screen.getByRole('tab', { name: 'Details' }));
+        await user.clear(screen.getByLabelText('Role key'));
+        await user.type(screen.getByLabelText('Role key'), 'super_admin');
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        preview = screen.getByRole('navigation', { name: 'Draft sidebar' });
         expect(
             within(preview).getByText('Backup & Restore'),
         ).toBeInTheDocument();
+        expect(within(preview).getByText('Files')).toBeInTheDocument();
         expect(
             screen.queryByRole('region', { name: 'Hidden by permissions' }),
         ).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('tab', { name: 'Permissions' }));
+        await user.click(
+            screen.getByRole('checkbox', { name: 'Select all permissions' }),
+        );
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        preview = screen.getByRole('navigation', { name: 'Draft sidebar' });
+        expect(within(preview).getByText('Files')).toBeInTheDocument();
+        expect(
+            within(preview).getByText('Backup & Restore'),
+        ).toBeInTheDocument();
 
         await user.click(screen.getByRole('tab', { name: 'Details' }));
         await user.clear(screen.getByLabelText('Role key'));
         await user.type(screen.getByLabelText('Role key'), 'field_viewer');
         await user.click(screen.getByRole('tab', { name: 'Navigation' }));
         preview = screen.getByRole('navigation', { name: 'Draft sidebar' });
+        expect(within(preview).queryByText('Files')).toBeNull();
         expect(within(preview).queryByText('Backup & Restore')).toBeNull();
-        expect(
-            screen.getByRole('region', { name: 'Hidden by permissions' }),
-        ).toHaveTextContent('Super Admin only');
+        hidden = screen.getByRole('region', {
+            name: 'Hidden by permissions',
+        });
+        expect(hidden).toHaveTextContent('Requires files.view');
+        expect(hidden).toHaveTextContent('Super Admin only');
     });
 
     it('adds, edits, orders, and submits role-specific custom destinations', async () => {
