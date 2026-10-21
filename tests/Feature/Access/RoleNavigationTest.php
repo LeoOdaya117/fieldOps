@@ -4,12 +4,14 @@ namespace Tests\Feature\Access;
 
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
+use App\Http\Controllers\Access\RoleController;
 use App\Models\AccessAuditEvent;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\NavigationCatalog;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -257,6 +259,13 @@ class RoleNavigationTest extends TestCase
 
         $role = Role::query()->where('name', 'group_override_role')->firstOrFail();
         $this->assertSame($initialOverrides, $role->navigation_group_overrides);
+        $unrelatedRole = Role::query()->create([
+            'name' => 'unrelated_navigation_role',
+            'guard_name' => 'web',
+            'display_name' => 'Unrelated navigation role',
+            'navigation_items' => ['notifications'],
+            'navigation_group_overrides' => ['notifications' => 'Platform'],
+        ]);
         $created = AccessAuditEvent::query()->where('event', 'role.created')->firstOrFail();
         $this->assertSame($initialOverrides, $created->after['navigation_group_overrides']);
 
@@ -305,6 +314,11 @@ class RoleNavigationTest extends TestCase
             ->assertRedirect(route('access.roles.index'));
 
         $this->assertSame($updatedOverrides, $role->fresh()->navigation_group_overrides);
+        $this->assertSame(
+            ['notifications' => 'Platform'],
+            $unrelatedRole->fresh()->navigation_group_overrides,
+        );
+        $this->assertSame(['notifications'], $unrelatedRole->fresh()->navigation_items);
         $updated = AccessAuditEvent::query()->where('event', 'role.updated')->firstOrFail();
         $this->assertSame($initialOverrides, $updated->before['navigation_group_overrides']);
         $this->assertSame($updatedOverrides, $updated->after['navigation_group_overrides']);
@@ -629,6 +643,7 @@ class RoleNavigationTest extends TestCase
                 ->where('navigationItems.11.key', 'backups')
                 ->where('customNavigationItems', [])
                 ->has('customNavigationIconKeys')
+                ->has('routeOptions')
                 ->where('defaultNavigationItems', app(NavigationCatalog::class)->keys()));
 
         $this->get(route('access.roles.edit', $role))
@@ -636,7 +651,43 @@ class RoleNavigationTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('access/role-edit')
                 ->where('role.navigationItems', ['files', 'users'])
-                ->has('navigationItems', 12));
+                ->has('navigationItems', 12)
+                ->has('routeOptions'));
+    }
+
+    public function test_route_picker_includes_authenticated_page_routes_and_excludes_non_linkable_routes(): void
+    {
+        Route::domain('{account}.example.test')
+            ->middleware(['web', 'auth'])
+            ->get('route-picker-domain-test', [RoleController::class, 'create'])
+            ->name('testing.route-picker.domain');
+
+        Route::middleware(['api', 'auth'])
+            ->get('route-picker-api-test', [RoleController::class, 'create'])
+            ->name('testing.route-picker.api');
+
+        Route::middleware(['web', 'auth'])
+            ->post('route-picker-post-test', [RoleController::class, 'create'])
+            ->name('testing.route-picker.post');
+
+        $options = app(NavigationCatalog::class)->routeOptions();
+        $names = array_column($options, 'name');
+
+        $this->assertContains('dashboard', $names);
+        $this->assertContains('access.roles.create', $names);
+        $this->assertContains('notifications.index', $names);
+        $this->assertContains('system-settings.backups.index', $names);
+        $this->assertNotContains('home', $names);
+        $this->assertNotContains('access.users.show', $names);
+        $this->assertNotContains('notifications.summary', $names);
+        $this->assertNotContains('system-settings.backups.status', $names);
+        $this->assertNotContains('system-settings.backups.tables', $names);
+        $this->assertNotContains('testing.route-picker.domain', $names);
+        $this->assertNotContains('testing.route-picker.api', $names);
+        $this->assertNotContains('testing.route-picker.post', $names);
+
+        $dashboard = collect($options)->firstWhere('name', 'dashboard');
+        $this->assertSame(route('dashboard', [], false), $dashboard['path']);
     }
 
     public function test_role_create_authorization_remains_enforced_for_navigation_submission(): void

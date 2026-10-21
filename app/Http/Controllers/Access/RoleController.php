@@ -105,6 +105,7 @@ class RoleController extends Controller
             'defaultNavigationItems' => $navigation->keys(),
             'customNavigationItems' => [],
             'customNavigationIconKeys' => $navigation->customIconKeys(),
+            'routeOptions' => $navigation->routeOptions(),
         ]);
     }
 
@@ -129,6 +130,7 @@ class RoleController extends Controller
             'navigationItems' => $navigation->editorItems(),
             'defaultNavigationItems' => $navigation->keys(),
             'customNavigationIconKeys' => $navigation->customIconKeys(),
+            'routeOptions' => $navigation->routeOptions(),
         ]);
     }
 

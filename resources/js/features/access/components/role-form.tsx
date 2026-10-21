@@ -5,6 +5,7 @@ import {
     GripVertical,
     Pencil,
     Plus,
+    Search,
     Trash2,
 } from 'lucide-react';
 import type { KeyboardEvent } from 'react';
@@ -21,6 +22,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getNavigationIcon } from '@/lib/navigation';
@@ -49,6 +51,11 @@ export type RoleCustomNavigationItem = {
     iconKey: NavigationIconKey;
 };
 
+export type RoleRouteOption = {
+    name: string;
+    path: string;
+};
+
 export type EditableRole = {
     id?: number;
     name: string;
@@ -67,6 +74,7 @@ type RoleFormProps = {
     navigationItems: RoleNavigationItem[];
     customNavigationItems?: RoleCustomNavigationItem[];
     customNavigationIconKeys?: NavigationIconKey[];
+    routeOptions?: RoleRouteOption[];
     defaultNavigationItems?: string[];
     role?: EditableRole;
     submitLabel: string;
@@ -233,6 +241,7 @@ export default function RoleForm({
     permissions = [],
     navigationItems = [],
     customNavigationItems: initialCustomNavigationItems = [],
+    routeOptions = [],
     customNavigationIconKeys = [
         'bell',
         'layoutGrid',
@@ -275,16 +284,32 @@ export default function RoleForm({
                 ),
             ),
     );
+    const [roleKeyDraft, setRoleKeyDraft] = useState(role?.name ?? '');
+    const [roleDisplayNameDraft, setRoleDisplayNameDraft] = useState(
+        role?.displayName ?? '',
+    );
     const [customItems, setCustomItems] = useState<RoleCustomNavigationItem[]>(
         () => role?.customNavigationItems ?? initialCustomNavigationItems,
     );
     const [navigationGroupOverrides, setNavigationGroupOverrides] = useState<
         Record<string, string>
     >(() => role?.navigationGroupOverrides ?? {});
-    const [createdNavigationGroupLabels, setCreatedNavigationGroupLabels] =
-        useState<string[]>([]);
     const [navigationGroupLabelDraft, setNavigationGroupLabelDraft] =
         useState('');
+    const [navigationGroupTarget, setNavigationGroupTarget] = useState<
+        string | null
+    >(null);
+    const [editingGroupLabel, setEditingGroupLabel] = useState<string | null>(
+        null,
+    );
+    const [groupRenameDraft, setGroupRenameDraft] = useState('');
+    const [groupToRemove, setGroupToRemove] = useState<string | null>(null);
+    const [navigationSearch, setNavigationSearch] = useState('');
+    const [navigationFilter, setNavigationFilter] = useState<
+        'all' | 'selected' | 'available'
+    >('all');
+    const [routePickerOpen, setRoutePickerOpen] = useState(false);
+    const [activeRouteIndex, setActiveRouteIndex] = useState(-1);
     const [customDraft, setCustomDraft] = useState<CustomNavigationDraft>(
         emptyCustomNavigationDraft,
     );
@@ -328,20 +353,34 @@ export default function RoleForm({
         ...customItems.map((item) => [item.key, item] as const),
     ]);
     const allNavigationItems = [...navigationItems, ...customItems];
-    const navigationGroupLabels = Array.from(
-        new Set([
-            ...navigationItems.map(
-                (item) => navigationGroupOverrides[item.key] ?? item.group,
-            ),
-            ...customItems.map((item) => item.group),
-            ...createdNavigationGroupLabels,
-        ]),
-    ).filter((label) => label.trim().length > 0);
     const selectedNavigationItems = navigationOrder.flatMap((key) => {
         const item = navigationItemsByKey.get(key);
 
         return item ? [item] : [];
     });
+    const assignedGroupFor = (
+        item: RoleNavigationItem | RoleCustomNavigationItem,
+    ) =>
+        customItems.some((customItem) => customItem.key === item.key)
+            ? item.group
+            : (navigationGroupOverrides[item.key] ?? item.group);
+    const navigationGroupLabels = Array.from(
+        new Set(
+            allNavigationItems
+                .map(assignedGroupFor)
+                .filter((label) => label.trim().length > 0),
+        ),
+    );
+    const navigationGroupCounts = new Map<string, number>();
+
+    for (const item of allNavigationItems) {
+        const label = assignedGroupFor(item);
+        navigationGroupCounts.set(
+            label,
+            (navigationGroupCounts.get(label) ?? 0) + 1,
+        );
+    }
+
     const selectedPermissionCount = allPermissionNames.filter((name) =>
         selectedPermissions.has(name),
     ).length;
@@ -372,6 +411,68 @@ export default function RoleForm({
         item,
         selectedIndex: navigationOrder.indexOf(item.key),
     }));
+    const filteredNavigationItems = orderedNavigationItems.filter(
+        ({ item, selectedIndex }) => {
+            const isSelected = selectedIndex >= 0;
+            const group = assignedGroupFor(item);
+            const searchValue = navigationSearch.trim().toLocaleLowerCase();
+            const matchesSearch =
+                searchValue.length === 0 ||
+                `${item.title} ${group} ${'url' in item ? item.url : item.href}`
+                    .toLocaleLowerCase()
+                    .includes(searchValue);
+            const matchesFilter =
+                navigationFilter === 'all' ||
+                (navigationFilter === 'selected' && isSelected) ||
+                (navigationFilter === 'available' && !isSelected);
+
+            return matchesSearch && matchesFilter;
+        },
+    );
+    const filteredRouteOptions = routeOptions.filter((option) => {
+        const query = customDraft.url.trim().toLocaleLowerCase();
+
+        return (
+            query.length === 0 ||
+            `${option.name} ${option.path}`.toLocaleLowerCase().includes(query)
+        );
+    });
+    const selectedPreviewEntries = selectedNavigationItems.map((item) => {
+        const previewItem =
+            item.key === editingCustomKey && 'url' in item
+                ? { ...item, ...customDraft }
+                : item;
+        const group = assignedGroupFor(previewItem);
+        const blockedReason =
+            'superAdminOnly' in previewItem &&
+            previewItem.superAdminOnly &&
+            roleKeyDraft !== 'super_admin'
+                ? 'Super Admin only'
+                : 'permission' in previewItem &&
+                    previewItem.permission &&
+                    !selectedPermissions.has(previewItem.permission)
+                  ? `Requires ${previewItem.permission}`
+                  : null;
+
+        return { item: previewItem, group, blockedReason };
+    });
+    const previewGroups: Array<{
+        group: string;
+        items: (typeof selectedPreviewEntries)[number][];
+    }> = [];
+
+    for (const entry of selectedPreviewEntries.filter(
+        ({ blockedReason }) => !blockedReason,
+    )) {
+        const lastGroup = previewGroups.at(-1);
+
+        if (lastGroup?.group === entry.group) {
+            lastGroup.items.push(entry);
+        } else {
+            previewGroups.push({ group: entry.group, items: [entry] });
+        }
+    }
+
     const editingCustomIndex = customItems.findIndex(
         (item) => item.key === editingCustomKey,
     );
@@ -384,12 +485,23 @@ export default function RoleForm({
         customItems.length < 20 &&
         navigationOrder.length < 32;
     const canAddNavigationGroupLabel =
+        navigationGroupTarget !== null &&
         navigationGroupLabelDraft.trim().length > 0 &&
-        !navigationGroupLabels.some(
-            (label) =>
-                label.toLowerCase() ===
-                navigationGroupLabelDraft.trim().toLowerCase(),
+        !allNavigationItems.some(
+            (item) =>
+                assignedGroupFor(item).toLocaleLowerCase() ===
+                navigationGroupLabelDraft.trim().toLocaleLowerCase(),
         );
+    const canRenameNavigationGroup =
+        Boolean(editingGroupLabel) &&
+        groupRenameDraft.trim().length > 0 &&
+        (groupRenameDraft.trim().toLocaleLowerCase() ===
+            editingGroupLabel?.toLocaleLowerCase() ||
+            !allNavigationItems.some(
+                (label) =>
+                    assignedGroupFor(label).toLocaleLowerCase() ===
+                    groupRenameDraft.trim().toLocaleLowerCase(),
+            ));
 
     useEffect(() => {
         if (customEditorOpen) {
@@ -548,19 +660,128 @@ export default function RoleForm({
         setCustomDraft((current) => ({ ...current, [field]: nextValue }));
     }
 
+    function chooseRoute(option: RoleRouteOption) {
+        updateCustomDraft('url', option.path);
+        setRoutePickerOpen(false);
+        setActiveRouteIndex(-1);
+    }
+
     function addNavigationGroupLabel() {
         const label = navigationGroupLabelDraft.trim();
 
         if (
             label.length === 0 ||
-            navigationGroupLabels.some(
-                (existing) => existing.toLowerCase() === label.toLowerCase(),
+            allNavigationItems.some(
+                (item) =>
+                    assignedGroupFor(item).toLocaleLowerCase() ===
+                    label.toLocaleLowerCase(),
             )
         ) {
             return;
         }
 
-        setCreatedNavigationGroupLabels((current) => [...current, label]);
+        if (navigationGroupTarget === '__custom_draft__') {
+            updateCustomDraft('group', label);
+        } else if (navigationGroupTarget) {
+            setNavigationItemGroup(navigationGroupTarget, label);
+        }
+
+        setNavigationGroupLabelDraft('');
+        setNavigationGroupTarget(null);
+    }
+
+    function renameNavigationGroupLabel() {
+        const currentLabel = editingGroupLabel;
+        const nextLabel = groupRenameDraft.trim();
+
+        if (!currentLabel || !canRenameNavigationGroup) {
+            return;
+        }
+
+        setNavigationGroupOverrides((current) => {
+            const next = { ...current };
+
+            for (const item of navigationItems) {
+                if (assignedGroupFor(item) !== currentLabel) {
+                    continue;
+                }
+
+                if (nextLabel === item.group) {
+                    delete next[item.key];
+                } else {
+                    next[item.key] = nextLabel;
+                }
+            }
+
+            return next;
+        });
+        setCustomItems((current) =>
+            current.map((item) =>
+                item.group === currentLabel
+                    ? { ...item, group: nextLabel }
+                    : item,
+            ),
+        );
+        setCustomDraft((current) =>
+            current.group === currentLabel
+                ? { ...current, group: nextLabel }
+                : current,
+        );
+        setEditingGroupLabel(null);
+        setGroupRenameDraft('');
+    }
+
+    function removeNavigationGroupLabel() {
+        if (!groupToRemove) {
+            return;
+        }
+
+        const removedLabel = groupToRemove;
+        const matchingBuiltInKeys = new Set(
+            navigationItems
+                .filter((item) => assignedGroupFor(item) === removedLabel)
+                .map((item) => item.key),
+        );
+        const matchingCustomKeys = new Set(
+            customItems
+                .filter((item) => item.group === removedLabel)
+                .map((item) => item.key),
+        );
+
+        if (editingCustomKey && matchingCustomKeys.has(editingCustomKey)) {
+            closeCustomDestinationEditor({ type: 'add' });
+        }
+
+        setNavigationOrder((current) =>
+            current.filter(
+                (key) =>
+                    !matchingBuiltInKeys.has(key) &&
+                    !matchingCustomKeys.has(key),
+            ),
+        );
+        setNavigationGroupOverrides((current) => {
+            const next = { ...current };
+
+            for (const key of matchingBuiltInKeys) {
+                delete next[key];
+            }
+
+            return next;
+        });
+        setCustomItems((current) =>
+            current.filter((item) => item.group !== removedLabel),
+        );
+
+        if (customDraft.group === removedLabel) {
+            setCustomDraft((current) => ({ ...current, group: '' }));
+        }
+
+        if (editingGroupLabel === removedLabel) {
+            setEditingGroupLabel(null);
+            setGroupRenameDraft('');
+        }
+
+        setNavigationGroupTarget(null);
         setNavigationGroupLabelDraft('');
     }
 
@@ -776,7 +997,12 @@ export default function RoleForm({
                                             id="role-name"
                                             name="name"
                                             placeholder="regional_manager"
-                                            defaultValue={role?.name ?? ''}
+                                            value={roleKeyDraft}
+                                            onChange={(event) =>
+                                                setRoleKeyDraft(
+                                                    event.target.value,
+                                                )
+                                            }
                                             required
                                         />
                                         <p className="text-xs text-muted-foreground">
@@ -793,8 +1019,11 @@ export default function RoleForm({
                                             id="role-display-name"
                                             name="display_name"
                                             placeholder="Regional manager"
-                                            defaultValue={
-                                                role?.displayName ?? ''
+                                            value={roleDisplayNameDraft}
+                                            onChange={(event) =>
+                                                setRoleDisplayNameDraft(
+                                                    event.target.value,
+                                                )
                                             }
                                             required
                                         />
@@ -855,14 +1084,9 @@ export default function RoleForm({
                                             id="navigation-items-help"
                                             className="max-w-2xl text-sm text-muted-foreground"
                                         >
-                                            Choose destinations and set the
-                                            order this role sees them. Built-in
-                                            destinations still require their
-                                            permission; custom links do not
-                                            grant access to the destination.
-                                            Drag selected items by their handle
-                                            to reorder them, or use the move
-                                            buttons.
+                                            Choose, group, and order this role’s
+                                            links. Permissions still control
+                                            access.
                                         </p>
                                     </div>
                                     <div className="flex shrink-0 flex-wrap items-center gap-3">
@@ -918,72 +1142,119 @@ export default function RoleForm({
                                 >
                                     <div>
                                         <h3 className="text-sm font-medium text-foreground">
-                                            Group labels
+                                            Groups
                                         </h3>
                                         <p
                                             id="navigation-group-label-help"
                                             className="text-xs text-muted-foreground"
                                         >
-                                            Create labels, then assign them to
-                                            destinations. A label appears in the
-                                            sidebar when a selected destination
-                                            uses it.
+                                            Add a group from any destination.
+                                            Labels appear here when in use.
                                         </p>
                                     </div>
-                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                                        <div className="grid min-w-0 flex-1 gap-2">
-                                            <Label htmlFor="navigation-group-label">
-                                                New group label
-                                            </Label>
-                                            <Input
-                                                id="navigation-group-label"
-                                                value={
-                                                    navigationGroupLabelDraft
-                                                }
-                                                maxLength={60}
-                                                aria-describedby="navigation-group-label-help"
-                                                onChange={(event) =>
-                                                    setNavigationGroupLabelDraft(
-                                                        event.target.value,
-                                                    )
-                                                }
-                                                onKeyDown={(event) => {
-                                                    if (
-                                                        event.key === 'Enter' &&
-                                                        canAddNavigationGroupLabel
-                                                    ) {
-                                                        event.preventDefault();
-                                                        addNavigationGroupLabel();
-                                                    }
-                                                }}
-                                                placeholder="Operations"
-                                            />
-                                        </div>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={addNavigationGroupLabel}
-                                            disabled={
-                                                !canAddNavigationGroupLabel
-                                            }
-                                        >
-                                            <Plus aria-hidden="true" />
-                                            Add label
-                                        </Button>
-                                    </div>
                                     <ul
-                                        aria-label="Available group labels"
-                                        className="flex flex-wrap gap-2"
+                                        aria-label="Groups in use"
+                                        className="grid gap-2 sm:grid-cols-2"
                                     >
                                         {navigationGroupLabels.map((label) => (
                                             <li
                                                 key={label}
-                                                className="rounded-md border border-border bg-background px-2.5 py-1 text-xs text-foreground"
+                                                className="flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-border bg-background px-3 py-2"
                                             >
-                                                {label}
+                                                {editingGroupLabel === label ? (
+                                                    <>
+                                                        <Input
+                                                            aria-label={`Rename ${label}`}
+                                                            value={
+                                                                groupRenameDraft
+                                                            }
+                                                            maxLength={60}
+                                                            onChange={(event) =>
+                                                                setGroupRenameDraft(
+                                                                    event.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            className="h-8 min-w-24 flex-1"
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            onClick={
+                                                                renameNavigationGroupLabel
+                                                            }
+                                                            disabled={
+                                                                !canRenameNavigationGroup
+                                                            }
+                                                        >
+                                                            Save
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setEditingGroupLabel(
+                                                                    null,
+                                                                );
+                                                                setGroupRenameDraft(
+                                                                    '',
+                                                                );
+                                                            }}
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                                                            {label}
+                                                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                                                                {navigationGroupCounts.get(
+                                                                    label,
+                                                                ) ?? 0}{' '}
+                                                                destinations
+                                                            </span>
+                                                        </span>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            aria-label={`Rename group ${label}`}
+                                                            onClick={() => {
+                                                                setEditingGroupLabel(
+                                                                    label,
+                                                                );
+                                                                setGroupRenameDraft(
+                                                                    label,
+                                                                );
+                                                            }}
+                                                        >
+                                                            Rename
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            aria-label={`Remove group ${label}`}
+                                                            onClick={() =>
+                                                                setGroupToRemove(
+                                                                    label,
+                                                                )
+                                                            }
+                                                        >
+                                                            <Trash2 aria-hidden="true" />
+                                                        </Button>
+                                                    </>
+                                                )}
                                             </li>
                                         ))}
                                     </ul>
+                                    {navigationGroupLabels.length === 0 && (
+                                        <p className="text-xs text-muted-foreground">
+                                            No groups in use.
+                                        </p>
+                                    )}
                                     <InputError
                                         id="navigation-group-overrides-error"
                                         message={
@@ -1088,27 +1359,86 @@ export default function RoleForm({
                                                             : undefined
                                                     }
                                                     onChange={(event) =>
-                                                        updateCustomDraft(
-                                                            'group',
-                                                            event.target.value,
-                                                        )
+                                                        event.target.value ===
+                                                        '__create_group__'
+                                                            ? (setNavigationGroupTarget(
+                                                                  '__custom_draft__',
+                                                              ),
+                                                              setNavigationGroupLabelDraft(
+                                                                  '',
+                                                              ))
+                                                            : updateCustomDraft(
+                                                                  'group',
+                                                                  event.target
+                                                                      .value,
+                                                              )
                                                     }
                                                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                                                 >
                                                     <option value="">
                                                         Choose a group
                                                     </option>
-                                                    {navigationGroupLabels.map(
-                                                        (label) => (
+                                                    {Array.from(
+                                                        new Set([
+                                                            ...navigationGroupLabels,
+                                                            customDraft.group,
+                                                        ]),
+                                                    )
+                                                        .filter(Boolean)
+                                                        .map((label) => (
                                                             <option
                                                                 key={label}
                                                                 value={label}
                                                             >
                                                                 {label}
                                                             </option>
-                                                        ),
-                                                    )}
+                                                        ))}
+                                                    <option value="__create_group__">
+                                                        Create group…
+                                                    </option>
                                                 </select>
+                                                {navigationGroupTarget ===
+                                                    '__custom_draft__' && (
+                                                    <div className="flex min-w-0 gap-2">
+                                                        <Input
+                                                            aria-label="New group label"
+                                                            value={
+                                                                navigationGroupLabelDraft
+                                                            }
+                                                            maxLength={60}
+                                                            onChange={(event) =>
+                                                                setNavigationGroupLabelDraft(
+                                                                    event.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            onKeyDown={(
+                                                                event,
+                                                            ) => {
+                                                                if (
+                                                                    event.key ===
+                                                                        'Enter' &&
+                                                                    canAddNavigationGroupLabel
+                                                                ) {
+                                                                    event.preventDefault();
+                                                                    addNavigationGroupLabel();
+                                                                }
+                                                            }}
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            onClick={
+                                                                addNavigationGroupLabel
+                                                            }
+                                                            disabled={
+                                                                !canAddNavigationGroupLabel
+                                                            }
+                                                        >
+                                                            Add
+                                                        </Button>
+                                                    </div>
+                                                )}
                                                 <InputError
                                                     id="custom-navigation-group-error"
                                                     message={
@@ -1124,37 +1454,181 @@ export default function RoleForm({
                                                 <Label htmlFor="custom-navigation-url">
                                                     URL
                                                 </Label>
-                                                <Input
-                                                    id="custom-navigation-url"
-                                                    list="custom-navigation-route-options"
-                                                    value={customDraft.url}
-                                                    maxLength={2048}
-                                                    onChange={(event) =>
-                                                        updateCustomDraft(
-                                                            'url',
-                                                            event.target.value,
-                                                        )
-                                                    }
-                                                    placeholder="/reports or https://example.com"
-                                                />
-                                                <datalist id="custom-navigation-route-options">
-                                                    {navigationItems.map(
-                                                        (item) => (
-                                                            <option
-                                                                key={item.key}
-                                                                value={
-                                                                    item.href
-                                                                }
-                                                                label={`${item.title} - ${item.href}`}
-                                                            />
-                                                        ),
-                                                    )}
-                                                </datalist>
+                                                <div className="relative">
+                                                    <Input
+                                                        id="custom-navigation-url"
+                                                        role="combobox"
+                                                        aria-autocomplete="list"
+                                                        aria-expanded={
+                                                            routePickerOpen &&
+                                                            filteredRouteOptions.length >
+                                                                0
+                                                        }
+                                                        aria-controls={
+                                                            routePickerOpen &&
+                                                            filteredRouteOptions.length >
+                                                                0
+                                                                ? 'custom-navigation-route-options'
+                                                                : undefined
+                                                        }
+                                                        aria-activedescendant={
+                                                            routePickerOpen &&
+                                                            filteredRouteOptions[
+                                                                activeRouteIndex
+                                                            ]
+                                                                ? `custom-route-option-${activeRouteIndex}`
+                                                                : undefined
+                                                        }
+                                                        value={customDraft.url}
+                                                        maxLength={2048}
+                                                        onFocus={() =>
+                                                            setRoutePickerOpen(
+                                                                true,
+                                                            )
+                                                        }
+                                                        onBlur={() =>
+                                                            setRoutePickerOpen(
+                                                                false,
+                                                            )
+                                                        }
+                                                        onChange={(event) => {
+                                                            updateCustomDraft(
+                                                                'url',
+                                                                event.target
+                                                                    .value,
+                                                            );
+                                                            setRoutePickerOpen(
+                                                                true,
+                                                            );
+                                                            setActiveRouteIndex(
+                                                                -1,
+                                                            );
+                                                        }}
+                                                        onKeyDown={(event) => {
+                                                            if (
+                                                                event.key ===
+                                                                    'ArrowDown' &&
+                                                                filteredRouteOptions.length >
+                                                                    0
+                                                            ) {
+                                                                event.preventDefault();
+                                                                setRoutePickerOpen(
+                                                                    true,
+                                                                );
+                                                                setActiveRouteIndex(
+                                                                    (index) =>
+                                                                        routePickerOpen
+                                                                            ? Math.min(
+                                                                                  index <
+                                                                                      0
+                                                                                      ? 0
+                                                                                      : index +
+                                                                                            1,
+                                                                                  filteredRouteOptions.length -
+                                                                                      1,
+                                                                              )
+                                                                            : 0,
+                                                                );
+                                                            } else if (
+                                                                event.key ===
+                                                                    'ArrowUp' &&
+                                                                filteredRouteOptions.length >
+                                                                    0
+                                                            ) {
+                                                                event.preventDefault();
+                                                                setActiveRouteIndex(
+                                                                    (index) =>
+                                                                        Math.max(
+                                                                            0,
+                                                                            index -
+                                                                                1,
+                                                                        ),
+                                                                );
+                                                            } else if (
+                                                                event.key ===
+                                                                    'Enter' &&
+                                                                routePickerOpen &&
+                                                                filteredRouteOptions[
+                                                                    activeRouteIndex
+                                                                ] &&
+                                                                activeRouteIndex >=
+                                                                    0
+                                                            ) {
+                                                                event.preventDefault();
+                                                                chooseRoute(
+                                                                    filteredRouteOptions[
+                                                                        activeRouteIndex
+                                                                    ],
+                                                                );
+                                                            } else if (
+                                                                event.key ===
+                                                                'Escape'
+                                                            ) {
+                                                                setRoutePickerOpen(
+                                                                    false,
+                                                                );
+                                                            }
+                                                        }}
+                                                        placeholder="Search routes or enter a URL"
+                                                    />
+                                                    {routePickerOpen &&
+                                                        filteredRouteOptions.length >
+                                                            0 && (
+                                                            <div
+                                                                id="custom-navigation-route-options"
+                                                                role="listbox"
+                                                                aria-label="Available app routes"
+                                                                className="absolute z-30 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+                                                            >
+                                                                {filteredRouteOptions.map(
+                                                                    (
+                                                                        option,
+                                                                        index,
+                                                                    ) => (
+                                                                        <div
+                                                                            key={`${option.name}:${option.path}`}
+                                                                            id={`custom-route-option-${index}`}
+                                                                            role="option"
+                                                                            aria-selected={
+                                                                                index ===
+                                                                                activeRouteIndex
+                                                                            }
+                                                                            className={`cursor-pointer rounded-sm px-3 py-2 text-sm ${index === activeRouteIndex ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60'}`}
+                                                                            onMouseDown={(
+                                                                                event,
+                                                                            ) =>
+                                                                                event.preventDefault()
+                                                                            }
+                                                                            onMouseEnter={() =>
+                                                                                setActiveRouteIndex(
+                                                                                    index,
+                                                                                )
+                                                                            }
+                                                                            onClick={() =>
+                                                                                chooseRoute(
+                                                                                    option,
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            <span className="block font-medium">
+                                                                                {
+                                                                                    option.name
+                                                                                }
+                                                                            </span>
+                                                                            <span className="block font-mono text-xs text-muted-foreground">
+                                                                                {
+                                                                                    option.path
+                                                                                }
+                                                                            </span>
+                                                                        </div>
+                                                                    ),
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                </div>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Choose a listed app route,
-                                                    enter another app path
-                                                    beginning with /, or use a
-                                                    secure HTTPS address.
+                                                    Choose a route or enter an
+                                                    app path or HTTPS URL.
                                                 </p>
                                                 {editingCustomIndex >= 0 && (
                                                     <InputError
@@ -1280,419 +1754,750 @@ export default function RoleForm({
                                         }
                                     />
                                 </section>
-                                {allNavigationItems.length === 0 ? (
-                                    <div className="rounded-xl border border-dashed border-border bg-muted/15 px-4 py-6 text-sm text-muted-foreground">
-                                        No navigation destinations are
-                                        configured yet. Add a custom destination
-                                        to get started.
-                                    </div>
-                                ) : (
-                                    <ol
-                                        aria-label="Navigation destinations"
-                                        className="grid gap-2"
-                                    >
-                                        {orderedNavigationItems.map(
-                                            ({ item, selectedIndex }) => {
-                                                const isCustom =
-                                                    customItemKeys.has(
-                                                        item.key,
-                                                    );
-                                                const customIndex =
-                                                    customItems.findIndex(
-                                                        (customItem) =>
-                                                            customItem.key ===
-                                                            item.key,
-                                                    );
-                                                const assignedGroup = isCustom
-                                                    ? item.group
-                                                    : (navigationGroupOverrides[
-                                                          item.key
-                                                      ] ?? item.group);
-                                                const groupError = isCustom
-                                                    ? errors[
-                                                          `custom_navigation_items.${customIndex}.group`
-                                                      ]
-                                                    : errors[
-                                                          `navigation_group_overrides.${item.key}`
-                                                      ];
-                                                const rowError =
-                                                    customIndex >= 0
-                                                        ? [
-                                                              'title',
-                                                              'url',
-                                                              'iconKey',
-                                                          ]
-                                                              .map(
-                                                                  (field) =>
-                                                                      errors[
-                                                                          `custom_navigation_items.${customIndex}.${field}`
-                                                                      ],
-                                                              )
-                                                              .find(Boolean)
-                                                        : undefined;
-                                                const Icon = getNavigationIcon(
-                                                    item.iconKey,
-                                                );
-
-                                                return (
-                                                    <li
-                                                        key={item.key}
-                                                        data-navigation-key={
-                                                            item.key
+                                <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+                                    <section className="grid min-w-0 gap-3">
+                                        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+                                            <div className="relative min-w-0 flex-1">
+                                                <Search
+                                                    aria-hidden="true"
+                                                    className="absolute top-2.5 left-3 size-4 text-muted-foreground"
+                                                />
+                                                <Input
+                                                    aria-label="Search destinations"
+                                                    value={navigationSearch}
+                                                    onChange={(event) =>
+                                                        setNavigationSearch(
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="Search destinations"
+                                                    className="pl-9"
+                                                />
+                                            </div>
+                                            <div
+                                                role="group"
+                                                aria-label="Filter destinations"
+                                                className="flex shrink-0 rounded-md border border-border p-1"
+                                            >
+                                                {(
+                                                    [
+                                                        ['all', 'All'],
+                                                        [
+                                                            'selected',
+                                                            'Selected',
+                                                        ],
+                                                        [
+                                                            'available',
+                                                            'Available',
+                                                        ],
+                                                    ] as const
+                                                ).map(([filter, label]) => (
+                                                    <Button
+                                                        key={filter}
+                                                        type="button"
+                                                        size="sm"
+                                                        variant={
+                                                            navigationFilter ===
+                                                            filter
+                                                                ? 'secondary'
+                                                                : 'ghost'
                                                         }
-                                                        aria-label={navigationItemLabel(
-                                                            {
-                                                                ...item,
-                                                                group: assignedGroup,
-                                                            },
-                                                            selectedIndex,
-                                                        )}
-                                                        className="flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3"
-                                                        onDragOver={(event) => {
-                                                            const draggedKey =
-                                                                draggedNavigationKeyRef.current;
-
-                                                            if (
-                                                                !draggedKey ||
-                                                                selectedIndex <
-                                                                    0 ||
-                                                                draggedKey ===
-                                                                    item.key
-                                                            ) {
-                                                                return;
-                                                            }
-
-                                                            event.preventDefault();
-                                                            event.dataTransfer.dropEffect =
-                                                                'move';
-                                                            const bounds =
-                                                                event.currentTarget.getBoundingClientRect();
-
-                                                            reorderNavigationItem(
-                                                                draggedKey,
-                                                                item.key,
-                                                                event.clientY >=
-                                                                    bounds.top +
-                                                                        bounds.height /
-                                                                            2,
-                                                            );
-                                                        }}
-                                                        onDrop={(event) => {
-                                                            const draggedKey =
-                                                                draggedNavigationKeyRef.current;
-
-                                                            if (
-                                                                !draggedKey ||
-                                                                selectedIndex <
-                                                                    0
-                                                            ) {
-                                                                return;
-                                                            }
-
-                                                            event.preventDefault();
-                                                            const draggedItem =
-                                                                navigationItemsByKey.get(
-                                                                    draggedKey,
-                                                                );
-                                                            setNavigationReorderAnnouncement(
-                                                                `${draggedItem?.title ?? 'Navigation item'} reordered. Save changes to keep this order.`,
-                                                            );
-                                                        }}
+                                                        aria-pressed={
+                                                            navigationFilter ===
+                                                            filter
+                                                        }
+                                                        onClick={() =>
+                                                            setNavigationFilter(
+                                                                filter,
+                                                            )
+                                                        }
                                                     >
-                                                        {selectedIndex >= 0 && (
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                draggable
-                                                                aria-label={`Drag ${item.title} to reorder`}
-                                                                title="Drag to reorder"
-                                                                className="cursor-grab touch-pan-y text-muted-foreground active:cursor-grabbing"
-                                                                onDragStart={(
+                                                        {label}
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Showing{' '}
+                                            {filteredNavigationItems.length} of{' '}
+                                            {allNavigationItems.length}
+                                        </p>
+                                        {allNavigationItems.length === 0 ? (
+                                            <div className="rounded-xl border border-dashed border-border bg-muted/15 px-4 py-6 text-sm text-muted-foreground">
+                                                No destinations. Add one above.
+                                            </div>
+                                        ) : filteredNavigationItems.length ===
+                                          0 ? (
+                                            <div className="rounded-xl border border-dashed border-border bg-muted/15 px-4 py-6 text-sm text-muted-foreground">
+                                                {navigationSearch.trim()
+                                                    ? 'No destinations match this search.'
+                                                    : navigationFilter ===
+                                                        'selected'
+                                                      ? 'No selected destinations.'
+                                                      : navigationFilter ===
+                                                          'available'
+                                                        ? 'No available destinations.'
+                                                        : 'No destinations found.'}
+                                            </div>
+                                        ) : (
+                                            <ol
+                                                aria-label="Navigation destinations"
+                                                className="grid gap-2"
+                                            >
+                                                {filteredNavigationItems.map(
+                                                    ({
+                                                        item,
+                                                        selectedIndex,
+                                                    }) => {
+                                                        const isCustom =
+                                                            customItemKeys.has(
+                                                                item.key,
+                                                            );
+                                                        const customIndex =
+                                                            customItems.findIndex(
+                                                                (customItem) =>
+                                                                    customItem.key ===
+                                                                    item.key,
+                                                            );
+                                                        const assignedGroup =
+                                                            isCustom
+                                                                ? item.group
+                                                                : (navigationGroupOverrides[
+                                                                      item.key
+                                                                  ] ??
+                                                                  item.group);
+                                                        const groupError =
+                                                            isCustom
+                                                                ? errors[
+                                                                      `custom_navigation_items.${customIndex}.group`
+                                                                  ]
+                                                                : errors[
+                                                                      `navigation_group_overrides.${item.key}`
+                                                                  ];
+                                                        const rowError =
+                                                            customIndex >= 0
+                                                                ? [
+                                                                      'title',
+                                                                      'url',
+                                                                      'iconKey',
+                                                                  ]
+                                                                      .map(
+                                                                          (
+                                                                              field,
+                                                                          ) =>
+                                                                              errors[
+                                                                                  `custom_navigation_items.${customIndex}.${field}`
+                                                                              ],
+                                                                      )
+                                                                      .find(
+                                                                          Boolean,
+                                                                      )
+                                                                : undefined;
+                                                        const Icon =
+                                                            getNavigationIcon(
+                                                                item.iconKey,
+                                                            );
+
+                                                        return (
+                                                            <li
+                                                                key={item.key}
+                                                                data-navigation-key={
+                                                                    item.key
+                                                                }
+                                                                aria-label={navigationItemLabel(
+                                                                    {
+                                                                        ...item,
+                                                                        group: assignedGroup,
+                                                                    },
+                                                                    selectedIndex,
+                                                                )}
+                                                                className="flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3"
+                                                                onDragOver={(
                                                                     event,
                                                                 ) => {
-                                                                    draggedNavigationKeyRef.current =
-                                                                        item.key;
-                                                                    setDraggedNavigationKey(
-                                                                        item.key,
-                                                                    );
-                                                                    setNavigationReorderAnnouncement(
-                                                                        `Dragging ${item.title}. Drop it over another selected destination to reorder.`,
-                                                                    );
-                                                                    event.dataTransfer.effectAllowed =
-                                                                        'move';
-                                                                    event.dataTransfer.setData(
-                                                                        'text/plain',
-                                                                        item.key,
-                                                                    );
-                                                                }}
-                                                                onDragEnd={() => {
-                                                                    draggedNavigationKeyRef.current =
-                                                                        null;
-                                                                    setDraggedNavigationKey(
-                                                                        null,
-                                                                    );
-                                                                    setNavigationReorderAnnouncement(
-                                                                        (
-                                                                            current,
-                                                                        ) =>
-                                                                            current.startsWith(
-                                                                                `Dragging ${item.title}.`,
-                                                                            )
-                                                                                ? `Reordering ${item.title} cancelled.`
-                                                                                : current,
-                                                                    );
-                                                                }}
-                                                            >
-                                                                <GripVertical aria-hidden="true" />
-                                                            </Button>
-                                                        )}
-                                                        <span
-                                                            aria-hidden="true"
-                                                            className="w-7 shrink-0 text-center text-xs font-medium text-muted-foreground tabular-nums"
-                                                        >
-                                                            {selectedIndex >= 0
-                                                                ? selectedIndex +
-                                                                  1
-                                                                : null}
-                                                        </span>
-                                                        <label
-                                                            htmlFor={`navigation-${item.key}`}
-                                                            className="flex min-w-0 flex-1 cursor-pointer items-start gap-3"
-                                                        >
-                                                            <input
-                                                                id={`navigation-${item.key}`}
-                                                                type="checkbox"
-                                                                name="navigation_items[]"
-                                                                value={item.key}
-                                                                aria-label={
-                                                                    item.title
-                                                                }
-                                                                checked={selectedNavigation.has(
-                                                                    item.key,
-                                                                )}
-                                                                onChange={(
-                                                                    event,
-                                                                ) =>
-                                                                    setNavigationSelected(
-                                                                        [
-                                                                            item.key,
-                                                                        ],
-                                                                        event
-                                                                            .target
-                                                                            .checked,
-                                                                    )
-                                                                }
-                                                                className="mt-0.5 size-4 shrink-0 rounded border-input accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                                                                disabled={
-                                                                    !selectedNavigation.has(
-                                                                        item.key,
-                                                                    ) &&
-                                                                    navigationOrder.length >=
-                                                                        32
-                                                                }
-                                                            />
-                                                            <span className="min-w-0 text-sm font-medium text-foreground">
-                                                                <span className="block">
-                                                                    {isCustom &&
-                                                                        Icon && (
-                                                                            <Icon
-                                                                                aria-hidden="true"
-                                                                                className="mr-1.5 inline size-4 align-text-bottom text-muted-foreground"
-                                                                            />
-                                                                        )}
-                                                                    {item.title}
-                                                                </span>
-                                                                <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                                                                    {
-                                                                        assignedGroup
+                                                                    const draggedKey =
+                                                                        draggedNavigationKeyRef.current;
+
+                                                                    if (
+                                                                        !draggedKey ||
+                                                                        selectedIndex <
+                                                                            0 ||
+                                                                        draggedKey ===
+                                                                            item.key
+                                                                    ) {
+                                                                        return;
                                                                     }
-                                                                </span>
-                                                                {'superAdminOnly' in
-                                                                    item &&
-                                                                    item.superAdminOnly && (
-                                                                        <span className="block text-xs font-normal text-muted-foreground">
-                                                                            Super
-                                                                            Admin
-                                                                            only
-                                                                        </span>
-                                                                    )}
-                                                            </span>
-                                                        </label>
-                                                        <div className="grid min-w-0 flex-1 gap-1 sm:max-w-48">
-                                                            <label
-                                                                htmlFor={`navigation-group-${item.key}`}
-                                                                className="sr-only"
-                                                            >
-                                                                Group for{' '}
-                                                                {item.title}
-                                                            </label>
-                                                            <select
-                                                                id={`navigation-group-${item.key}`}
-                                                                value={
-                                                                    assignedGroup
-                                                                }
-                                                                aria-invalid={Boolean(
-                                                                    groupError,
-                                                                )}
-                                                                aria-describedby={
-                                                                    groupError
-                                                                        ? `navigation-group-error-${item.key}`
-                                                                        : undefined
-                                                                }
-                                                                onChange={(
-                                                                    event,
-                                                                ) =>
-                                                                    setNavigationItemGroup(
+
+                                                                    event.preventDefault();
+                                                                    event.dataTransfer.dropEffect =
+                                                                        'move';
+                                                                    const bounds =
+                                                                        event.currentTarget.getBoundingClientRect();
+
+                                                                    reorderNavigationItem(
+                                                                        draggedKey,
                                                                         item.key,
-                                                                        event
-                                                                            .target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                                className="h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                                                        event.clientY >=
+                                                                            bounds.top +
+                                                                                bounds.height /
+                                                                                    2,
+                                                                    );
+                                                                }}
+                                                                onDrop={(
+                                                                    event,
+                                                                ) => {
+                                                                    const draggedKey =
+                                                                        draggedNavigationKeyRef.current;
+
+                                                                    if (
+                                                                        !draggedKey ||
+                                                                        selectedIndex <
+                                                                            0
+                                                                    ) {
+                                                                        return;
+                                                                    }
+
+                                                                    event.preventDefault();
+                                                                    const draggedItem =
+                                                                        navigationItemsByKey.get(
+                                                                            draggedKey,
+                                                                        );
+                                                                    setNavigationReorderAnnouncement(
+                                                                        `${draggedItem?.title ?? 'Navigation item'} reordered. Save changes to keep this order.`,
+                                                                    );
+                                                                }}
                                                             >
-                                                                <option value="">
-                                                                    Choose a
-                                                                    group
-                                                                </option>
-                                                                {navigationGroupLabels.map(
-                                                                    (label) => (
-                                                                        <option
-                                                                            key={
-                                                                                label
+                                                                {selectedIndex >=
+                                                                    0 && (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        draggable
+                                                                        aria-label={`Drag ${item.title} to reorder`}
+                                                                        title="Drag to reorder"
+                                                                        className="cursor-grab touch-pan-y text-muted-foreground active:cursor-grabbing"
+                                                                        onDragStart={(
+                                                                            event,
+                                                                        ) => {
+                                                                            draggedNavigationKeyRef.current =
+                                                                                item.key;
+                                                                            setDraggedNavigationKey(
+                                                                                item.key,
+                                                                            );
+                                                                            setNavigationReorderAnnouncement(
+                                                                                `Dragging ${item.title}. Drop it over another selected destination to reorder.`,
+                                                                            );
+                                                                            event.dataTransfer.effectAllowed =
+                                                                                'move';
+                                                                            event.dataTransfer.setData(
+                                                                                'text/plain',
+                                                                                item.key,
+                                                                            );
+                                                                        }}
+                                                                        onDragEnd={() => {
+                                                                            draggedNavigationKeyRef.current =
+                                                                                null;
+                                                                            setDraggedNavigationKey(
+                                                                                null,
+                                                                            );
+                                                                            setNavigationReorderAnnouncement(
+                                                                                (
+                                                                                    current,
+                                                                                ) =>
+                                                                                    current.startsWith(
+                                                                                        `Dragging ${item.title}.`,
+                                                                                    )
+                                                                                        ? `Reordering ${item.title} cancelled.`
+                                                                                        : current,
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        <GripVertical aria-hidden="true" />
+                                                                    </Button>
+                                                                )}
+                                                                <span
+                                                                    aria-hidden="true"
+                                                                    className="w-7 shrink-0 text-center text-xs font-medium text-muted-foreground tabular-nums"
+                                                                >
+                                                                    {selectedIndex >=
+                                                                    0
+                                                                        ? selectedIndex +
+                                                                          1
+                                                                        : null}
+                                                                </span>
+                                                                <label
+                                                                    htmlFor={`navigation-${item.key}`}
+                                                                    className="flex min-w-0 flex-1 cursor-pointer items-start gap-3"
+                                                                >
+                                                                    <input
+                                                                        id={`navigation-${item.key}`}
+                                                                        type="checkbox"
+                                                                        name="navigation_items[]"
+                                                                        value={
+                                                                            item.key
+                                                                        }
+                                                                        aria-label={
+                                                                            item.title
+                                                                        }
+                                                                        checked={selectedNavigation.has(
+                                                                            item.key,
+                                                                        )}
+                                                                        onChange={(
+                                                                            event,
+                                                                        ) =>
+                                                                            setNavigationSelected(
+                                                                                [
+                                                                                    item.key,
+                                                                                ],
+                                                                                event
+                                                                                    .target
+                                                                                    .checked,
+                                                                            )
+                                                                        }
+                                                                        className="mt-0.5 size-4 shrink-0 rounded border-input accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                                                        disabled={
+                                                                            !selectedNavigation.has(
+                                                                                item.key,
+                                                                            ) &&
+                                                                            navigationOrder.length >=
+                                                                                32
+                                                                        }
+                                                                    />
+                                                                    <span className="min-w-0 text-sm font-medium text-foreground">
+                                                                        <span className="block">
+                                                                            {isCustom &&
+                                                                                Icon && (
+                                                                                    <Icon
+                                                                                        aria-hidden="true"
+                                                                                        className="mr-1.5 inline size-4 align-text-bottom text-muted-foreground"
+                                                                                    />
+                                                                                )}
+                                                                            {
+                                                                                item.title
                                                                             }
-                                                                            value={
-                                                                                label
+                                                                        </span>
+                                                                        <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                                                                            {
+                                                                                assignedGroup
+                                                                            }
+                                                                        </span>
+                                                                        {'superAdminOnly' in
+                                                                            item &&
+                                                                            item.superAdminOnly && (
+                                                                                <span className="block text-xs font-normal text-muted-foreground">
+                                                                                    Super
+                                                                                    Admin
+                                                                                    only
+                                                                                </span>
+                                                                            )}
+                                                                    </span>
+                                                                </label>
+                                                                <div className="grid min-w-0 flex-1 gap-1 sm:max-w-48">
+                                                                    <label
+                                                                        htmlFor={`navigation-group-${item.key}`}
+                                                                        className="sr-only"
+                                                                    >
+                                                                        Group
+                                                                        for{' '}
+                                                                        {
+                                                                            item.title
+                                                                        }
+                                                                    </label>
+                                                                    <select
+                                                                        id={`navigation-group-${item.key}`}
+                                                                        value={
+                                                                            assignedGroup
+                                                                        }
+                                                                        aria-invalid={Boolean(
+                                                                            groupError,
+                                                                        )}
+                                                                        aria-describedby={
+                                                                            groupError
+                                                                                ? `navigation-group-error-${item.key}`
+                                                                                : undefined
+                                                                        }
+                                                                        onChange={(
+                                                                            event,
+                                                                        ) => {
+                                                                            if (
+                                                                                event
+                                                                                    .target
+                                                                                    .value ===
+                                                                                '__create_group__'
+                                                                            ) {
+                                                                                setNavigationGroupTarget(
+                                                                                    item.key,
+                                                                                );
+                                                                                setNavigationGroupLabelDraft(
+                                                                                    '',
+                                                                                );
+                                                                            } else {
+                                                                                setNavigationItemGroup(
+                                                                                    item.key,
+                                                                                    event
+                                                                                        .target
+                                                                                        .value,
+                                                                                );
+                                                                            }
+                                                                        }}
+                                                                        className="h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                                                                    >
+                                                                        <option value="">
+                                                                            Choose
+                                                                            a
+                                                                            group
+                                                                        </option>
+                                                                        {Array.from(
+                                                                            new Set(
+                                                                                [
+                                                                                    assignedGroup,
+                                                                                    ...navigationGroupLabels,
+                                                                                ],
+                                                                            ),
+                                                                        )
+                                                                            .filter(
+                                                                                Boolean,
+                                                                            )
+                                                                            .map(
+                                                                                (
+                                                                                    label,
+                                                                                ) => (
+                                                                                    <option
+                                                                                        key={
+                                                                                            label
+                                                                                        }
+                                                                                        value={
+                                                                                            label
+                                                                                        }
+                                                                                    >
+                                                                                        {
+                                                                                            label
+                                                                                        }
+                                                                                    </option>
+                                                                                ),
+                                                                            )}
+                                                                        <option value="__create_group__">
+                                                                            Create
+                                                                            group…
+                                                                        </option>
+                                                                    </select>
+                                                                    {navigationGroupTarget ===
+                                                                        item.key && (
+                                                                        <div className="flex min-w-0 gap-2">
+                                                                            <Input
+                                                                                aria-label={`New group for ${item.title}`}
+                                                                                value={
+                                                                                    navigationGroupLabelDraft
+                                                                                }
+                                                                                maxLength={
+                                                                                    60
+                                                                                }
+                                                                                onChange={(
+                                                                                    event,
+                                                                                ) =>
+                                                                                    setNavigationGroupLabelDraft(
+                                                                                        event
+                                                                                            .target
+                                                                                            .value,
+                                                                                    )
+                                                                                }
+                                                                                onKeyDown={(
+                                                                                    event,
+                                                                                ) => {
+                                                                                    if (
+                                                                                        event.key ===
+                                                                                            'Enter' &&
+                                                                                        canAddNavigationGroupLabel
+                                                                                    ) {
+                                                                                        event.preventDefault();
+                                                                                        addNavigationGroupLabel();
+                                                                                    }
+                                                                                }}
+                                                                            />
+                                                                            <Button
+                                                                                type="button"
+                                                                                size="sm"
+                                                                                onClick={
+                                                                                    addNavigationGroupLabel
+                                                                                }
+                                                                                disabled={
+                                                                                    !canAddNavigationGroupLabel
+                                                                                }
+                                                                            >
+                                                                                Add
+                                                                            </Button>
+                                                                        </div>
+                                                                    )}
+                                                                    <InputError
+                                                                        id={`navigation-group-error-${item.key}`}
+                                                                        message={
+                                                                            groupError
+                                                                        }
+                                                                    />
+                                                                </div>
+                                                                {isCustom && (
+                                                                    <div className="flex shrink-0 gap-2">
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            aria-label={`Edit ${item.title}`}
+                                                                            ref={(
+                                                                                element,
+                                                                            ) => {
+                                                                                if (
+                                                                                    element
+                                                                                ) {
+                                                                                    editCustomButtonRefs.current.set(
+                                                                                        item.key,
+                                                                                        element,
+                                                                                    );
+                                                                                } else {
+                                                                                    editCustomButtonRefs.current.delete(
+                                                                                        item.key,
+                                                                                    );
+                                                                                }
+                                                                            }}
+                                                                            onClick={() =>
+                                                                                editCustomNavigationItem(
+                                                                                    item as RoleCustomNavigationItem,
+                                                                                )
                                                                             }
                                                                         >
-                                                                            {
-                                                                                label
+                                                                            <Pencil aria-hidden="true" />
+                                                                            <span className="sr-only sm:not-sr-only">
+                                                                                Edit
+                                                                            </span>
+                                                                        </Button>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            aria-label={`Remove ${item.title}`}
+                                                                            onClick={() =>
+                                                                                removeCustomNavigationItem(
+                                                                                    item.key,
+                                                                                )
                                                                             }
-                                                                        </option>
-                                                                    ),
+                                                                        >
+                                                                            <Trash2 aria-hidden="true" />
+                                                                            <span className="sr-only sm:not-sr-only">
+                                                                                Remove
+                                                                            </span>
+                                                                        </Button>
+                                                                    </div>
                                                                 )}
-                                                            </select>
-                                                            <InputError
-                                                                id={`navigation-group-error-${item.key}`}
-                                                                message={
-                                                                    groupError
-                                                                }
-                                                            />
-                                                        </div>
-                                                        {isCustom && (
-                                                            <div className="flex shrink-0 gap-2">
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    aria-label={`Edit ${item.title}`}
-                                                                    ref={(
-                                                                        element,
-                                                                    ) => {
-                                                                        if (
-                                                                            element
-                                                                        ) {
-                                                                            editCustomButtonRefs.current.set(
-                                                                                item.key,
-                                                                                element,
-                                                                            );
-                                                                        } else {
-                                                                            editCustomButtonRefs.current.delete(
-                                                                                item.key,
-                                                                            );
+                                                                {rowError && (
+                                                                    <p className="w-full text-xs text-destructive sm:pl-10">
+                                                                        {
+                                                                            rowError
                                                                         }
-                                                                    }}
-                                                                    onClick={() =>
-                                                                        editCustomNavigationItem(
-                                                                            item as RoleCustomNavigationItem,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Pencil aria-hidden="true" />
-                                                                    <span className="sr-only sm:not-sr-only">
-                                                                        Edit
-                                                                    </span>
-                                                                </Button>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    aria-label={`Remove ${item.title}`}
-                                                                    onClick={() =>
-                                                                        removeCustomNavigationItem(
-                                                                            item.key,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Trash2 aria-hidden="true" />
-                                                                    <span className="sr-only sm:not-sr-only">
-                                                                        Remove
-                                                                    </span>
-                                                                </Button>
-                                                            </div>
-                                                        )}
-                                                        {rowError && (
-                                                            <p className="w-full text-xs text-destructive sm:pl-10">
-                                                                {rowError}
-                                                            </p>
-                                                        )}
-                                                        {selectedIndex >= 0 && (
-                                                            <div className="ml-auto flex shrink-0 gap-2">
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    aria-label={`Move ${item.title} up`}
-                                                                    onClick={() =>
-                                                                        moveNavigationItem(
-                                                                            item.key,
-                                                                            -1,
-                                                                        )
-                                                                    }
-                                                                    disabled={
-                                                                        selectedIndex ===
-                                                                        0
-                                                                    }
-                                                                >
-                                                                    <ChevronUp aria-hidden="true" />
-                                                                </Button>
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    aria-label={`Move ${item.title} down`}
-                                                                    onClick={() =>
-                                                                        moveNavigationItem(
-                                                                            item.key,
-                                                                            1,
-                                                                        )
-                                                                    }
-                                                                    disabled={
-                                                                        selectedIndex ===
-                                                                        selectedNavigationItems.length -
-                                                                            1
-                                                                    }
-                                                                >
-                                                                    <ChevronDown aria-hidden="true" />
-                                                                </Button>
-                                                            </div>
-                                                        )}
-                                                    </li>
-                                                );
-                                            },
+                                                                    </p>
+                                                                )}
+                                                                {selectedIndex >=
+                                                                    0 && (
+                                                                    <div className="ml-auto flex shrink-0 gap-2">
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            aria-label={`Move ${item.title} up`}
+                                                                            onClick={() =>
+                                                                                moveNavigationItem(
+                                                                                    item.key,
+                                                                                    -1,
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                selectedIndex ===
+                                                                                0
+                                                                            }
+                                                                        >
+                                                                            <ChevronUp aria-hidden="true" />
+                                                                        </Button>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            aria-label={`Move ${item.title} down`}
+                                                                            onClick={() =>
+                                                                                moveNavigationItem(
+                                                                                    item.key,
+                                                                                    1,
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                selectedIndex ===
+                                                                                selectedNavigationItems.length -
+                                                                                    1
+                                                                            }
+                                                                        >
+                                                                            <ChevronDown aria-hidden="true" />
+                                                                        </Button>
+                                                                    </div>
+                                                                )}
+                                                            </li>
+                                                        );
+                                                    },
+                                                )}
+                                            </ol>
                                         )}
-                                    </ol>
-                                )}
-                                <p className="sr-only" aria-live="polite">
-                                    {navigationReorderAnnouncement ||
-                                        (draggedNavigationKey
-                                            ? `Dragging ${navigationItemsByKey.get(draggedNavigationKey)?.title ?? 'navigation item'}. Drop it over another selected destination to reorder.`
-                                            : '')}
-                                </p>
-                                <InputError
-                                    id="navigation-items-error"
-                                    message={errors.navigation_items}
+                                        <p
+                                            className="sr-only"
+                                            aria-live="polite"
+                                        >
+                                            {navigationReorderAnnouncement ||
+                                                (draggedNavigationKey
+                                                    ? `Dragging ${navigationItemsByKey.get(draggedNavigationKey)?.title ?? 'navigation item'}. Drop it over another selected destination to reorder.`
+                                                    : '')}
+                                        </p>
+                                        <InputError
+                                            id="navigation-items-error"
+                                            message={errors.navigation_items}
+                                        />
+                                    </section>
+                                    <aside
+                                        aria-label="Sidebar preview"
+                                        className="h-fit rounded-xl border border-border bg-card p-4 lg:sticky lg:top-4"
+                                    >
+                                        <h3 className="text-sm font-semibold text-foreground">
+                                            Sidebar preview
+                                        </h3>
+                                        <p className="mt-1 mb-4 text-xs text-muted-foreground">
+                                            {roleDisplayNameDraft || 'New role'}
+                                        </p>
+                                        <nav aria-label="Draft sidebar">
+                                            {previewGroups.length > 0 ? (
+                                                <div className="grid gap-4">
+                                                    {previewGroups.map(
+                                                        (group, index) => (
+                                                            <section
+                                                                key={`${group.group}-${index}`}
+                                                                aria-label={
+                                                                    group.group
+                                                                }
+                                                            >
+                                                                <h4 className="mb-2 px-2 text-[0.7rem] font-semibold tracking-wide text-muted-foreground uppercase">
+                                                                    {
+                                                                        group.group
+                                                                    }
+                                                                </h4>
+                                                                <ul className="grid gap-1">
+                                                                    {group.items.map(
+                                                                        ({
+                                                                            item,
+                                                                        }) => {
+                                                                            const Icon =
+                                                                                getNavigationIcon(
+                                                                                    item.iconKey,
+                                                                                );
+                                                                            const href =
+                                                                                'url' in
+                                                                                item
+                                                                                    ? item.url
+                                                                                    : item.href;
+
+                                                                            return (
+                                                                                <li
+                                                                                    key={
+                                                                                        item.key
+                                                                                    }
+                                                                                    className="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground"
+                                                                                >
+                                                                                    {Icon && (
+                                                                                        <Icon
+                                                                                            aria-hidden="true"
+                                                                                            className="size-4 shrink-0 text-muted-foreground"
+                                                                                        />
+                                                                                    )}
+                                                                                    <span className="truncate">
+                                                                                        {
+                                                                                            item.title
+                                                                                        }
+                                                                                        <span className="block truncate text-xs text-muted-foreground">
+                                                                                            {
+                                                                                                href
+                                                                                            }
+                                                                                        </span>
+                                                                                    </span>
+                                                                                </li>
+                                                                            );
+                                                                        },
+                                                                    )}
+                                                                </ul>
+                                                            </section>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <p className="rounded-md border border-dashed border-border px-3 py-4 text-xs text-muted-foreground">
+                                                    No visible destinations.
+                                                </p>
+                                            )}
+                                        </nav>
+                                        {selectedPreviewEntries.some(
+                                            ({ blockedReason }) =>
+                                                blockedReason,
+                                        ) && (
+                                            <section
+                                                aria-label="Hidden by permissions"
+                                                className="mt-4 border-t border-border pt-3"
+                                            >
+                                                <h4 className="mb-2 text-xs font-semibold text-foreground">
+                                                    Hidden by permissions
+                                                </h4>
+                                                <ul className="grid gap-2">
+                                                    {selectedPreviewEntries
+                                                        .filter(
+                                                            ({
+                                                                blockedReason,
+                                                            }) => blockedReason,
+                                                        )
+                                                        .map(
+                                                            ({
+                                                                item,
+                                                                blockedReason,
+                                                            }) => (
+                                                                <li
+                                                                    key={
+                                                                        item.key
+                                                                    }
+                                                                    className="rounded-md border border-border bg-muted/20 px-3 py-2 text-xs"
+                                                                >
+                                                                    <span className="block font-medium text-foreground">
+                                                                        {
+                                                                            item.title
+                                                                        }
+                                                                    </span>
+                                                                    <span className="mt-1 block text-muted-foreground">
+                                                                        {
+                                                                            blockedReason
+                                                                        }
+                                                                    </span>
+                                                                </li>
+                                                            ),
+                                                        )}
+                                                </ul>
+                                            </section>
+                                        )}
+                                    </aside>
+                                </div>
+                                <ConfirmDialog
+                                    open={groupToRemove !== null}
+                                    onOpenChange={(open) => {
+                                        if (!open) {
+                                            setGroupToRemove(null);
+                                        }
+                                    }}
+                                    destructive
+                                    options={{
+                                        title: `Remove ${groupToRemove ?? 'group'}?`,
+                                        description:
+                                            'This removes custom links in this group and deselects its built-in destinations for this role.',
+                                        confirmLabel: 'Remove group',
+                                    }}
+                                    onConfirm={removeNavigationGroupLabel}
                                 />
                             </fieldset>
 
@@ -1921,7 +2726,7 @@ export default function RoleForm({
                                 <InputError message={errors.permissions} />
                             </fieldset>
                         </CardContent>
-                        <CardFooter className="justify-between gap-3 border-t border-border pt-6">
+                        <CardFooter className="sticky bottom-0 z-20 justify-between gap-3 border-t border-border bg-background/95 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-8px_16px_-16px_hsl(var(--foreground)/0.4)] backdrop-blur supports-[backdrop-filter]:bg-background/90 sm:px-6">
                             <ActionLink href="/access/roles" variant="ghost">
                                 Cancel
                             </ActionLink>

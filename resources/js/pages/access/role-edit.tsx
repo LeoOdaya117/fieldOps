@@ -7,6 +7,7 @@ import type {
     EditableRole,
     RoleNavigationItem,
     RolePermission,
+    RoleRouteOption,
 } from '@/features/access/components/role-form';
 import type { NavigationIconKey } from '@/types';
 import { dashboard } from '@/routes';
@@ -17,11 +18,13 @@ export default function RoleEditPage({
     permissions,
     navigationItems,
     customNavigationIconKeys,
+    routeOptions,
 }: {
     role: EditableRole;
     permissions?: RolePermission[];
     navigationItems: RoleNavigationItem[];
     customNavigationIconKeys?: NavigationIconKey[];
+    routeOptions: RoleRouteOption[];
 }) {
     return (
         <>
@@ -43,6 +46,7 @@ export default function RoleEditPage({
                     permissions={permissions ?? []}
                     navigationItems={navigationItems}
                     customNavigationIconKeys={customNavigationIconKeys}
+                    routeOptions={routeOptions}
                     role={role}
                     submitLabel="Save changes"
                 />

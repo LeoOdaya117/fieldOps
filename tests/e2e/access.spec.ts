@@ -16,12 +16,39 @@ test('role navigation checklist is keyboard-operable across themes and viewports
     const navigationList = navigation.getByRole('list', {
         name: 'Navigation destinations',
     });
+    const sidebarPreview = page.getByRole('complementary', {
+        name: 'Sidebar preview',
+    });
     const dashboard = navigation.getByRole('checkbox', {
         name: 'Dashboard',
     });
 
     await expect(navigationList.getByRole('listitem')).toHaveCount(12);
     await expect(navigation.getByRole('checkbox')).toHaveCount(12);
+    await expect(sidebarPreview).toBeVisible();
+    const editorPane = navigationList.locator('xpath=ancestor::section[1]');
+    const editorBox = await editorPane.boundingBox();
+    const previewBox = await sidebarPreview.boundingBox();
+
+    if (!editorBox || !previewBox) {
+        throw new Error(
+            'Expected the navigation editor and preview to be laid out.',
+        );
+    }
+
+    if ((await page.evaluate(() => window.innerWidth)) < 1024) {
+        expect(previewBox.y).toBeGreaterThanOrEqual(
+            editorBox.y + editorBox.height - 1,
+        );
+    } else {
+        expect(previewBox.x).toBeGreaterThanOrEqual(
+            editorBox.x + editorBox.width - 1,
+        );
+    }
+
+    await expect(
+        page.getByRole('button', { name: 'Create role' }),
+    ).toBeVisible();
 
     for (const colorScheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
@@ -63,11 +90,12 @@ test('role navigation checklist is keyboard-operable across themes and viewports
     const groupLabels = navigation.getByRole('region', {
         name: 'Navigation group labels',
     });
-    await groupLabels.getByLabel('New group label').fill('Operations');
-    await groupLabels.getByRole('button', { name: 'Add label' }).click();
     await navigation
         .getByLabel('Group for Dashboard')
-        .selectOption('Operations');
+        .selectOption('__create_group__');
+    await navigation.getByLabel('New group for Dashboard').fill('Operations');
+    await navigation.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(groupLabels.getByText('Operations')).toBeVisible();
 
     await navigation.getByRole('button', { name: 'Add destination' }).click();
     const customEditor = navigation.locator(
@@ -75,18 +103,18 @@ test('role navigation checklist is keyboard-operable across themes and viewports
     );
     await expect(customEditor).toBeVisible();
     await expect(customEditor).toHaveClass(/sm:grid-cols-2/);
-    const routeSuggestions = customEditor.locator(
-        '#custom-navigation-route-options option',
-    );
-    await expect(routeSuggestions).toHaveCount(12);
-    await expect(
-        customEditor.locator(
-            '#custom-navigation-route-options option[value="/dashboard"]',
-        ),
-    ).toHaveAttribute('label', 'Dashboard - /dashboard');
+    const urlInput = page.getByRole('combobox', { name: 'URL' });
+    await urlInput.fill('access.users.index');
+    const usersRoute = page.getByRole('option', {
+        name: /access\.users\.index.*\/access\/users/i,
+    });
+    await expect(usersRoute).toBeVisible();
+    await urlInput.press('ArrowDown');
+    await urlInput.press('Enter');
+    await expect(urlInput).toHaveValue('/access/users');
     await page.getByLabel('Destination title').fill('Regional reports');
     await page.getByLabel('Group label').selectOption('Operations');
-    await page.getByLabel('URL').fill('/reports/region');
+    await urlInput.fill('/reports/region');
     await page.getByLabel('Icon').selectOption('barChart');
     await navigation.getByRole('button', { name: 'Add to navigation' }).click();
     await expect(
@@ -118,6 +146,31 @@ test('role navigation checklist is keyboard-operable across themes and viewports
             () => document.documentElement.scrollWidth <= window.innerWidth,
         ),
     ).toBe(true);
+
+    const actionBar = page.locator('[data-slot="card-footer"]');
+    await actionBar.scrollIntoViewIfNeeded();
+    await expect(
+        actionBar.getByRole('link', { name: 'Cancel' }),
+    ).toBeInViewport();
+    await expect(
+        actionBar.getByRole('button', { name: 'Create role' }),
+    ).toBeInViewport();
+
+    const actionBarBox = await actionBar.boundingBox();
+    const finalDestinationBox = await navigationList
+        .getByRole('listitem')
+        .last()
+        .boundingBox();
+
+    if (!actionBarBox || !finalDestinationBox) {
+        throw new Error(
+            'Expected the last destination and action bar to be visible.',
+        );
+    }
+
+    expect(
+        finalDestinationBox.y + finalDestinationBox.height,
+    ).toBeLessThanOrEqual(actionBarBox.y + 1);
 });
 
 test('an administrator can manage audit columns across access tables and themes', async ({

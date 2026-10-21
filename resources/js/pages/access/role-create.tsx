@@ -7,6 +7,7 @@ import type {
     RoleCustomNavigationItem,
     RoleNavigationItem,
     RolePermission,
+    RoleRouteOption,
 } from '@/features/access/components/role-form';
 import type { NavigationIconKey } from '@/types';
 import { dashboard } from '@/routes';
@@ -18,12 +19,14 @@ export default function RoleCreatePage({
     defaultNavigationItems,
     customNavigationItems,
     customNavigationIconKeys,
+    routeOptions,
 }: {
     permissions?: RolePermission[];
     navigationItems: RoleNavigationItem[];
     defaultNavigationItems: string[];
     customNavigationItems?: RoleCustomNavigationItem[];
     customNavigationIconKeys?: NavigationIconKey[];
+    routeOptions: RoleRouteOption[];
 }) {
     return (
         <>
@@ -46,6 +49,7 @@ export default function RoleCreatePage({
                     navigationItems={navigationItems}
                     customNavigationItems={customNavigationItems}
                     customNavigationIconKeys={customNavigationIconKeys}
+                    routeOptions={routeOptions}
                     defaultNavigationItems={defaultNavigationItems}
                     submitLabel="Create role"
                 />
