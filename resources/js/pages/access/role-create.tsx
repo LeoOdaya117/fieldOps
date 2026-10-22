@@ -3,14 +3,30 @@ import { ArrowLeft } from 'lucide-react';
 import { ActionLink } from '@/components/action-link';
 import Heading from '@/components/heading';
 import RoleForm from '@/features/access/components/role-form';
-import type { RolePermission } from '@/features/access/components/role-form';
+import type {
+    RoleCustomNavigationItem,
+    RoleNavigationItem,
+    RolePermission,
+    RoleRouteOption,
+} from '@/features/access/components/role-form';
+import type { NavigationIconKey } from '@/types';
 import { dashboard } from '@/routes';
 import { index as rolesIndex } from '@/routes/access/roles';
 
 export default function RoleCreatePage({
     permissions,
+    navigationItems,
+    defaultNavigationItems,
+    customNavigationItems,
+    customNavigationIconKeys,
+    routeOptions,
 }: {
     permissions?: RolePermission[];
+    navigationItems: RoleNavigationItem[];
+    defaultNavigationItems: string[];
+    customNavigationItems?: RoleCustomNavigationItem[];
+    customNavigationIconKeys?: NavigationIconKey[];
+    routeOptions: RoleRouteOption[];
 }) {
     return (
         <>
@@ -30,6 +46,11 @@ export default function RoleCreatePage({
                     action="/access/roles"
                     method="post"
                     permissions={permissions ?? []}
+                    navigationItems={navigationItems}
+                    customNavigationItems={customNavigationItems}
+                    customNavigationIconKeys={customNavigationIconKeys}
+                    routeOptions={routeOptions}
+                    defaultNavigationItems={defaultNavigationItems}
                     submitLabel="Create role"
                 />
             </div>

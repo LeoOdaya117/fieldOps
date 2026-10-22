@@ -1,6 +1,167 @@
 import { expect, test } from '@playwright/test';
 import { e2eAccounts, login } from './support/auth';
 
+test('role navigation checklist is keyboard-operable across themes and viewports', async ({
+    page,
+}) => {
+    await login(page, e2eAccounts.admin);
+    await page.goto('/access/roles/create');
+
+    await expect(
+        page.getByRole('heading', { name: 'Create custom role' }),
+    ).toBeVisible();
+    await page.getByRole('tab', { name: 'Navigation' }).click();
+
+    const navigation = page.getByRole('tabpanel', { name: 'Navigation' });
+    const navigationList = navigation.getByRole('list', {
+        name: 'Navigation destinations',
+    });
+    const sidebarPreview = page.getByRole('complementary', {
+        name: 'Sidebar preview',
+    });
+    const dashboard = navigation.getByRole('checkbox', {
+        name: 'Dashboard',
+    });
+
+    await expect(navigationList.getByRole('listitem')).toHaveCount(12);
+    await expect(navigation.getByRole('checkbox')).toHaveCount(12);
+    await expect(sidebarPreview).toBeVisible();
+    const editorPane = navigationList.locator('xpath=ancestor::section[1]');
+    const editorBox = await editorPane.boundingBox();
+    const previewBox = await sidebarPreview.boundingBox();
+
+    if (!editorBox || !previewBox) {
+        throw new Error(
+            'Expected the navigation editor and preview to be laid out.',
+        );
+    }
+
+    if ((await page.evaluate(() => window.innerWidth)) < 1024) {
+        expect(previewBox.y).toBeGreaterThanOrEqual(
+            editorBox.y + editorBox.height - 1,
+        );
+    } else {
+        expect(previewBox.x).toBeGreaterThanOrEqual(
+            editorBox.x + editorBox.width - 1,
+        );
+    }
+
+    await expect(
+        page.getByRole('button', { name: 'Create role' }),
+    ).toBeVisible();
+
+    for (const colorScheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+        await page.reload();
+        await expect(
+            page.getByRole('heading', { name: 'Create custom role' }),
+        ).toBeVisible({ timeout: 15_000 });
+        await page.getByRole('tab', { name: 'Navigation' }).click();
+        await expect(navigation).toBeVisible();
+
+        if (colorScheme === 'dark') {
+            await expect(page.locator('html')).toHaveClass(/dark/);
+        } else {
+            await expect(page.locator('html')).not.toHaveClass(/dark/);
+        }
+
+        await dashboard.focus();
+        await page.keyboard.press('Space');
+        await expect(dashboard).not.toBeChecked();
+        await expect(dashboard).toBeFocused();
+
+        await navigation.getByRole('button', { name: 'Select all' }).click();
+        await expect(dashboard).toBeChecked();
+        await navigation.getByRole('button', { name: 'Clear all' }).click();
+        await expect(dashboard).not.toBeChecked();
+
+        expect(
+            await page.evaluate(
+                () => document.documentElement.scrollWidth <= window.innerWidth,
+            ),
+        ).toBe(true);
+    }
+
+    await page.reload();
+    await expect(
+        page.getByRole('heading', { name: 'Create custom role' }),
+    ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('tab', { name: 'Navigation' }).click();
+    const groupLabels = navigation.getByRole('region', {
+        name: 'Navigation group labels',
+    });
+    await navigation
+        .getByLabel('Group for Dashboard')
+        .selectOption('__create_group__');
+    await navigation.getByLabel('New group for Dashboard').fill('Operations');
+    await navigation.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(groupLabels.getByText('Operations')).toBeVisible();
+
+    await navigation.getByRole('button', { name: 'Add destination' }).click();
+    const customEditor = navigation.locator(
+        '[data-slot="custom-navigation-editor"]',
+    );
+    await expect(customEditor).toBeVisible();
+    await expect(customEditor).toHaveClass(/sm:grid-cols-2/);
+    const urlInput = page.getByRole('combobox', { name: 'URL' });
+    await urlInput.fill('access.users.index');
+    const usersRoute = page.getByRole('option', {
+        name: /access\.users\.index.*\/access\/users/i,
+    });
+    await expect(usersRoute).toBeVisible();
+    await urlInput.press('ArrowDown');
+    await urlInput.press('Enter');
+    await expect(urlInput).toHaveValue('/access/users');
+    await page.getByLabel('Destination title').fill('Regional reports');
+    await page
+        .getByLabel('Group label', { exact: true })
+        .selectOption('Operations');
+    await urlInput.fill('/reports/region');
+    await page.getByLabel('Icon').selectOption('barChart');
+    await navigation.getByRole('button', { name: 'Add to navigation' }).click();
+    await expect(
+        navigation.getByRole('checkbox', { name: 'Regional reports' }),
+    ).toBeChecked();
+
+    const moveUsersUp = navigationList.getByRole('button', {
+        name: 'Move Users up',
+    });
+
+    await moveUsersUp.focus();
+    await page.keyboard.press('Enter');
+    await expect(navigationList.getByRole('listitem').nth(1)).toHaveAttribute(
+        'aria-label',
+        'Users, Access, position 2',
+    );
+    await expect(navigationList.getByRole('listitem').nth(2)).toHaveAttribute(
+        'aria-label',
+        'Dashboard, Operations, position 3',
+    );
+
+    await expect(
+        navigationList.getByRole('listitem', {
+            name: /Regional reports, Operations, position/,
+        }),
+    ).toBeVisible();
+    expect(
+        await page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+    ).toBe(true);
+
+    const actionBar = page.locator('[data-slot="card-footer"]');
+    const finalDestination = navigationList.getByRole('listitem').last();
+    await finalDestination.scrollIntoViewIfNeeded();
+    await expect(finalDestination).toBeInViewport();
+    await actionBar.scrollIntoViewIfNeeded();
+    await expect(
+        actionBar.getByRole('link', { name: 'Cancel' }),
+    ).toBeInViewport();
+    await expect(
+        actionBar.getByRole('button', { name: 'Create role' }),
+    ).toBeInViewport();
+});
+
 test('an administrator can manage audit columns across access tables and themes', async ({
     page,
 }, testInfo) => {

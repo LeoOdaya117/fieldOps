@@ -52,7 +52,7 @@ const alertMeta: Record<
     warning: {
         title: 'Warning',
         Icon: TriangleAlert,
-        iconClassName: 'bg-warning/15 text-warning-foreground',
+        iconClassName: 'bg-warning/15 text-foreground',
         surfaceClassName: 'border-warning/30',
     },
     info: {

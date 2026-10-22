@@ -1,8 +1,13 @@
 import { Link, usePage } from '@inertiajs/react';
+import { NavigationLink } from '@/components/navigation-link';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import { AppearanceToggleButton } from '@/components/appearance-toggle-button';
 import { cn } from '@/lib/utils';
-import { getActiveNavigationItem, getNavigationGroups } from '@/lib/navigation';
+import {
+    getActiveNavigationItem,
+    getNavigationGroups,
+    getNavigationItemByKey,
+} from '@/lib/navigation';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { PlatformLogo } from '@/components/platform-logo';
 import {
@@ -24,6 +29,7 @@ export default function AppRailLayout({
 }: AppLayoutProps) {
     const { auth } = usePage().props;
     const groups = getNavigationGroups(auth);
+    const dashboard = getNavigationItemByKey(groups, 'dashboard');
     const items = groups.flatMap((group) => group.items);
     const { currentUrl } = useCurrentUrl();
     const activeItem = getActiveNavigationItem(items, currentUrl);
@@ -31,12 +37,18 @@ export default function AppRailLayout({
     return (
         <div className="flex min-h-screen bg-background">
             <aside className="hidden w-[4.5rem] shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
-                <Link
-                    href="/dashboard"
-                    className="flex h-16 items-center justify-center border-b border-sidebar-border"
-                >
-                    <PlatformLogo variant="mark" className="size-8" />
-                </Link>
+                {dashboard ? (
+                    <Link
+                        href={dashboard.href}
+                        className="flex h-16 items-center justify-center border-b border-sidebar-border"
+                    >
+                        <PlatformLogo variant="mark" className="size-8" />
+                    </Link>
+                ) : (
+                    <div className="flex h-16 items-center justify-center border-b border-sidebar-border">
+                        <PlatformLogo variant="mark" className="size-8" />
+                    </div>
+                )}
                 <nav
                     className="flex flex-1 flex-col items-center gap-1 overflow-y-auto py-4"
                     aria-label="Main navigation"
@@ -46,10 +58,10 @@ export default function AppRailLayout({
                         const Icon = item.icon;
 
                         return (
-                            <Tooltip key={item.title}>
+                            <Tooltip key={item.key ?? item.title}>
                                 <TooltipTrigger asChild>
-                                    <Link
-                                        href={item.href}
+                                    <NavigationLink
+                                        href={String(item.href)}
                                         aria-label={item.title}
                                         aria-current={
                                             active ? 'page' : undefined
@@ -63,7 +75,7 @@ export default function AppRailLayout({
                                         {Icon && (
                                             <Icon className="size-[1.125rem]" />
                                         )}
-                                    </Link>
+                                    </NavigationLink>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">
                                     {item.title}

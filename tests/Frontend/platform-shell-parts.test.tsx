@@ -101,4 +101,37 @@ describe('MobilePlatformNavigation', () => {
 
         expect(trigger).toHaveAttribute('aria-expanded', 'false');
     });
+
+    it('keeps the server item order across repeated group segments', async () => {
+        const user = userEvent.setup();
+
+        render(
+            <MobilePlatformNavigation
+                groups={[
+                    {
+                        label: 'Platform',
+                        items: [{ title: 'Dashboard', href: '/dashboard' }],
+                    },
+                    {
+                        label: 'Access',
+                        items: [{ title: 'Users', href: '/access/users' }],
+                    },
+                    {
+                        label: 'Platform',
+                        items: [
+                            { title: 'Notifications', href: '/notifications' },
+                        ],
+                    },
+                ]}
+            />,
+        );
+
+        await user.click(
+            screen.getByRole('button', { name: 'Open navigation' }),
+        );
+
+        expect(
+            screen.getAllByRole('link').map((link) => link.textContent),
+        ).toEqual(['Dashboard', 'Users', 'Notifications']);
+    });
 });

@@ -11,6 +11,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 type FormProps = FormHTMLAttributes<HTMLFormElement> & {
     onSuccess?: () => void;
+    onError?: (errors: Record<string, string>) => void;
+    transform?: (data: Record<string, unknown>) => Record<string, unknown>;
     children?:
         | ReactNode
         | ((state: {
@@ -19,13 +21,94 @@ type FormProps = FormHTMLAttributes<HTMLFormElement> & {
           }) => ReactNode);
 };
 
+const formMock = vi.hoisted(() => ({
+    errors: {} as Record<string, string>,
+    submittedData: undefined as Record<string, unknown> | undefined,
+}));
+
+const roleNavigationItems = [
+    {
+        key: 'notifications',
+        title: 'Notifications',
+        group: 'Platform',
+        href: '/notifications',
+        permission: null,
+        iconKey: 'bell',
+        superAdminOnly: false,
+    },
+    {
+        key: 'dashboard',
+        title: 'Dashboard',
+        group: 'Platform',
+        href: '/dashboard',
+        permission: 'dashboard.view',
+        iconKey: 'layoutGrid',
+        superAdminOnly: false,
+    },
+    {
+        key: 'users',
+        title: 'Users',
+        group: 'Access',
+        href: '/access/users',
+        permission: 'users.view',
+        iconKey: 'users',
+        superAdminOnly: false,
+    },
+    {
+        key: 'roles',
+        title: 'Roles',
+        group: 'Access',
+        href: '/access/roles',
+        permission: 'roles.view',
+        iconKey: 'shieldCheck',
+        superAdminOnly: false,
+    },
+];
+
+const roleRouteOptions = [
+    { name: 'dashboard', path: '/dashboard' },
+    { name: 'users.index', path: '/access/users' },
+    { name: 'reports.index', path: '/reports' },
+];
+
 vi.mock('@inertiajs/react', () => ({
-    Form: ({ children, onSuccess, onSubmit, ...props }: FormProps) => {
+    Form: ({
+        children,
+        onSuccess,
+        onError,
+        onSubmit,
+        transform,
+        ...props
+    }: FormProps) => {
         const handleSubmit: FormEventHandler<HTMLFormElement> = (event) => {
             onSubmit?.(event);
 
+            const data: Record<string, unknown> = {};
+
+            for (const [field, value] of new FormData(
+                event.currentTarget,
+            ).entries()) {
+                const isArray = field.endsWith('[]');
+                const key = isArray ? field.slice(0, -2) : field;
+
+                if (isArray) {
+                    const current = data[key];
+                    data[key] = Array.isArray(current)
+                        ? [...current, value]
+                        : [value];
+                } else {
+                    data[key] = value;
+                }
+            }
+
+            formMock.submittedData = transform ? transform(data) : data;
+
             if (!event.defaultPrevented) {
-                onSuccess?.();
+                if (Object.keys(formMock.errors).length > 0) {
+                    onError?.(formMock.errors);
+                } else {
+                    onSuccess?.();
+                }
             }
 
             event.preventDefault();
@@ -34,7 +117,7 @@ vi.mock('@inertiajs/react', () => ({
         return (
             <form {...props} onSubmit={handleSubmit}>
                 {typeof children === 'function'
-                    ? children({ processing: false, errors: {} })
+                    ? children({ processing: false, errors: formMock.errors })
                     : children}
             </form>
         );
@@ -51,12 +134,13 @@ vi.mock('@inertiajs/react', () => ({
         href: string;
         children?: ReactNode;
     }) => (
-        <a href={href} {...props}>
+        <a href={href} data-inertia-link="true" {...props}>
             {children}
         </a>
     ),
 }));
 
+import { NavigationLink } from '@/components/navigation-link';
 import AuditPage from '@/pages/access/audit';
 import AuditShowPage from '@/pages/access/audit-show';
 import IpBlockEditPage from '@/pages/access/ip-block-edit';
@@ -80,6 +164,8 @@ import RegisterPage from '@/pages/auth/register';
 afterEach(() => {
     cleanup();
     localStorage.clear();
+    formMock.errors = {};
+    formMock.submittedData = undefined;
 });
 
 describe('access administration pages', () => {
@@ -639,7 +725,16 @@ describe('access administration pages', () => {
             }
         }
 
-        render(<RoleCreatePage permissions={permissions} />);
+        render(
+            <RoleCreatePage
+                permissions={permissions}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                defaultNavigationItems={roleNavigationItems.map(
+                    (item) => item.key,
+                )}
+            />,
+        );
 
         expect(
             screen.getByRole('heading', { name: 'Create custom role' }),
@@ -647,6 +742,7 @@ describe('access administration pages', () => {
         expect(
             screen.getByRole('button', { name: 'Create role' }),
         ).toBeInTheDocument();
+        await user.click(screen.getByRole('tab', { name: 'Permissions' }));
         expect(
             screen.getByRole('heading', { name: 'Audit' }),
         ).toBeInTheDocument();
@@ -698,6 +794,8 @@ describe('access administration pages', () => {
         render(
             <RoleEditPage
                 permissions={permissions}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
                 role={{
                     id: 2,
                     name: 'reviewer',
@@ -709,6 +807,7 @@ describe('access administration pages', () => {
                         'organization_locations.view_deleted',
                         'media_assets.update_deleted',
                     ],
+                    navigationItems: ['users'],
                 }}
             />,
         );
@@ -725,6 +824,7 @@ describe('access administration pages', () => {
         expect(
             document.querySelector('[data-slot="role-details-fields"]'),
         ).toHaveClass('items-start');
+        await user.click(screen.getByRole('tab', { name: 'Permissions' }));
         expect(
             document.querySelector('[data-slot="permission-groups"]'),
         ).not.toHaveClass('lg:grid-cols-2');
@@ -860,6 +960,1088 @@ describe('access administration pages', () => {
             screen.getByRole('checkbox', { name: /roles\.create/ }),
         ).not.toBeChecked();
     }, 10_000);
+
+    it('separates role details, navigation, and permissions into keyboard-accessible tabs', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleCreatePage
+                permissions={[{ id: 1, name: 'roles.view' }]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                defaultNavigationItems={['notifications']}
+            />,
+        );
+
+        const detailsTab = screen.getByRole('tab', { name: 'Details' });
+        expect(detailsTab).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByLabelText('Role key')).toBeVisible();
+        expect(
+            screen.queryByRole('checkbox', { name: 'Notifications' }),
+        ).not.toBeInTheDocument();
+
+        await user.type(screen.getByLabelText('Role key'), 'reviewer');
+        detailsTab.focus();
+        await user.keyboard('{ArrowRight}');
+
+        const navigationTab = screen.getByRole('tab', {
+            name: 'Navigation',
+        });
+        expect(navigationTab).toHaveAttribute('aria-selected', 'true');
+        expect(
+            screen.getByRole('checkbox', { name: 'Notifications' }),
+        ).toBeChecked();
+
+        await user.keyboard('{ArrowRight}');
+        const permissionsTab = screen.getByRole('tab', {
+            name: 'Permissions',
+        });
+        expect(permissionsTab).toHaveAttribute('aria-selected', 'true');
+        expect(
+            screen.getByRole('checkbox', { name: /roles\.view/ }),
+        ).toBeInTheDocument();
+
+        await user.keyboard('{ArrowLeft}');
+        expect(navigationTab).toHaveAttribute('aria-selected', 'true');
+        await user.keyboard('{ArrowLeft}');
+        expect(detailsTab).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByLabelText('Role key')).toHaveValue('reviewer');
+    });
+
+    it('initializes, reorders across groups, changes, and submits navigation order', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleCreatePage
+                permissions={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                defaultNavigationItems={roleNavigationItems.map(
+                    (item) => item.key,
+                )}
+            />,
+        );
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+
+        const navigation = screen.getByRole('tabpanel', {
+            name: 'Navigation',
+        });
+        const notifications = within(navigation).getByRole('checkbox', {
+            name: 'Notifications',
+        });
+        const dashboard = within(navigation).getByRole('checkbox', {
+            name: 'Dashboard',
+        });
+        const users = within(navigation).getByRole('checkbox', {
+            name: 'Users',
+        });
+        const roles = within(navigation).getByRole('checkbox', {
+            name: 'Roles',
+        });
+
+        expect(notifications).toBeChecked();
+        expect(dashboard).toBeChecked();
+        expect(users).toBeChecked();
+        expect(roles).toBeChecked();
+        expect(within(navigation).getAllByRole('checkbox')).toHaveLength(
+            roleNavigationItems.length,
+        );
+        expect(
+            screen.getByText(/permissions still control access/i),
+        ).toBeInTheDocument();
+
+        const moveUsersUp = screen.getByRole('button', {
+            name: 'Move Users up',
+        });
+        moveUsersUp.focus();
+        await user.keyboard('{Enter}');
+        await user.click(dashboard);
+        await user.click(dashboard);
+        const orderedItems = () =>
+            within(
+                within(navigation).getByRole('list', {
+                    name: 'Navigation destinations',
+                }),
+            )
+                .getAllByRole('listitem')
+                .map((item) => item.getAttribute('aria-label'));
+
+        expect(orderedItems()).toEqual([
+            'Notifications, Platform, position 1',
+            'Users, Access, position 2',
+            'Roles, Access, position 3',
+            'Dashboard, Platform, position 4',
+        ]);
+        await user.click(screen.getByRole('tab', { name: 'Details' }));
+        await user.type(screen.getByLabelText('Role key'), 'reviewer');
+        await user.type(screen.getByLabelText('Display name'), 'Reviewer');
+        await user.click(screen.getByRole('button', { name: 'Create role' }));
+
+        expect(formMock.submittedData?.navigation_items).toEqual([
+            'notifications',
+            'users',
+            'roles',
+            'dashboard',
+        ]);
+
+        cleanup();
+        render(
+            <RoleEditPage
+                permissions={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                role={{
+                    id: 2,
+                    name: 'reviewer',
+                    displayName: 'Reviewer',
+                    description: null,
+                    permissions: [],
+                    navigationItems: ['users', 'notifications'],
+                }}
+            />,
+        );
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        const editNavigation = screen.getByRole('tabpanel', {
+            name: 'Navigation',
+        });
+
+        expect(
+            within(editNavigation).getByRole('checkbox', { name: 'Users' }),
+        ).toBeChecked();
+        expect(
+            within(editNavigation).getByRole('checkbox', {
+                name: 'Notifications',
+            }),
+        ).toBeChecked();
+        const orderedEditItems = () =>
+            within(
+                within(editNavigation).getByRole('list', {
+                    name: 'Navigation destinations',
+                }),
+            )
+                .getAllByRole('listitem')
+                .map((item) => item.getAttribute('aria-label'));
+
+        expect(orderedEditItems().slice(0, 2)).toEqual([
+            'Users, Access, position 1',
+            'Notifications, Platform, position 2',
+        ]);
+        await user.click(screen.getByRole('button', { name: 'Select all' }));
+        expect(orderedEditItems()).toEqual([
+            'Users, Access, position 1',
+            'Notifications, Platform, position 2',
+            'Dashboard, Platform, position 3',
+            'Roles, Access, position 4',
+        ]);
+    });
+
+    it('reorders selected destinations by dragging and submits the new order', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleCreatePage
+                permissions={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                defaultNavigationItems={roleNavigationItems.map(
+                    (item) => item.key,
+                )}
+            />,
+        );
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+
+        const navigation = screen.getByRole('tabpanel', {
+            name: 'Navigation',
+        });
+        const destinationList = within(navigation).getByRole('list', {
+            name: 'Navigation destinations',
+        });
+        const dragHandle = within(destinationList).getByRole('button', {
+            name: 'Drag Notifications to reorder',
+        });
+        const usersRow = within(destinationList).getByRole('listitem', {
+            name: 'Users, Access, position 3',
+        });
+        const dataTransfer = {
+            effectAllowed: 'none',
+            dropEffect: 'none',
+            setData: vi.fn(),
+        };
+
+        fireEvent.dragStart(dragHandle, { dataTransfer });
+        fireEvent.dragOver(usersRow, {
+            clientY: 100,
+            dataTransfer,
+        });
+        fireEvent.drop(usersRow, { dataTransfer });
+        fireEvent.dragEnd(dragHandle);
+
+        expect(
+            within(destinationList)
+                .getAllByRole('listitem')
+                .map((item) => item.getAttribute('aria-label')),
+        ).toEqual([
+            'Dashboard, Platform, position 1',
+            'Notifications, Platform, position 2',
+            'Users, Access, position 3',
+            'Roles, Access, position 4',
+        ]);
+        expect(screen.getByText(/Notifications reordered/i)).toHaveAttribute(
+            'aria-live',
+            'polite',
+        );
+
+        await user.click(screen.getByRole('tab', { name: 'Details' }));
+        await user.type(screen.getByLabelText('Role key'), 'reviewer');
+        await user.type(screen.getByLabelText('Display name'), 'Reviewer');
+        await user.click(screen.getByRole('button', { name: 'Create role' }));
+
+        expect(formMock.submittedData?.navigation_items).toEqual([
+            'dashboard',
+            'notifications',
+            'users',
+            'roles',
+        ]);
+    });
+
+    it('keeps a configured destination selected when its permission is absent', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleEditPage
+                permissions={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                role={{
+                    id: 3,
+                    name: 'dashboard_reader',
+                    displayName: 'Dashboard reader',
+                    description: null,
+                    permissions: [],
+                    navigationItems: ['dashboard'],
+                    navigationGroupOverrides: { dashboard: 'Analytics' },
+                }}
+            />,
+        );
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+
+        expect(
+            within(
+                screen.getByRole('tabpanel', { name: 'Navigation' }),
+            ).getByRole('checkbox', { name: 'Dashboard' }),
+        ).toBeChecked();
+        expect(
+            screen.getByText(/permissions still control access/i),
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText('Group for Dashboard')).toHaveValue(
+            'Analytics',
+        );
+        await user.click(screen.getByRole('button', { name: 'Save changes' }));
+        expect(formMock.submittedData?.navigation_group_overrides).toEqual({
+            dashboard: 'Analytics',
+        });
+    });
+
+    it('creates group labels, assigns them to built-in destinations, and submits overrides', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleCreatePage
+                permissions={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                defaultNavigationItems={['notifications']}
+                customNavigationItems={[]}
+            />,
+        );
+
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        await user.selectOptions(
+            screen.getByLabelText('Group for Notifications'),
+            '__create_group__',
+        );
+        await user.type(
+            screen.getByLabelText('New group for Notifications'),
+            'Operations',
+        );
+        await user.click(
+            screen.getByRole('button', { name: 'Add', exact: true }),
+        );
+
+        await user.click(screen.getByRole('tab', { name: 'Details' }));
+        await user.type(screen.getByLabelText('Role key'), 'operations_role');
+        await user.type(
+            screen.getByLabelText('Display name'),
+            'Operations role',
+        );
+        await user.click(screen.getByRole('button', { name: 'Create role' }));
+
+        expect(formMock.submittedData?.navigation_group_overrides).toEqual({
+            notifications: 'Operations',
+        });
+        expect(formMock.submittedData?.custom_navigation_items).toEqual([]);
+    });
+
+    it('previews draft order and permissions, then filters without changing saved order', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleEditPage
+                permissions={[
+                    { id: 1, name: 'dashboard.view' },
+                    { id: 2, name: 'users.view' },
+                    { id: 3, name: 'roles.view' },
+                ]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                role={{
+                    id: 4,
+                    name: 'field_viewer',
+                    displayName: 'Field viewer',
+                    description: null,
+                    permissions: ['dashboard.view', 'users.view'],
+                    navigationItems: [
+                        'dashboard',
+                        'users',
+                        'notifications',
+                        'roles',
+                    ],
+                }}
+            />,
+        );
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+
+        const preview = screen.getByRole('navigation', {
+            name: 'Draft sidebar',
+        });
+        expect(
+            within(preview).getAllByRole('region', { name: 'Platform' }),
+        ).toHaveLength(2);
+        expect(screen.getByText('Requires roles.view')).toBeInTheDocument();
+        expect(
+            screen.getByRole('region', { name: 'Hidden by permissions' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('complementary', { name: 'Sidebar preview' }),
+        ).toHaveClass('lg:sticky', 'bg-card', 'border-border');
+        expect(
+            screen.getByText('Field viewer', { selector: 'p' }),
+        ).toBeInTheDocument();
+
+        await user.click(
+            screen.getByRole('button', { name: 'Move Notifications up' }),
+        );
+        expect(
+            within(preview).getAllByRole('region', { name: 'Platform' }),
+        ).toHaveLength(1);
+        const platformPreview = within(preview).getByRole('region', {
+            name: 'Platform',
+        });
+        const platformPreviewItems =
+            within(platformPreview).getAllByRole('listitem');
+        expect(platformPreviewItems[0]).toHaveTextContent(
+            /Dashboard.*\/dashboard/,
+        );
+        expect(platformPreviewItems[1]).toHaveTextContent(
+            /Notifications.*\/notifications/,
+        );
+        await user.selectOptions(
+            screen.getByLabelText('Group for Dashboard'),
+            '__create_group__',
+        );
+        await user.type(
+            screen.getByLabelText('New group for Dashboard'),
+            'Analytics',
+        );
+        await user.click(
+            screen.getByRole('button', { name: 'Add', exact: true }),
+        );
+        expect(
+            within(
+                within(preview).getByRole('region', { name: 'Analytics' }),
+            ).getByText('Dashboard'),
+        ).toBeInTheDocument();
+
+        await user.type(screen.getByLabelText('Search destinations'), 'users');
+        const searchedList = screen.getByRole('list', {
+            name: 'Navigation destinations',
+        });
+        expect(within(searchedList).getAllByRole('listitem')).toHaveLength(1);
+        expect(
+            within(searchedList).getByRole('checkbox', { name: 'Users' }),
+        ).toBeInTheDocument();
+        await user.clear(screen.getByLabelText('Search destinations'));
+
+        await user.click(
+            screen.getByRole('button', { name: 'Available', exact: true }),
+        );
+        expect(
+            screen.getByText('No available destinations.'),
+        ).toBeInTheDocument();
+        await user.click(
+            screen.getByRole('button', { name: 'Selected', exact: true }),
+        );
+        const destinationList = screen.getByRole('list', {
+            name: 'Navigation destinations',
+        });
+        expect(
+            within(destinationList)
+                .getAllByRole('listitem')
+                .map((item) => item.getAttribute('aria-label')),
+        ).toEqual([
+            'Dashboard, Analytics, position 1',
+            'Notifications, Platform, position 2',
+            'Users, Access, position 3',
+            'Roles, Access, position 4',
+        ]);
+        await user.click(screen.getByRole('button', { name: 'Save changes' }));
+        expect(formMock.submittedData?.navigation_items).toEqual([
+            'dashboard',
+            'notifications',
+            'users',
+            'roles',
+        ]);
+        expect(
+            document.querySelector('[data-slot="card-footer"]') ??
+                document.querySelector('footer'),
+        ).toHaveClass('sticky', 'bottom-0');
+    });
+
+    it('renames groups across links and confirms role-local group removal', async () => {
+        const user = userEvent.setup();
+        const customKey = 'custom_123e4567-e89b-42d3-a456-426614174000';
+        render(
+            <RoleEditPage
+                permissions={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                role={{
+                    id: 5,
+                    name: 'report_viewer',
+                    displayName: 'Report viewer',
+                    description: null,
+                    permissions: [],
+                    navigationItems: [
+                        'dashboard',
+                        'users',
+                        'notifications',
+                        customKey,
+                    ],
+                    navigationGroupOverrides: {
+                        dashboard: 'Operations',
+                        users: 'Operations',
+                        roles: 'Operations',
+                    },
+                    customNavigationItems: [
+                        {
+                            key: customKey,
+                            title: 'Team reports',
+                            group: 'Operations',
+                            url: '/reports/team',
+                            iconKey: 'folder',
+                        },
+                    ],
+                }}
+            />,
+        );
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        expect(screen.getByText('4 destinations')).toBeInTheDocument();
+
+        await user.click(
+            screen.getByRole('button', { name: 'Rename group Operations' }),
+        );
+        await user.clear(screen.getByLabelText('Rename Operations'));
+        await user.type(screen.getByLabelText('Rename Operations'), 'Reports');
+        await user.click(
+            screen.getByRole('button', { name: 'Save', exact: true }),
+        );
+        expect(screen.getByLabelText('Group for Dashboard')).toHaveValue(
+            'Reports',
+        );
+        expect(screen.getByLabelText('Group for Users')).toHaveValue('Reports');
+        expect(screen.getByLabelText('Group for Roles')).toHaveValue('Reports');
+        expect(
+            screen.getByText('Reports', { selector: 'h4' }),
+        ).toBeInTheDocument();
+        const preview = screen.getByRole('navigation', {
+            name: 'Draft sidebar',
+        });
+        const reportsGroup = within(preview).getByRole('region', {
+            name: 'Reports',
+        });
+        expect(
+            within(reportsGroup).getByText('Team reports'),
+        ).toBeInTheDocument();
+        expect(
+            within(reportsGroup).getByText('/reports/team'),
+        ).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Save changes' }));
+        expect(formMock.submittedData?.navigation_group_overrides).toEqual({
+            dashboard: 'Reports',
+            users: 'Reports',
+            roles: 'Reports',
+        });
+        expect(formMock.submittedData?.custom_navigation_items).toEqual([
+            expect.objectContaining({ group: 'Reports' }),
+        ]);
+
+        await user.click(
+            screen.getByRole('button', { name: 'Remove group Reports' }),
+        );
+        const dialog = screen.getByRole('dialog');
+        expect(dialog).toHaveTextContent(/custom links.*deselects.*built-in/i);
+        await user.click(
+            within(dialog).getByRole('button', { name: 'Cancel' }),
+        );
+        expect(
+            screen.getByRole('checkbox', { name: 'Dashboard' }),
+        ).toBeChecked();
+        expect(
+            screen.getByRole('checkbox', { name: 'Team reports' }),
+        ).toBeChecked();
+
+        await user.click(
+            screen.getByRole('button', { name: 'Remove group Reports' }),
+        );
+        await user.click(
+            within(screen.getByRole('dialog')).getByRole('button', {
+                name: 'Remove group',
+            }),
+        );
+        expect(
+            screen.getByRole('checkbox', { name: 'Dashboard' }),
+        ).not.toBeChecked();
+        expect(
+            screen.getByRole('checkbox', { name: 'Users' }),
+        ).not.toBeChecked();
+        expect(
+            screen.getByRole('checkbox', { name: 'Notifications' }),
+        ).toBeChecked();
+        expect(
+            screen.queryByRole('checkbox', { name: 'Team reports' }),
+        ).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Save changes' }));
+        expect(formMock.submittedData?.navigation_items).toEqual([
+            'notifications',
+        ]);
+        expect(formMock.submittedData?.custom_navigation_items).toEqual([]);
+        expect(formMock.submittedData?.navigation_group_overrides).toEqual({});
+    });
+
+    it('selects an available destination and reorders it in the saved global order', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleEditPage
+                permissions={[
+                    { id: 1, name: 'dashboard.view' },
+                    { id: 2, name: 'users.view' },
+                    { id: 3, name: 'roles.view' },
+                ]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                role={{
+                    id: 6,
+                    name: 'field_viewer',
+                    displayName: 'Field viewer',
+                    description: null,
+                    permissions: ['dashboard.view', 'users.view'],
+                    navigationItems: ['notifications', 'users'],
+                }}
+            />,
+        );
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        await user.click(
+            screen.getByRole('button', { name: 'Available', exact: true }),
+        );
+        const destinationList = screen.getByRole('list', {
+            name: 'Navigation destinations',
+        });
+        expect(
+            within(destinationList).getByRole('checkbox', { name: 'Roles' }),
+        ).not.toBeChecked();
+        await user.click(
+            within(destinationList).getByRole('checkbox', { name: 'Roles' }),
+        );
+
+        await user.click(
+            screen.getByRole('button', { name: 'Selected', exact: true }),
+        );
+        await user.click(screen.getByRole('button', { name: 'Move Roles up' }));
+        expect(
+            within(destinationList)
+                .getAllByRole('listitem')
+                .map((item) => item.getAttribute('aria-label')),
+        ).toEqual([
+            'Notifications, Platform, position 1',
+            'Roles, Access, position 2',
+            'Users, Access, position 3',
+        ]);
+
+        await user.click(screen.getByRole('button', { name: 'Save changes' }));
+        expect(formMock.submittedData?.navigation_items).toEqual([
+            'notifications',
+            'roles',
+            'users',
+        ]);
+    });
+
+    it('applies Super Admin permissions and identity to the draft preview', async () => {
+        const user = userEvent.setup();
+        const backupItem = {
+            key: 'backups',
+            title: 'Backup & Restore',
+            group: 'System',
+            href: '/system-settings/backups',
+            permission: 'system_settings.manage_system',
+            iconKey: 'databaseBackup',
+            superAdminOnly: true,
+        };
+        const filesItem = {
+            key: 'files',
+            title: 'Files',
+            group: 'System',
+            href: '/files',
+            permission: 'files.view',
+            iconKey: 'files',
+            superAdminOnly: false,
+        };
+        render(
+            <RoleEditPage
+                permissions={[
+                    { id: 1, name: 'dashboard.view' },
+                    { id: 2, name: 'system_settings.manage_system' },
+                    { id: 3, name: 'files.view' },
+                ]}
+                navigationItems={[
+                    ...roleNavigationItems,
+                    backupItem,
+                    filesItem,
+                ]}
+                routeOptions={roleRouteOptions}
+                role={{
+                    id: 7,
+                    name: 'field_viewer',
+                    displayName: 'Field viewer',
+                    description: null,
+                    permissions: ['dashboard.view'],
+                    navigationItems: ['dashboard', 'backups', 'files'],
+                }}
+            />,
+        );
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+
+        let preview = screen.getByRole('navigation', {
+            name: 'Draft sidebar',
+        });
+        let hidden = screen.getByRole('region', {
+            name: 'Hidden by permissions',
+        });
+        expect(hidden).toHaveTextContent('Requires files.view');
+        expect(hidden).toHaveTextContent('Super Admin only');
+        expect(within(preview).queryByText('Files')).toBeNull();
+        expect(within(preview).queryByText('Backup & Restore')).toBeNull();
+
+        await user.click(screen.getByRole('tab', { name: 'Permissions' }));
+        await user.click(
+            screen.getByRole('checkbox', { name: 'Select all permissions' }),
+        );
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        preview = screen.getByRole('navigation', { name: 'Draft sidebar' });
+        expect(within(preview).getByText('Files')).toBeInTheDocument();
+        expect(within(preview).queryByText('Backup & Restore')).toBeNull();
+        expect(
+            screen.getByRole('region', { name: 'Hidden by permissions' }),
+        ).toHaveTextContent('Super Admin only');
+
+        await user.click(screen.getByRole('tab', { name: 'Details' }));
+        await user.clear(screen.getByLabelText('Role key'));
+        await user.type(screen.getByLabelText('Role key'), 'super_admin');
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        preview = screen.getByRole('navigation', { name: 'Draft sidebar' });
+        expect(
+            within(preview).getByText('Backup & Restore'),
+        ).toBeInTheDocument();
+        expect(within(preview).getByText('Files')).toBeInTheDocument();
+        expect(
+            screen.queryByRole('region', { name: 'Hidden by permissions' }),
+        ).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('tab', { name: 'Permissions' }));
+        await user.click(
+            screen.getByRole('checkbox', { name: 'Select all permissions' }),
+        );
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        preview = screen.getByRole('navigation', { name: 'Draft sidebar' });
+        expect(within(preview).getByText('Files')).toBeInTheDocument();
+        expect(
+            within(preview).getByText('Backup & Restore'),
+        ).toBeInTheDocument();
+
+        await user.click(screen.getByRole('tab', { name: 'Details' }));
+        await user.clear(screen.getByLabelText('Role key'));
+        await user.type(screen.getByLabelText('Role key'), 'field_viewer');
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        preview = screen.getByRole('navigation', { name: 'Draft sidebar' });
+        expect(within(preview).queryByText('Files')).toBeNull();
+        expect(within(preview).queryByText('Backup & Restore')).toBeNull();
+        hidden = screen.getByRole('region', {
+            name: 'Hidden by permissions',
+        });
+        expect(hidden).toHaveTextContent('Requires files.view');
+        expect(hidden).toHaveTextContent('Super Admin only');
+    });
+
+    it('adds, edits, orders, and submits role-specific custom destinations', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleCreatePage
+                permissions={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                defaultNavigationItems={['notifications']}
+                customNavigationItems={[]}
+                customNavigationIconKeys={[
+                    'link',
+                    'activity',
+                    'map',
+                    'building',
+                ]}
+            />,
+        );
+
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        await user.click(
+            screen.getByRole('button', { name: 'Add destination' }),
+        );
+        expect(screen.getByLabelText('Destination title')).toHaveFocus();
+        const urlInput = screen.getByLabelText('URL');
+        expect(urlInput).toHaveAttribute('role', 'combobox');
+        await user.type(urlInput, 'reports');
+        expect(
+            screen.getByRole('option', {
+                name: /reports\.index \/reports/i,
+            }),
+        ).toBeInTheDocument();
+        await user.keyboard('{ArrowDown}{Enter}');
+        expect(urlInput).toHaveValue('/reports');
+        await user.click(screen.getByRole('button', { name: 'Cancel draft' }));
+        expect(
+            screen.getByRole('button', { name: 'Add destination' }),
+        ).toHaveFocus();
+        await user.click(
+            screen.getByRole('button', { name: 'Add destination' }),
+        );
+        expect(screen.getByLabelText('Destination title')).toHaveFocus();
+        await user.type(
+            screen.getByLabelText('Destination title'),
+            'Regional reports',
+        );
+        await user.selectOptions(
+            screen.getByLabelText('Group label'),
+            '__create_group__',
+        );
+        await user.type(screen.getByLabelText('New group label'), 'Operations');
+        await user.click(
+            screen.getByRole('button', { name: 'Add', exact: true }),
+        );
+        await user.type(
+            screen.getByLabelText('URL'),
+            '/reports/region?period=month',
+        );
+        await user.selectOptions(screen.getByLabelText('Icon'), 'activity');
+        expect(screen.getByText('Regional reports')).toBeInTheDocument();
+        await user.click(
+            screen.getByRole('button', { name: 'Add to navigation' }),
+        );
+        expect(
+            screen.getByRole('button', { name: 'Add destination' }),
+        ).toHaveFocus();
+
+        const customCheckbox = screen.getByRole('checkbox', {
+            name: 'Regional reports',
+        });
+        expect(customCheckbox).toBeChecked();
+        await user.click(
+            screen.getByRole('button', { name: 'Move Regional reports up' }),
+        );
+        await user.click(
+            screen.getByRole('button', { name: 'Edit Regional reports' }),
+        );
+        expect(screen.getByLabelText('Destination title')).toHaveFocus();
+        await user.clear(screen.getByLabelText('Destination title'));
+        await user.type(
+            screen.getByLabelText('Destination title'),
+            'Regional dashboard',
+        );
+        await user.selectOptions(
+            screen.getByLabelText('Group label'),
+            '__create_group__',
+        );
+        await user.type(screen.getByLabelText('New group label'), 'Analytics');
+        await user.click(
+            screen.getByRole('button', { name: 'Add', exact: true }),
+        );
+        await user.clear(screen.getByLabelText('URL'));
+        await user.type(
+            screen.getByLabelText('URL'),
+            'https://reports.example.test/region',
+        );
+        await user.selectOptions(screen.getByLabelText('Icon'), 'map');
+        const preview = screen.getByRole('navigation', {
+            name: 'Draft sidebar',
+        });
+        expect(
+            within(preview).getByRole('region', { name: 'Analytics' }),
+        ).toBeInTheDocument();
+        expect(
+            within(preview).getByText('Regional dashboard'),
+        ).toBeInTheDocument();
+        expect(
+            within(preview).getByText('https://reports.example.test/region'),
+        ).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Done editing' }));
+        expect(
+            screen.getByRole('button', { name: 'Edit Regional dashboard' }),
+        ).toHaveFocus();
+
+        await user.type(screen.getByLabelText('Role key'), 'regional_manager');
+        await user.type(
+            screen.getByLabelText('Display name'),
+            'Regional manager',
+        );
+        await user.click(screen.getByRole('button', { name: 'Create role' }));
+
+        const customItems = formMock.submittedData?.custom_navigation_items as {
+            key: string;
+            title: string;
+            group: string;
+            url: string;
+            iconKey: string;
+        }[];
+        const customKey = customItems[0]?.key;
+
+        expect(customKey).toMatch(/^custom_[0-9a-f-]{36}$/i);
+        expect(customItems).toEqual([
+            {
+                key: customKey,
+                title: 'Regional dashboard',
+                group: 'Analytics',
+                url: 'https://reports.example.test/region',
+                iconKey: 'map',
+            },
+        ]);
+        expect(formMock.submittedData?.navigation_items).toEqual([
+            customKey,
+            'notifications',
+        ]);
+        expect(formMock.submittedData?.navigation_group_overrides).toEqual({});
+    }, 15000);
+
+    it('removes a custom destination from both the ordered selection and submitted metadata', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleEditPage
+                permissions={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                customNavigationIconKeys={['link', 'folder']}
+                role={{
+                    id: 7,
+                    name: 'report_viewer',
+                    displayName: 'Report viewer',
+                    description: null,
+                    permissions: [],
+                    navigationItems: [
+                        'custom_123e4567-e89b-42d3-a456-426614174000',
+                    ],
+                    customNavigationItems: [
+                        {
+                            key: 'custom_123e4567-e89b-42d3-a456-426614174000',
+                            title: 'Team reports',
+                            group: 'Operations',
+                            url: '/reports/team',
+                            iconKey: 'folder',
+                        },
+                    ],
+                }}
+            />,
+        );
+
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        expect(
+            screen.getByRole('checkbox', { name: 'Team reports' }),
+        ).toBeChecked();
+        await user.click(
+            screen.getByRole('button', { name: 'Remove Team reports' }),
+        );
+        expect(
+            screen.queryByRole('checkbox', { name: 'Team reports' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Add destination' }),
+        ).toHaveFocus();
+        await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+        expect(formMock.submittedData?.navigation_items).toEqual([]);
+        expect(formMock.submittedData?.custom_navigation_items).toEqual([]);
+    });
+
+    it('submits a role while an empty custom destination draft is open', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleCreatePage
+                permissions={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                defaultNavigationItems={['notifications']}
+                customNavigationItems={[]}
+            />,
+        );
+
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        await user.click(
+            screen.getByRole('button', { name: 'Add destination' }),
+        );
+        expect(screen.getByLabelText('Destination title')).toHaveFocus();
+        expect(screen.getByLabelText('Destination title')).not.toBeRequired();
+        expect(screen.getByLabelText('Group label')).not.toBeRequired();
+        expect(screen.getByLabelText('URL')).not.toBeRequired();
+
+        await user.click(screen.getByRole('tab', { name: 'Details' }));
+        await user.type(screen.getByLabelText('Role key'), 'draft_role');
+        await user.type(screen.getByLabelText('Display name'), 'Draft role');
+        await user.click(screen.getByRole('button', { name: 'Create role' }));
+
+        expect(formMock.submittedData?.custom_navigation_items).toEqual([]);
+        expect(formMock.submittedData?.navigation_items).toEqual([
+            'notifications',
+        ]);
+    });
+
+    it('associates built-in and custom group validation errors with their selectors', async () => {
+        const user = userEvent.setup();
+        formMock.errors = {
+            'navigation_group_overrides.notifications':
+                'Choose a sidebar group.',
+            'custom_navigation_items.0.group':
+                'Choose a custom destination group.',
+        };
+
+        render(
+            <RoleEditPage
+                permissions={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                customNavigationIconKeys={['link', 'folder']}
+                role={{
+                    id: 7,
+                    name: 'report_viewer',
+                    displayName: 'Report viewer',
+                    description: null,
+                    permissions: [],
+                    navigationItems: [
+                        'notifications',
+                        'custom_123e4567-e89b-42d3-a456-426614174000',
+                    ],
+                    navigationGroupOverrides: {},
+                    customNavigationItems: [
+                        {
+                            key: 'custom_123e4567-e89b-42d3-a456-426614174000',
+                            title: 'Team reports',
+                            group: 'Operations',
+                            url: '/reports/team',
+                            iconKey: 'folder',
+                        },
+                    ],
+                }}
+            />,
+        );
+
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+        const builtInGroup = screen.getByLabelText('Group for Notifications');
+        const customGroup = screen.getByLabelText('Group for Team reports');
+
+        expect(builtInGroup).toHaveAttribute('aria-invalid', 'true');
+        expect(customGroup).toHaveAttribute('aria-invalid', 'true');
+        expect(builtInGroup).toHaveAccessibleDescription(
+            'Choose a sidebar group.',
+        );
+        expect(customGroup).toHaveAccessibleDescription(
+            'Choose a custom destination group.',
+        );
+    });
+
+    it('uses Inertia links for app paths and same-tab anchors for HTTPS destinations', () => {
+        render(
+            <div>
+                <NavigationLink href="/reports">Reports</NavigationLink>
+                <NavigationLink href="https://example.test/reports">
+                    External reports
+                </NavigationLink>
+            </div>,
+        );
+
+        expect(screen.getByRole('link', { name: 'Reports' })).toHaveAttribute(
+            'data-inertia-link',
+            'true',
+        );
+        const external = screen.getByRole('link', {
+            name: 'External reports',
+        });
+        expect(external).toHaveAttribute(
+            'href',
+            'https://example.test/reports',
+        );
+        expect(external).not.toHaveAttribute('data-inertia-link');
+        expect(external).not.toHaveAttribute('target');
+    });
+
+    it('submits an explicit empty role navigation selection and announces validation errors', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleCreatePage
+                permissions={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                defaultNavigationItems={roleNavigationItems.map(
+                    (item) => item.key,
+                )}
+            />,
+        );
+
+        await user.click(screen.getByRole('tab', { name: 'Navigation' }));
+        await user.click(screen.getByRole('button', { name: 'Clear all' }));
+        expect(
+            screen
+                .getByRole('tabpanel', { name: 'Navigation' })
+                .querySelectorAll('input[type="checkbox"]:checked'),
+        ).toHaveLength(0);
+        await user.click(screen.getByRole('tab', { name: 'Details' }));
+        await user.type(screen.getByLabelText('Role key'), 'empty_role');
+        await user.type(screen.getByLabelText('Display name'), 'Empty role');
+        await user.click(screen.getByRole('button', { name: 'Create role' }));
+        expect(formMock.submittedData?.navigation_items).toEqual([]);
+
+        cleanup();
+        formMock.errors = {
+            navigation_items: 'Select at least one destination.',
+        };
+        render(
+            <RoleCreatePage
+                permissions={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                defaultNavigationItems={[]}
+            />,
+        );
+
+        await user.type(screen.getByLabelText('Role key'), 'invalid_role');
+        await user.type(screen.getByLabelText('Display name'), 'Invalid role');
+        await user.click(screen.getByRole('button', { name: 'Create role' }));
+
+        expect(screen.getByRole('alert')).toHaveTextContent(
+            'Select at least one destination.',
+        );
+        expect(
+            screen.getByRole('tabpanel', { name: 'Navigation' }),
+        ).toHaveAttribute('aria-invalid', 'true');
+    });
 
     it('keeps user creation and invitations on dedicated pages', () => {
         render(
