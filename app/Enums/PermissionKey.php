@@ -98,6 +98,78 @@ enum PermissionKey: string
     case TimezonesExportXlsx = 'timezones.export_xlsx';
     case TimezonesExportPrint = 'timezones.export_print';
 
+    case AssetsView = 'assets.view';
+    case AssetsCreate = 'assets.create';
+    case AssetsUpdate = 'assets.update';
+    case AssetsDelete = 'assets.delete';
+    case AssetsViewDeleted = 'assets.view_deleted';
+    case AssetsUpdateDeleted = 'assets.update_deleted';
+    case AssetsExportPdf = 'assets.export_pdf';
+    case AssetsExportCsv = 'assets.export_csv';
+    case AssetsExportXlsx = 'assets.export_xlsx';
+    case AssetsExportPrint = 'assets.export_print';
+    case WorkOrdersView = 'work_orders.view';
+    case WorkOrdersCreate = 'work_orders.create';
+    case WorkOrdersUpdate = 'work_orders.update';
+    case WorkOrdersDelete = 'work_orders.delete';
+    case WorkOrdersViewDeleted = 'work_orders.view_deleted';
+    case WorkOrdersUpdateDeleted = 'work_orders.update_deleted';
+    case WorkOrdersExportPdf = 'work_orders.export_pdf';
+    case WorkOrdersExportCsv = 'work_orders.export_csv';
+    case WorkOrdersExportXlsx = 'work_orders.export_xlsx';
+    case WorkOrdersExportPrint = 'work_orders.export_print';
+    case InspectionTemplatesView = 'inspection_templates.view';
+    case InspectionTemplatesCreate = 'inspection_templates.create';
+    case InspectionTemplatesUpdate = 'inspection_templates.update';
+    case InspectionTemplatesDelete = 'inspection_templates.delete';
+    case InspectionTemplatesViewDeleted = 'inspection_templates.view_deleted';
+    case InspectionTemplatesUpdateDeleted = 'inspection_templates.update_deleted';
+    case InspectionTemplatesExportPdf = 'inspection_templates.export_pdf';
+    case InspectionTemplatesExportCsv = 'inspection_templates.export_csv';
+    case InspectionTemplatesExportXlsx = 'inspection_templates.export_xlsx';
+    case InspectionTemplatesExportPrint = 'inspection_templates.export_print';
+    case InspectionsView = 'inspections.view';
+    case InspectionsCreate = 'inspections.create';
+    case InspectionsUpdate = 'inspections.update';
+    case InspectionsDelete = 'inspections.delete';
+    case InspectionsViewDeleted = 'inspections.view_deleted';
+    case InspectionsUpdateDeleted = 'inspections.update_deleted';
+    case InspectionsExportPdf = 'inspections.export_pdf';
+    case InspectionsExportCsv = 'inspections.export_csv';
+    case InspectionsExportXlsx = 'inspections.export_xlsx';
+    case InspectionsExportPrint = 'inspections.export_print';
+    case IssuesView = 'issues.view';
+    case IssuesCreate = 'issues.create';
+    case IssuesUpdate = 'issues.update';
+    case IssuesDelete = 'issues.delete';
+    case IssuesViewDeleted = 'issues.view_deleted';
+    case IssuesUpdateDeleted = 'issues.update_deleted';
+    case IssuesExportPdf = 'issues.export_pdf';
+    case IssuesExportCsv = 'issues.export_csv';
+    case IssuesExportXlsx = 'issues.export_xlsx';
+    case IssuesExportPrint = 'issues.export_print';
+    case WorkOrdersAssign = 'work_orders.assign';
+    case InspectionsSubmit = 'inspections.submit';
+    case InspectionsReview = 'inspections.review';
+    case IssuesResolve = 'issues.resolve';
+    case OperationsMapView = 'operations_map.view';
+    case OperationsDashboardView = 'operations_dashboard.view';
+    case OperationalReportsView = 'operational_reports.view';
+    case OperationalReportsExportPdf = 'operational_reports.export_pdf';
+    case OperationalReportsExportCsv = 'operational_reports.export_csv';
+    case OperationalReportsExportXlsx = 'operational_reports.export_xlsx';
+    case OperationalReportsExportPrint = 'operational_reports.export_print';
+
+    /** @return list<string> */
+    public static function operationalValues(): array
+    {
+        return array_values(array_filter(self::values(), static fn (string $permission): bool => in_array(
+            explode('.', $permission)[0],
+            ['assets', 'work_orders', 'inspection_templates', 'inspections', 'issues', 'operations_map', 'operations_dashboard', 'operational_reports'],
+            true,
+        )));
+    }
+
     /** @return list<string> */
     public static function values(): array
     {

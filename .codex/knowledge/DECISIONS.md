@@ -1,5 +1,11 @@
 # Project Decisions
 
+## 2026-10-22 — Make operational role presets explicit permission drafts
+
+- **Context:** Future operational modules need a permission vocabulary and reusable role starting points without changing existing accounts' grants.
+- **Decision:** Register operational permissions without assigning them. Offer server-configured Supervisor, Dispatcher, Technician and Viewer permission lists in custom-role forms, applying only on request and saving through existing validation, grant-ceiling checks, transactions and audit. Include existing dashboard access so login has a working landing page. Exclude operational keys from protected seed defaults; retain the existing Super Admin bypass.
+- **Rationale:** This uses the existing role workflow without preset persistence or new endpoints. Later policies remain responsible for technician assignment scope and resource authorization.
+
 Append meaningful architectural or workflow decisions with their date, context, chosen approach, and rationale. Do not use this file as a general activity log. Preserve earlier entries; if a decision is superseded, add a new entry that links to it.
 
 ## 2026-09-26 — Keep the Codex specialist setup project-local

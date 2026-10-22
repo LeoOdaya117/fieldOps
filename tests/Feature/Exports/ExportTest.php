@@ -700,7 +700,8 @@ class ExportTest extends TestCase
         $adminDefaults = config('rbac.roles.admin.permissions');
         $superAdminDefaults = config('rbac.roles.super_admin.permissions');
         $this->assertSame([], array_values(array_diff($permissionNames, $adminDefaults)));
-        $this->assertSame(PermissionKey::values(), $superAdminDefaults);
+        $this->assertSame([], array_values(array_diff($permissionNames, $superAdminDefaults)));
+        $this->assertSame([], array_values(array_intersect(PermissionKey::operationalValues(), $superAdminDefaults)));
 
         $admin = Role::query()->create(['name' => 'admin', 'guard_name' => 'web', 'display_name' => 'Admin', 'is_system' => true, 'record_status' => 1]);
         $superAdmin = Role::query()->create(['name' => 'super_admin', 'guard_name' => 'web', 'display_name' => 'Super Admin', 'is_system' => true, 'record_status' => 1]);

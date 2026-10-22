@@ -169,6 +169,136 @@ afterEach(() => {
 });
 
 describe('access administration pages', () => {
+    it('starts a new custom role without applying an operational preset', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleCreatePage
+                permissions={[{ id: 1, name: 'assets.view' }]}
+                rolePresets={[
+                    {
+                        key: 'viewer',
+                        label: 'Viewer',
+                        permissions: ['assets.view'],
+                    },
+                ]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+                defaultNavigationItems={['notifications']}
+            />,
+        );
+        await user.click(screen.getByRole('tab', { name: 'Permissions' }));
+        expect(screen.getByLabelText('Operational preset')).toHaveValue('');
+        expect(
+            screen.getByRole('checkbox', { name: /assets\.view/ }),
+        ).not.toBeChecked();
+        await user.selectOptions(
+            screen.getByLabelText('Operational preset'),
+            'viewer',
+        );
+        await user.click(screen.getByRole('button', { name: 'Apply preset' }));
+        expect(
+            screen.getByRole('checkbox', { name: /assets\.view/ }),
+        ).toBeChecked();
+        expect(formMock.submittedData).toBeUndefined();
+    });
+
+    it.each(['light', 'dark'])(
+        'applies an operational preset only on request and preserves role details in %s mode',
+        async (theme) => {
+            document.documentElement.classList.toggle('dark', theme === 'dark');
+            const user = userEvent.setup();
+            render(
+                <RoleEditPage
+                    role={{
+                        id: 41,
+                        name: 'field_team',
+                        displayName: 'Field team',
+                        description: 'Keep me',
+                        permissions: ['roles.view'],
+                        navigationItems: ['notifications'],
+                    }}
+                    permissions={[
+                        { id: 1, name: 'roles.view' },
+                        { id: 2, name: 'assets.view' },
+                        { id: 3, name: 'assets.update' },
+                    ]}
+                    rolePresets={[
+                        {
+                            key: 'viewer',
+                            label: 'Viewer',
+                            permissions: ['assets.view'],
+                        },
+                    ]}
+                    navigationItems={roleNavigationItems}
+                    routeOptions={roleRouteOptions}
+                />,
+            );
+            await user.click(screen.getByRole('tab', { name: 'Permissions' }));
+            const apply = screen.getByRole('button', { name: 'Apply preset' });
+            expect(apply).toBeDisabled();
+            await user.selectOptions(
+                screen.getByLabelText('Operational preset'),
+                'viewer',
+            );
+            expect(
+                document.querySelector('input[value="roles.view"]'),
+            ).toBeChecked();
+            expect(
+                document.querySelector('input[value="assets.view"]'),
+            ).not.toBeChecked();
+            expect(formMock.submittedData).toBeUndefined();
+            await user.click(apply);
+            expect(formMock.submittedData).toBeUndefined();
+            expect(
+                document.querySelector('input[value="roles.view"]'),
+            ).not.toBeChecked();
+            expect(
+                screen.getByRole('checkbox', { name: /assets\.view/ }),
+            ).toBeChecked();
+            await user.click(
+                screen.getByRole('checkbox', { name: /assets\.update/ }),
+            );
+            await user.click(
+                screen.getByRole('button', { name: 'Save changes' }),
+            );
+            expect(formMock.submittedData).toMatchObject({
+                name: 'field_team',
+                display_name: 'Field team',
+                description: 'Keep me',
+                permissions: ['assets.update', 'assets.view'],
+                navigation_items: ['notifications'],
+            });
+            document.documentElement.classList.remove('dark');
+        },
+    );
+
+    it('hides operational presets when none are provided for a protected role', async () => {
+        const user = userEvent.setup();
+        render(
+            <RoleEditPage
+                role={{
+                    id: 1,
+                    name: 'admin',
+                    displayName: 'Admin',
+                    description: null,
+                    permissions: [],
+                    navigationItems: [],
+                }}
+                permissions={[]}
+                rolePresets={[]}
+                navigationItems={roleNavigationItems}
+                routeOptions={roleRouteOptions}
+            />,
+        );
+        await user.click(screen.getByRole('tab', { name: 'Permissions' }));
+        expect(
+            screen.queryByLabelText('Operational preset'),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'Apply preset' }),
+        ).not.toBeInTheDocument();
+    });
+
     it('provides consistent breadcrumbs across access pages', () => {
         expect(RolesPage.layout.breadcrumbs.map((item) => item.title)).toEqual([
             'Dashboard',

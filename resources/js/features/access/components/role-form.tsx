@@ -33,6 +33,12 @@ export type RolePermission = {
     name: string;
 };
 
+export type RolePreset = {
+    key: string;
+    label: string;
+    permissions: string[];
+};
+
 export type RoleNavigationItem = {
     key: string;
     title: string;
@@ -71,6 +77,7 @@ type RoleFormProps = {
     action: string;
     method: 'post' | 'patch';
     permissions: RolePermission[];
+    rolePresets?: RolePreset[];
     navigationItems: RoleNavigationItem[];
     customNavigationItems?: RoleCustomNavigationItem[];
     customNavigationIconKeys?: NavigationIconKey[];
@@ -239,6 +246,7 @@ export default function RoleForm({
     action,
     method,
     permissions = [],
+    rolePresets = [],
     navigationItems = [],
     customNavigationItems: initialCustomNavigationItems = [],
     routeOptions = [],
@@ -267,6 +275,7 @@ export default function RoleForm({
     submitLabel,
 }: RoleFormProps) {
     const [activeTab, setActiveTab] = useState<RoleFormTab>('details');
+    const [selectedPresetKey, setSelectedPresetKey] = useState('');
     const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
     const groupedPermissions = permissionGroups(permissions);
     const [openPermissionGroup, setOpenPermissionGroup] = useState<
@@ -2559,6 +2568,74 @@ export default function RoleForm({
                                         </div>
                                     </div>
                                 </div>
+                                {rolePresets.length > 0 && (
+                                    <div className="grid gap-2 border-b border-border pb-4">
+                                        <Label htmlFor="role-preset">
+                                            Operational preset
+                                        </Label>
+                                        <p
+                                            id="role-preset-help"
+                                            className="text-sm text-muted-foreground"
+                                        >
+                                            Apply replaces the selected
+                                            permissions. Review them and save to
+                                            update this role.
+                                        </p>
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                            <select
+                                                id="role-preset"
+                                                value={selectedPresetKey}
+                                                aria-describedby="role-preset-help"
+                                                onChange={(event) =>
+                                                    setSelectedPresetKey(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                className="h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:max-w-xs"
+                                            >
+                                                <option value="">
+                                                    Choose a preset
+                                                </option>
+                                                {rolePresets.map((preset) => (
+                                                    <option
+                                                        key={preset.key}
+                                                        value={preset.key}
+                                                    >
+                                                        {preset.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                disabled={!selectedPresetKey}
+                                                onClick={() => {
+                                                    const preset =
+                                                        rolePresets.find(
+                                                            (item) =>
+                                                                item.key ===
+                                                                selectedPresetKey,
+                                                        );
+
+                                                    if (preset) {
+                                                        setSelectedPermissions(
+                                                            new Set(
+                                                                preset.permissions.filter(
+                                                                    (name) =>
+                                                                        availablePermissionNames.has(
+                                                                            name,
+                                                                        ),
+                                                                ),
+                                                            ),
+                                                        );
+                                                    }
+                                                }}
+                                            >
+                                                Apply preset
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                                 {groupedPermissions.length === 0 ? (
                                     <div className="rounded-xl border border-dashed border-border bg-muted/15 px-4 py-6 text-sm text-muted-foreground">
                                         No permissions are configured yet.
