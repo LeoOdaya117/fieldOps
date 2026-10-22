@@ -1,6 +1,6 @@
 # Phase 1 — Operational access
 
-Status: implementation and local verification complete; GitHub delivery pending. Approved roadmap: `2026-10-22-fieldops-roadmap.md`.
+Status: implementation and local verification complete; PR open, remote verification pending. Approved roadmap: `2026-10-22-fieldops-roadmap.md`.
 Branch: `codex/operational-access`; base verified by fetch: `65fbc1b337e4360c967cb00426fa8ce7cc84d49a`.
 
 ## Goal and acceptance
@@ -42,4 +42,6 @@ These permissions prepare future modules; they do not activate endpoints. Preset
 
 ## Delivery handoff
 
-PR and merged commit: pending. Do not start Phase 2 or archive this worktree until Phase 1 is merged. Phase 2 starts from the resulting main and must inspect actual shared-hosting constraints.
+PR: https://github.com/LeoOdaya117/fieldOps/pull/23 — Operational access, `codex/operational-access` into `main`. Implementation commit: `fed0968da3b483be2f7e672c182389a8574b8514`. GitHub connector creation returned 403 (integration permission); authenticated GitHub CLI created the PR and it is attached to this chat. Independent review approved; remote CI and merged commit are pending. Main has no branch protection configured; do not bypass workflow checks.
+
+Do not start Phase 2 or archive this worktree until Phase 1 is merged. Phase 2 starts from the resulting main and must inspect actual shared-hosting constraints. Remaining limitations: own-assignment policies belong to later resource phases; full unrelated browser suite and optional real-engine backup tests were not run. No new application dependencies or generated files are committed.
