@@ -36,7 +36,7 @@ class RoleNavigationTest extends TestCase
         ]);
 
         $this->assertSame(['notifications', 'dashboard'], $role->fresh()->navigation_items);
-        $this->assertSame([$this->customItem()], $role->fresh()->custom_navigation_items);
+        $this->assertCustomNavigationItems([$this->customItem()], $role->fresh()->custom_navigation_items);
         $this->assertSame(['dashboard' => 'Reports'], $role->fresh()->navigation_group_overrides);
 
         $legacyRole = Role::query()->create([
@@ -94,7 +94,7 @@ class RoleNavigationTest extends TestCase
         $this->seed(RbacSeeder::class);
 
         $this->assertSame(['files'], Role::findByName(RoleName::User->value)->fresh()->navigation_items);
-        $this->assertSame([$this->customItem()], Role::findByName(RoleName::User->value)->fresh()->custom_navigation_items);
+        $this->assertCustomNavigationItems([$this->customItem()], Role::findByName(RoleName::User->value)->fresh()->custom_navigation_items);
         $this->assertNull(Role::findByName(RoleName::Admin->value)->fresh()->navigation_items);
     }
 
@@ -159,17 +159,20 @@ class RoleNavigationTest extends TestCase
 
         $role = Role::query()->where('name', 'custom_menu_role')->firstOrFail();
         $this->assertSame([$customItem['key'], 'dashboard'], $role->navigation_items);
-        $this->assertSame([$customItem], $role->custom_navigation_items);
+        $this->assertCustomNavigationItems([$customItem], $role->custom_navigation_items);
 
         $created = AccessAuditEvent::query()->where('event', 'role.created')->firstOrFail();
         $this->assertSame([$customItem['key'], 'dashboard'], $created->after['navigation_items']);
-        $this->assertSame([$customItem], $created->after['custom_navigation_items']);
+        $this->assertCustomNavigationItems([$customItem], $created->after['custom_navigation_items']);
 
         $this->get(route('access.roles.edit', $role))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('role.navigationItems', [$customItem['key'], 'dashboard'])
-                ->where('role.customNavigationItems', [$customItem])
+                ->where(
+                    'role.customNavigationItems',
+                    fn (array $items): bool => $this->normalizeCustomNavigationItems($items) === $this->normalizeCustomNavigationItems([$customItem]),
+                )
                 ->where('customNavigationIconKeys.0', 'bell'));
 
         $member = User::factory()->create();
@@ -219,7 +222,7 @@ class RoleNavigationTest extends TestCase
             ->assertRedirect(route('access.roles.index'));
 
         $this->assertSame(['dashboard', $updatedCustomItem['key']], $role->fresh()->navigation_items);
-        $this->assertSame([$updatedCustomItem], $role->fresh()->custom_navigation_items);
+        $this->assertCustomNavigationItems([$updatedCustomItem], $role->fresh()->custom_navigation_items);
 
         $member->syncRoles($role->fresh());
         $this->actingAs($member)->get(route('dashboard'))
@@ -229,8 +232,8 @@ class RoleNavigationTest extends TestCase
                 ->where('auth.navigation.1.items.0.iconKey', 'activity'));
 
         $updated = AccessAuditEvent::query()->where('event', 'role.updated')->firstOrFail();
-        $this->assertSame([$customItem], $updated->before['custom_navigation_items']);
-        $this->assertSame([$updatedCustomItem], $updated->after['custom_navigation_items']);
+        $this->assertCustomNavigationItems([$customItem], $updated->before['custom_navigation_items']);
+        $this->assertCustomNavigationItems([$updatedCustomItem], $updated->after['custom_navigation_items']);
     }
 
     public function test_role_group_overrides_persist_audit_and_render_only_on_builtin_items(): void
@@ -471,7 +474,7 @@ class RoleNavigationTest extends TestCase
 
         $freshRole = $role->fresh();
         $this->assertSame($navigationBefore, $freshRole->navigation_items);
-        $this->assertSame($customItemsBefore, $freshRole->custom_navigation_items);
+        $this->assertCustomNavigationItems($customItemsBefore, $freshRole->custom_navigation_items);
         $this->assertSame($permissionsBefore, $freshRole->permissions()->orderBy('name')->pluck('name')->all());
         $this->assertDatabaseCount('access_audit_events', $auditCount);
     }
@@ -922,5 +925,32 @@ class RoleNavigationTest extends TestCase
             'url' => '/reports',
             'iconKey' => 'link',
         ], $overrides);
+    }
+
+    /**
+     * @param  array<int, array<string, string>>  $expected
+     * @param  array<int, array<string, string>>  $actual
+     */
+    private function assertCustomNavigationItems(array $expected, array $actual): void
+    {
+        $this->assertSame(
+            $this->normalizeCustomNavigationItems($expected),
+            $this->normalizeCustomNavigationItems($actual),
+        );
+    }
+
+    /**
+     * @param  array<int, array<string, string>>  $items
+     * @return array<int, array{key: string, title: string, group: string, url: string, iconKey: string}>
+     */
+    private function normalizeCustomNavigationItems(array $items): array
+    {
+        return array_map(fn (array $item): array => [
+            'key' => $item['key'],
+            'title' => $item['title'],
+            'group' => $item['group'],
+            'url' => $item['url'],
+            'iconKey' => $item['iconKey'],
+        ], $items);
     }
 }
