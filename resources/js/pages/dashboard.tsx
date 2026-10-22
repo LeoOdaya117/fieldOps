@@ -48,7 +48,7 @@ const assignments = [
         name: 'Warehouse audit',
         owner: 'Jon Bell',
         status: 'Needs review',
-        statusClass: 'bg-warning/15 text-warning-foreground',
+        statusClass: 'bg-warning/15 text-foreground',
     },
     {
         name: 'Client handoff',

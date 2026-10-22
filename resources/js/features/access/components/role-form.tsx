@@ -1059,7 +1059,7 @@ export default function RoleForm({
                                 hidden={activeTab !== 'navigation'}
                                 className={
                                     activeTab === 'navigation'
-                                        ? 'grid min-w-0 gap-3'
+                                        ? 'grid min-w-0 gap-3 pb-24'
                                         : 'hidden'
                                 }
                                 aria-describedby={
@@ -2511,7 +2511,7 @@ export default function RoleForm({
                                 hidden={activeTab !== 'permissions'}
                                 className={
                                     activeTab === 'permissions'
-                                        ? 'grid gap-3'
+                                        ? 'grid gap-3 pb-24'
                                         : 'hidden'
                                 }
                             >

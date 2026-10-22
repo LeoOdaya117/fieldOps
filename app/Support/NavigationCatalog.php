@@ -27,7 +27,7 @@ class NavigationCatalog
         $router = app(Router::class);
         $options = [];
 
-        foreach (Route::getRoutes() as $route) {
+        foreach (Route::getRoutes()->getRoutes() as $route) {
             $name = $route->getName();
 
             if ($name === null || ! in_array('GET', $route->methods(), true)) {

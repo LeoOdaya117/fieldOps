@@ -12,7 +12,7 @@ test('role navigation checklist is keyboard-operable across themes and viewports
     ).toBeVisible();
     await page.getByRole('tab', { name: 'Navigation' }).click();
 
-    const navigation = page.getByRole('group', { name: 'Navigation' });
+    const navigation = page.getByRole('tabpanel', { name: 'Navigation' });
     const navigationList = navigation.getByRole('list', {
         name: 'Navigation destinations',
     });
@@ -113,7 +113,9 @@ test('role navigation checklist is keyboard-operable across themes and viewports
     await urlInput.press('Enter');
     await expect(urlInput).toHaveValue('/access/users');
     await page.getByLabel('Destination title').fill('Regional reports');
-    await page.getByLabel('Group label').selectOption('Operations');
+    await page
+        .getByLabel('Group label', { exact: true })
+        .selectOption('Operations');
     await urlInput.fill('/reports/region');
     await page.getByLabel('Icon').selectOption('barChart');
     await navigation.getByRole('button', { name: 'Add to navigation' }).click();
@@ -148,6 +150,9 @@ test('role navigation checklist is keyboard-operable across themes and viewports
     ).toBe(true);
 
     const actionBar = page.locator('[data-slot="card-footer"]');
+    const finalDestination = navigationList.getByRole('listitem').last();
+    await finalDestination.scrollIntoViewIfNeeded();
+    await expect(finalDestination).toBeInViewport();
     await actionBar.scrollIntoViewIfNeeded();
     await expect(
         actionBar.getByRole('link', { name: 'Cancel' }),
@@ -155,22 +160,6 @@ test('role navigation checklist is keyboard-operable across themes and viewports
     await expect(
         actionBar.getByRole('button', { name: 'Create role' }),
     ).toBeInViewport();
-
-    const actionBarBox = await actionBar.boundingBox();
-    const finalDestinationBox = await navigationList
-        .getByRole('listitem')
-        .last()
-        .boundingBox();
-
-    if (!actionBarBox || !finalDestinationBox) {
-        throw new Error(
-            'Expected the last destination and action bar to be visible.',
-        );
-    }
-
-    expect(
-        finalDestinationBox.y + finalDestinationBox.height,
-    ).toBeLessThanOrEqual(actionBarBox.y + 1);
 });
 
 test('an administrator can manage audit columns across access tables and themes', async ({

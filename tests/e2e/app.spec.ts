@@ -173,10 +173,9 @@ test('an authenticated user can use the dashboard and theme settings', async ({
     expect(dashboardAccessibility.violations).toEqual([]);
 
     await page.goto('/settings/appearance');
-    await page.getByRole('button', { name: 'Dark' }).click();
+    await page.getByRole('button', { name: 'Dark', exact: true }).click();
     await expect(page.locator('html')).toHaveClass(/dark/);
-    await expect(page.getByRole('button', { name: 'Dark' })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-    );
+    await expect(
+        page.getByRole('button', { name: 'Dark', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
 });
