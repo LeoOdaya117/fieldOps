@@ -1,3 +1,5 @@
+import type { AuthNavigationGroup } from './navigation';
+
 export type User = {
     id: number;
     name: string;
@@ -17,6 +19,7 @@ export type User = {
 
 export type Auth = {
     user: User;
+    sessionScope: string | null;
     authorization: {
         role: {
             id: number;
@@ -27,6 +30,7 @@ export type Auth = {
         permissions: string[];
         isSuperAdmin: boolean;
     };
+    navigation: AuthNavigationGroup[];
 };
 
 /* @chisel-passkeys */

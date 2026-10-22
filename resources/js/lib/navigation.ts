@@ -1,123 +1,65 @@
 import {
+    Activity,
+    BarChart3,
+    Briefcase,
+    Building2,
     Bell,
+    Clipboard,
     Clock3,
     DatabaseBackup,
     Files,
+    Folder,
     Globe2,
     LayoutGrid,
+    Link2,
+    Map,
     ScrollText,
     Settings2,
     ShieldCheck,
     Users,
 } from 'lucide-react';
-import { index as notificationsIndex } from '@/routes/notifications';
-import { index as backupsIndex } from '@/routes/system-settings/backups';
+import type { LucideIcon } from 'lucide-react';
 import { toUrl } from '@/lib/utils';
-import type { Auth, NavItem } from '@/types';
+import type {
+    Auth,
+    AuthNavigationGroup,
+    NavigationIconKey,
+    NavItem,
+} from '@/types';
 
 export type NavigationGroup = {
     label: string;
     items: NavItem[];
 };
 
-type NavigationDefinition = NavItem & {
-    permission: string | null;
-    superAdminOnly?: boolean;
+const navigationIcons: Record<NavigationIconKey, LucideIcon> = {
+    bell: Bell,
+    layoutGrid: LayoutGrid,
+    users: Users,
+    shieldCheck: ShieldCheck,
+    scrollText: ScrollText,
+    files: Files,
+    globe2: Globe2,
+    clock3: Clock3,
+    settings2: Settings2,
+    databaseBackup: DatabaseBackup,
+    activity: Activity,
+    map: Map,
+    folder: Folder,
+    link: Link2,
+    building: Building2,
+    barChart: BarChart3,
+    clipboard: Clipboard,
+    briefcase: Briefcase,
 };
 
-const navigationDefinitions: Array<{
-    label: string;
-    items: NavigationDefinition[];
-}> = [
-    {
-        label: 'Platform',
-        items: [
-            {
-                title: 'Notifications',
-                href: notificationsIndex().url,
-                icon: Bell,
-                permission: null,
-            },
-            {
-                title: 'Dashboard',
-                href: '/dashboard',
-                icon: LayoutGrid,
-                permission: 'dashboard.view',
-            },
-        ],
-    },
-    {
-        label: 'Access',
-        items: [
-            {
-                title: 'Users',
-                href: '/access/users',
-                icon: Users,
-                permission: 'users.view',
-            },
-            {
-                title: 'Roles',
-                href: '/access/roles',
-                icon: ShieldCheck,
-                permission: 'roles.view',
-            },
-            {
-                title: 'Access audit',
-                href: '/access/audit',
-                icon: ScrollText,
-                permission: 'audit.view',
-            },
-            {
-                title: 'Blocked IPs',
-                href: '/access/ip-blocks',
-                icon: ShieldCheck,
-                permission: 'ip_blocks.view',
-            },
-            {
-                title: 'Visit logs',
-                href: '/access/visit-logs',
-                icon: ScrollText,
-                permission: 'visit_logs.view',
-            },
-        ],
-    },
-    {
-        label: 'System',
-        items: [
-            {
-                title: 'Files',
-                href: '/files',
-                icon: Files,
-                permission: 'files.view',
-            },
-            {
-                title: 'Countries',
-                href: '/system/countries',
-                icon: Globe2,
-                permission: 'countries.view',
-            },
-            {
-                title: 'Timezones',
-                href: '/system/timezones',
-                icon: Clock3,
-                permission: 'timezones.view',
-            },
-            {
-                title: 'System settings',
-                href: '/settings/system',
-                icon: Settings2,
-                permission: 'settings.view',
-            },
-            {
-                title: 'Backup & Restore',
-                href: backupsIndex.url(),
-                icon: DatabaseBackup,
-                permission: null,
-                superAdminOnly: true,
-            },
-        ],
-    },
-];
+export function getNavigationIcon(iconKey: NavigationIconKey) {
+    return navigationIcons[iconKey];
+}
+
+export function isExternalNavigationHref(href: string): boolean {
+    return /^https:\/\//i.test(href);
+}
 
 function normalizePathname(url: string): string | null {
     try {
@@ -146,6 +88,10 @@ export function getActiveNavigationItem(
     let activePathLength = -1;
 
     for (const item of items) {
+        if (item.external || isExternalNavigationHref(String(item.href))) {
+            continue;
+        }
+
         const itemPath = normalizePathname(toUrl(item.href));
 
         if (!itemPath) {
@@ -168,25 +114,23 @@ export function getActiveNavigationItem(
 }
 
 export function getNavigationGroups(auth: Auth): NavigationGroup[] {
-    const can = (permission: string) =>
-        auth.authorization.isSuperAdmin ||
-        auth.authorization.permissions.includes(permission);
+    return (auth.navigation ?? []).map((group: AuthNavigationGroup) => ({
+        label: group.label,
+        items: group.items.map((item) => ({
+            key: item.key,
+            title: item.title,
+            href: item.href,
+            icon: navigationIcons[item.iconKey],
+            external: isExternalNavigationHref(item.href),
+        })),
+    }));
+}
 
-    return navigationDefinitions
-        .map((group) => ({
-            label: group.label,
-            items: group.items
-                .filter(
-                    (item) =>
-                        (!item.superAdminOnly ||
-                            auth.authorization.isSuperAdmin) &&
-                        (item.permission === null || can(item.permission)),
-                )
-                .map((item): NavItem => ({
-                    title: item.title,
-                    href: item.href,
-                    icon: item.icon,
-                })),
-        }))
-        .filter((group) => group.items.length > 0);
+export function getNavigationItemByKey(
+    groups: readonly NavigationGroup[],
+    key: string,
+): NavItem | undefined {
+    return groups
+        .flatMap((group) => group.items)
+        .find((item) => item.key === key);
 }

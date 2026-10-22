@@ -12,6 +12,7 @@ use App\Http\Requests\Access\BulkRoleDeleteRequest;
 use App\Http\Requests\Access\SaveRoleRequest;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\NavigationCatalog;
 use App\Support\Pagination\PageSize;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
@@ -94,16 +95,21 @@ class RoleController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create(NavigationCatalog $navigation): Response
     {
         $this->authorize('create', Role::class);
 
         return Inertia::render('access/role-create', [
             'permissions' => Permission::query()->orderBy('name')->get(['id', 'name']),
+            'navigationItems' => $navigation->editorItems(),
+            'defaultNavigationItems' => $navigation->keys(),
+            'customNavigationItems' => [],
+            'customNavigationIconKeys' => $navigation->customIconKeys(),
+            'routeOptions' => $navigation->routeOptions(),
         ]);
     }
 
-    public function edit(Role $role): Response
+    public function edit(Role $role, NavigationCatalog $navigation): Response
     {
         $this->authorize('update', $role);
 
@@ -116,8 +122,15 @@ class RoleController extends Controller
                 'displayName' => $role->display_name,
                 'description' => $role->description,
                 'permissions' => $role->permissions()->orderBy('name')->pluck('name')->values(),
+                'navigationItems' => $navigation->selectedKeysForRole($role),
+                'customNavigationItems' => $role->custom_navigation_items ?? [],
+                'navigationGroupOverrides' => (object) ($role->navigation_group_overrides ?? []),
             ],
             'permissions' => Permission::query()->orderBy('name')->get(['id', 'name']),
+            'navigationItems' => $navigation->editorItems(),
+            'defaultNavigationItems' => $navigation->keys(),
+            'customNavigationIconKeys' => $navigation->customIconKeys(),
+            'routeOptions' => $navigation->routeOptions(),
         ]);
     }
 
@@ -162,11 +175,20 @@ class RoleController extends Controller
                 'display_name' => $data['display_name'],
                 'description' => $data['description'] ?? null,
                 'is_system' => false,
+                'navigation_items' => $data['navigation_items'],
+                'custom_navigation_items' => $data['custom_navigation_items'],
+                'navigation_group_overrides' => $data['navigation_group_overrides'] ?? null,
             ]);
             $permissions = Permission::query()->whereIn('name', $data['permissions'] ?? [])->get();
             $role->syncPermissions($permissions);
             $grant->execute($request->user(), $role);
-            $audit->record('role.created', $request->user(), $role, null, ['name' => $role->name, 'permissions' => $permissions->pluck('name')->values()->all()]);
+            $audit->record('role.created', $request->user(), $role, null, [
+                'name' => $role->name,
+                'permissions' => $permissions->pluck('name')->values()->all(),
+                'navigation_items' => $role->navigation_items,
+                'custom_navigation_items' => $role->custom_navigation_items,
+                'navigation_group_overrides' => $role->navigation_group_overrides,
+            ]);
 
             return $role;
         });
@@ -174,21 +196,40 @@ class RoleController extends Controller
         return to_route('access.roles.index')->with('success', "Role {$role->display_name} created.");
     }
 
-    public function update(SaveRoleRequest $request, Role $role, ValidateRoleGrant $grant, RecordAccessAudit $audit): RedirectResponse
+    public function update(SaveRoleRequest $request, Role $role, NavigationCatalog $navigation, ValidateRoleGrant $grant, RecordAccessAudit $audit): RedirectResponse
     {
         $data = $request->validated();
-        $before = ['name' => $role->name, 'display_name' => $role->display_name, 'description' => $role->description, 'permissions' => $role->permissions()->pluck('name')->values()->all()];
+        $before = [
+            'name' => $role->name,
+            'display_name' => $role->display_name,
+            'description' => $role->description,
+            'permissions' => $role->permissions()->pluck('name')->values()->all(),
+            'navigation_items' => $navigation->selectedKeysForRole($role),
+            'custom_navigation_items' => $role->custom_navigation_items ?? [],
+            'navigation_group_overrides' => $role->navigation_group_overrides,
+        ];
 
         DB::transaction(function () use ($data, $request, $role, $grant, $audit, $before): void {
             $role->update([
                 'name' => $data['name'],
                 'display_name' => $data['display_name'],
                 'description' => $data['description'] ?? null,
+                'navigation_items' => $data['navigation_items'],
+                'custom_navigation_items' => $data['custom_navigation_items'],
+                'navigation_group_overrides' => $data['navigation_group_overrides'],
             ]);
             $permissions = Permission::query()->whereIn('name', $data['permissions'] ?? [])->get();
             $role->syncPermissions($permissions);
             $grant->execute($request->user(), $role);
-            $audit->record('role.updated', $request->user(), $role, $before, ['name' => $role->name, 'display_name' => $role->display_name, 'description' => $role->description, 'permissions' => $permissions->pluck('name')->values()->all()]);
+            $audit->record('role.updated', $request->user(), $role, $before, [
+                'name' => $role->name,
+                'display_name' => $role->display_name,
+                'description' => $role->description,
+                'permissions' => $permissions->pluck('name')->values()->all(),
+                'navigation_items' => $role->navigation_items,
+                'custom_navigation_items' => $role->custom_navigation_items,
+                'navigation_group_overrides' => $role->navigation_group_overrides,
+            ]);
         });
 
         return to_route('access.roles.index')->with('success', 'Role updated.');

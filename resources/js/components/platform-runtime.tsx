@@ -5,7 +5,11 @@ import { useIdleSession } from '@/features/session/use-idle-session';
 export function PlatformRuntime() {
     const { auth, system } = usePage().props;
 
-    useIdleSession(Boolean(auth.user), system.idleTimeoutSeconds);
+    useIdleSession(
+        Boolean(auth.user),
+        system.idleTimeoutSeconds,
+        auth.sessionScope,
+    );
 
     useEffect(() => {
         document.documentElement.dataset.platformTheme = system.theme;

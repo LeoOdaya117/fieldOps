@@ -85,3 +85,27 @@ Append meaningful architectural or workflow decisions with their date, context, 
 - **Context:** Operators requested table-level backups and restores with recorded creator, timestamp, table list, and a searchable audit trail.
 - **Decision:** Keep full database backup as the default. Selected backups expand the bidirectional foreign-key graph and registered FieldOps logical links, then sign both requested and included tables with creator and audit metadata in format version 2. Restore the recorded selection as a whole after taking a full safety package. CLI `--recovery` is restricted to full-database packages.
 - **Rationale:** Related rows travel together, operators can see why tables were included, and a damaged full restore cannot be reopened through an unrelated partial import. Complex database objects with uncertain scoped dependencies fail closed.
+
+## 2026-10-17 — Scope idle activity coordination to the authenticated session
+
+- **Context:** Origin-wide localStorage and BroadcastChannel names allowed stale browser state from an earlier setup or another session to trigger logout or affect the current login.
+- **Decision:** Generate a random idle-activity scope in the authenticated Laravel session, share it in authenticated Inertia props, and namespace client activity storage and tab messages by that scope. Do not expose the Laravel session ID or use the scope for authorization.
+- **Rationale:** Browser storage can outlive database resets and logouts. Session-scoped coordination prevents stale state and unrelated tabs from crossing authentication boundaries while preserving same-session tab synchronization.
+
+## 2026-10-18 — Configure role navigation with approved catalog keys
+
+- **Context:** Administrators need a simple way to tailor sidebar destinations by role without storing arbitrary links or coupling menu visibility to authorization.
+- **Decision:** Keep approved destinations, labels, route names, permissions, icons, and default order in `config/navigation.php`; store only an ordered list of selected catalog keys in `roles.navigation_items`. Resolve and permission-filter that list server-side, share it to every app navigation layout, and preserve contiguous group segments when a role interleaves categories. Preserve permission-derived menus for legacy null selections, and seed explicit defaults for newly created built-in roles.
+- **Rationale:** Role administrators can tailor both visibility and global order with a small allowlisted form, existing roles retain their behavior during rollout, and every route remains protected by its existing server-side permission checks.
+
+## 2026-10-18 — Add role-local custom navigation destinations
+
+- **Context:** Selecting and ordering the built-in destinations did not let each role add links for role-specific workflows or define their own group labels, URLs, and icons.
+- **Decision:** Keep `roles.navigation_items` as the ordered list of selected keys and add nullable `roles.custom_navigation_items` JSON for each role's custom metadata. Accept only app-relative paths or credential-free HTTPS URLs and finite Lucide icon keys; custom links remain presentation only and never grant route access. Render HTTPS destinations as same-tab anchors.
+- **Rationale:** This extends the existing role editor without rewriting built-in defaults or stored navigation order, while keeping custom metadata validated and icon rendering controlled by the application.
+
+## 2026-10-18 — Allow role-specific sidebar group labels
+
+- **Context:** Sidebar headings were fixed in the built-in navigation catalog, even after roles gained custom destinations and global ordering.
+- **Decision:** Store built-in label overrides in nullable `roles.navigation_group_overrides` and keep custom destination labels in `roles.custom_navigation_items`. Let role editors add labels and assign them to destinations. Render a heading only when a selected, accessible destination uses it.
+- **Rationale:** This makes sidebar sections customizable per role without a separate group registry or orphaned empty headings, and leaves route permissions independent from presentation labels.

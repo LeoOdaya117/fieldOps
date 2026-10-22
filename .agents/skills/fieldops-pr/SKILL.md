@@ -22,7 +22,7 @@ Treat the test gate as a hard prerequisite for both pushing the branch for PR de
 
    If the change affects critical browser flows, also run `npm run test:e2e`. Use the Docker equivalents from `AGENTS.md` when the native toolchain is unavailable.
 3. A check passes only when the command exits with code 0. Do not infer success from partial output, a previous run, a cached result, or a command that was skipped.
-4. If any required check fails, times out, cannot run, or has an ambiguous result, stop before pushing or submitting. Report the exact command, failure, and next action.
+4. If any required check fails, times out, cannot run, or has an ambiguous result, diagnose and fix the underlying code, configuration, or execution issue, then rerun the failed check. Do not push or submit while a required check remains unresolved. Stop only when the blocker cannot be fixed here, such as an unavailable external registry; report the exact command, evidence, and concrete next action.
 5. If application code, tests, configuration, dependencies, or generated inputs change after validation, invalidate the gate and run the affected checks again.
 6. Never use `gh pr create`, `gh pr edit`, or an equivalent PR-submission action before the gate passes. Do not bypass the gate because the request is urgent or asks to skip tests.
 

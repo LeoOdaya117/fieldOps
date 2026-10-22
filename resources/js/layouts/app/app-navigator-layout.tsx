@@ -1,7 +1,13 @@
 import { Link, usePage } from '@inertiajs/react';
+import { NavigationLink } from '@/components/navigation-link';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
+import { AppearanceToggleButton } from '@/components/appearance-toggle-button';
 import { cn } from '@/lib/utils';
-import { getActiveNavigationItem, getNavigationGroups } from '@/lib/navigation';
+import {
+    getActiveNavigationItem,
+    getNavigationGroups,
+    getNavigationItemByKey,
+} from '@/lib/navigation';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { PlatformLogo } from '@/components/platform-logo';
 import {
@@ -23,6 +29,7 @@ export default function AppNavigatorLayout({
 }: AppLayoutProps) {
     const { auth } = usePage().props;
     const groups = getNavigationGroups(auth);
+    const dashboard = getNavigationItemByKey(groups, 'dashboard');
     const { currentUrl } = useCurrentUrl();
     const activeItem = getActiveNavigationItem(
         groups.flatMap((group) => group.items),
@@ -36,25 +43,31 @@ export default function AppNavigatorLayout({
     return (
         <div className="flex min-h-screen bg-background">
             <aside className="hidden w-16 shrink-0 flex-col bg-foreground text-background lg:flex">
-                <Link
-                    href="/dashboard"
-                    className="flex h-16 items-center justify-center border-b border-background/15"
-                >
-                    <PlatformLogo variant="mark" className="size-8" />
-                </Link>
+                {dashboard ? (
+                    <Link
+                        href={dashboard.href}
+                        className="flex h-16 items-center justify-center border-b border-background/15"
+                    >
+                        <PlatformLogo variant="mark" className="size-8" />
+                    </Link>
+                ) : (
+                    <div className="flex h-16 items-center justify-center border-b border-background/15">
+                        <PlatformLogo variant="mark" className="size-8" />
+                    </div>
+                )}
                 <nav
                     className="flex flex-1 flex-col items-center gap-2 py-4"
                     aria-label="Navigation groups"
                 >
-                    {groups.map((group) => {
+                    {groups.map((group, index) => {
                         const active = group === activeGroup;
                         const Icon = group.items[0]?.icon;
 
                         return (
-                            <Tooltip key={group.label}>
+                            <Tooltip key={`${group.label}-${index}`}>
                                 <TooltipTrigger asChild>
-                                    <Link
-                                        href={group.items[0].href}
+                                    <NavigationLink
+                                        href={String(group.items[0].href)}
                                         aria-label={group.label}
                                         aria-current={
                                             active ? 'page' : undefined
@@ -68,7 +81,7 @@ export default function AppNavigatorLayout({
                                         {Icon && (
                                             <Icon className="size-[1.125rem]" />
                                         )}
-                                    </Link>
+                                    </NavigationLink>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">
                                     {group.label}
@@ -94,9 +107,9 @@ export default function AppNavigatorLayout({
                         const Icon = item.icon;
 
                         return (
-                            <Link
-                                key={item.title}
-                                href={item.href}
+                            <NavigationLink
+                                key={item.key ?? item.title}
+                                href={String(item.href)}
                                 aria-current={active ? 'page' : undefined}
                                 className={cn(
                                     'flex min-h-10 items-center gap-3 rounded-md px-3 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent',
@@ -106,7 +119,7 @@ export default function AppNavigatorLayout({
                             >
                                 {Icon && <Icon className="size-4" />}
                                 {item.title}
-                            </Link>
+                            </NavigationLink>
                         );
                     })}
                 </nav>
@@ -125,7 +138,8 @@ export default function AppNavigatorLayout({
                         breadcrumbs={breadcrumbs}
                         className="hidden lg:block"
                     />
-                    <div className="mr-2 ml-auto">
+                    <div className="mr-2 ml-auto flex items-center gap-1">
+                        <AppearanceToggleButton />
                         <NotificationBell />
                     </div>
                     <PlatformUserButton className="lg:hidden" />

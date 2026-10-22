@@ -11,11 +11,12 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { getNavigationGroups } from '@/lib/navigation';
+import { getNavigationGroups, getNavigationItemByKey } from '@/lib/navigation';
 
 export function AppSidebar() {
     const { auth } = usePage().props;
     const groups = getNavigationGroups(auth);
+    const dashboard = getNavigationItemByKey(groups, 'dashboard');
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -23,18 +24,24 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href="/dashboard" prefetch>
-                                <AppLogo />
-                            </Link>
+                            {dashboard ? (
+                                <Link href={dashboard.href} prefetch>
+                                    <AppLogo />
+                                </Link>
+                            ) : (
+                                <div>
+                                    <AppLogo />
+                                </div>
+                            )}
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>
 
             <SidebarContent>
-                {groups.map((group) => (
+                {groups.map((group, index) => (
                     <NavMain
-                        key={group.label}
+                        key={`${group.label}-${index}`}
                         items={group.items}
                         label={group.label}
                     />

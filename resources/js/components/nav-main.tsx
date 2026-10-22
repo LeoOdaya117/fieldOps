@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { NavigationLink } from '@/components/navigation-link';
 import {
     SidebarGroup,
     SidebarGroupLabel,
@@ -23,16 +23,16 @@ export function NavMain({
             <SidebarGroupLabel>{label}</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item) => (
-                    <SidebarMenuItem key={item.title}>
+                    <SidebarMenuItem key={item.key ?? item.title}>
                         <SidebarMenuButton
                             asChild
-                            isActive={isCurrentUrl(item.href)}
+                            isActive={!item.external && isCurrentUrl(item.href)}
                             tooltip={{ children: item.title }}
                         >
-                            <Link href={item.href} prefetch>
+                            <NavigationLink href={String(item.href)} prefetch>
                                 {item.icon && <item.icon />}
                                 <span>{item.title}</span>
-                            </Link>
+                            </NavigationLink>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 ))}

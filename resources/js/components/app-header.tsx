@@ -1,6 +1,8 @@
 import { Link, usePage } from '@inertiajs/react';
 import { ChevronDown, Menu } from 'lucide-react';
+import { NavigationLink } from '@/components/navigation-link';
 import { NotificationBell } from '@/features/notifications/components/notification-bell';
+import { AppearanceToggleButton } from '@/components/appearance-toggle-button';
 import AppLogo from '@/components/app-logo';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { PlatformLogo } from '@/components/platform-logo';
@@ -25,7 +27,7 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useInitials } from '@/hooks/use-initials';
 import { cn } from '@/lib/utils';
-import { getNavigationGroups } from '@/lib/navigation';
+import { getNavigationGroups, getNavigationItemByKey } from '@/lib/navigation';
 import type { BreadcrumbItem } from '@/types';
 
 type Props = {
@@ -35,6 +37,7 @@ type Props = {
 export function AppHeader({ breadcrumbs = [] }: Props) {
     const { auth } = usePage().props;
     const groups = getNavigationGroups(auth);
+    const dashboard = getNavigationItemByKey(groups, 'dashboard');
     const getInitials = useInitials();
     const { isCurrentOrParentUrl } = useCurrentUrl();
 
@@ -69,21 +72,25 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                                     className="flex-1 space-y-6 overflow-y-auto px-4 py-5"
                                     aria-label="Main navigation"
                                 >
-                                    {groups.map((group) => (
-                                        <div key={group.label}>
+                                    {groups.map((group, index) => (
+                                        <div key={`${group.label}-${index}`}>
                                             <p className="px-2 pb-2 text-xs font-medium text-muted-foreground">
                                                 {group.label}
                                             </p>
                                             <div className="space-y-1">
                                                 {group.items.map((item) => (
-                                                    <Link
-                                                        key={item.title}
-                                                        href={item.href}
+                                                    <NavigationLink
+                                                        key={
+                                                            item.key ??
+                                                            item.title
+                                                        }
+                                                        href={String(item.href)}
                                                         className={cn(
                                                             'flex min-h-10 items-center gap-3 rounded-md px-2.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent',
-                                                            isCurrentOrParentUrl(
-                                                                item.href,
-                                                            ) &&
+                                                            !item.external &&
+                                                                isCurrentOrParentUrl(
+                                                                    item.href,
+                                                                ) &&
                                                                 'bg-sidebar-accent text-sidebar-accent-foreground',
                                                         )}
                                                     >
@@ -91,7 +98,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                                                             <item.icon className="size-4" />
                                                         )}
                                                         {item.title}
-                                                    </Link>
+                                                    </NavigationLink>
                                                 ))}
                                             </div>
                                         </div>
@@ -101,19 +108,25 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                         </Sheet>
                     </div>
 
-                    <Link
-                        href="/dashboard"
-                        prefetch
-                        className="flex min-w-0 items-center"
-                    >
-                        <AppLogo />
-                    </Link>
+                    {dashboard ? (
+                        <Link
+                            href={dashboard.href}
+                            prefetch
+                            className="flex min-w-0 items-center"
+                        >
+                            <AppLogo />
+                        </Link>
+                    ) : (
+                        <div className="flex min-w-0 items-center">
+                            <AppLogo />
+                        </div>
+                    )}
 
                     <nav
                         className="ml-3 hidden items-center gap-1 lg:flex"
                         aria-label="Main navigation"
                     >
-                        {groups.map((group) => {
+                        {groups.map((group, index) => {
                             const onlyItem =
                                 group.items.length === 1
                                     ? group.items[0]
@@ -124,38 +137,43 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
 
                                 return (
                                     <Button
-                                        key={group.label}
+                                        key={`${group.label}-${index}`}
                                         variant="ghost"
                                         size="sm"
                                         asChild
                                         className={cn(
-                                            isCurrentOrParentUrl(
-                                                onlyItem.href,
-                                            ) &&
+                                            !onlyItem.external &&
+                                                isCurrentOrParentUrl(
+                                                    onlyItem.href,
+                                                ) &&
                                                 'bg-accent text-accent-foreground',
                                         )}
                                     >
-                                        <Link href={onlyItem.href}>
+                                        <NavigationLink
+                                            href={String(onlyItem.href)}
+                                        >
                                             {Icon && (
                                                 <Icon className="size-4" />
                                             )}
                                             {onlyItem.title}
-                                        </Link>
+                                        </NavigationLink>
                                     </Button>
                                 );
                             }
 
                             return (
-                                <DropdownMenu key={group.label}>
+                                <DropdownMenu key={`${group.label}-${index}`}>
                                     <DropdownMenuTrigger asChild>
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             className={cn(
-                                                group.items.some((item) =>
-                                                    isCurrentOrParentUrl(
-                                                        item.href,
-                                                    ),
+                                                group.items.some(
+                                                    (item) =>
+                                                        !item.external &&
+                                                        isCurrentOrParentUrl(
+                                                            item.href,
+                                                        ),
                                                 ) &&
                                                     'bg-accent text-accent-foreground',
                                             )}
@@ -174,18 +192,18 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                                         <DropdownMenuSeparator />
                                         {group.items.map((item) => (
                                             <DropdownMenuItem
-                                                key={item.title}
+                                                key={item.key ?? item.title}
                                                 asChild
                                             >
-                                                <Link
-                                                    href={item.href}
+                                                <NavigationLink
+                                                    href={String(item.href)}
                                                     className="gap-2.5"
                                                 >
                                                     {item.icon && (
                                                         <item.icon className="size-4" />
                                                     )}
                                                     {item.title}
-                                                </Link>
+                                                </NavigationLink>
                                             </DropdownMenuItem>
                                         ))}
                                     </DropdownMenuContent>
@@ -195,6 +213,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                     </nav>
 
                     <div className="ml-auto flex shrink-0 items-center gap-2">
+                        <AppearanceToggleButton />
                         <NotificationBell />
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
