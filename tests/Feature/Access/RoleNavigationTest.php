@@ -169,10 +169,12 @@ class RoleNavigationTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('role.navigationItems', [$customItem['key'], 'dashboard'])
-                ->where(
-                    'role.customNavigationItems',
-                    fn (array $items): bool => $this->normalizeCustomNavigationItems($items) === $this->normalizeCustomNavigationItems([$customItem]),
-                )
+                ->has('role.customNavigationItems', 1)
+                ->where('role.customNavigationItems.0.key', $customItem['key'])
+                ->where('role.customNavigationItems.0.title', $customItem['title'])
+                ->where('role.customNavigationItems.0.group', $customItem['group'])
+                ->where('role.customNavigationItems.0.url', $customItem['url'])
+                ->where('role.customNavigationItems.0.iconKey', $customItem['iconKey'])
                 ->where('customNavigationIconKeys.0', 'bell'));
 
         $member = User::factory()->create();
