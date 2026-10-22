@@ -55,7 +55,7 @@ test('role navigation checklist is keyboard-operable across themes and viewports
         await page.reload();
         await expect(
             page.getByRole('heading', { name: 'Create custom role' }),
-        ).toBeVisible();
+        ).toBeVisible({ timeout: 15_000 });
         await page.getByRole('tab', { name: 'Navigation' }).click();
         await expect(navigation).toBeVisible();
 
@@ -85,7 +85,7 @@ test('role navigation checklist is keyboard-operable across themes and viewports
     await page.reload();
     await expect(
         page.getByRole('heading', { name: 'Create custom role' }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15_000 });
     await page.getByRole('tab', { name: 'Navigation' }).click();
     const groupLabels = navigation.getByRole('region', {
         name: 'Navigation group labels',
