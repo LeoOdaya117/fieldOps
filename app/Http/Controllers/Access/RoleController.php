@@ -100,6 +100,7 @@ class RoleController extends Controller
         $this->authorize('create', Role::class);
 
         return Inertia::render('access/role-create', [
+            'rolePresets' => config('operational-role-presets'),
             'permissions' => Permission::query()->orderBy('name')->get(['id', 'name']),
             'navigationItems' => $navigation->editorItems(),
             'defaultNavigationItems' => $navigation->keys(),
@@ -114,6 +115,7 @@ class RoleController extends Controller
         $this->authorize('update', $role);
 
         return Inertia::render('access/role-edit', [
+            'rolePresets' => $role->is_system ? [] : config('operational-role-presets'),
             'role' => [
                 'id' => $role->id,
                 'name' => $role->name,

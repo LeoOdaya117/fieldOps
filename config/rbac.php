@@ -120,7 +120,8 @@ return [
             'display_name' => 'Super Admin',
             'description' => 'Full enterprise access and platform administration controls.',
             'is_system' => true,
-            'permissions' => PermissionKey::values(),
+            // Operational grants remain explicit; Super Admin's existing Gate bypass is unchanged.
+            'permissions' => array_values(array_diff(PermissionKey::values(), PermissionKey::operationalValues())),
             'navigation' => [
                 'notifications', 'dashboard', 'users', 'roles', 'access_audit',
                 'blocked_ips', 'visit_logs', 'files', 'countries', 'timezones', 'system_settings', 'backups',

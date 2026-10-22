@@ -1,5 +1,7 @@
 # Verified Project Notes
 
+- Operational permissions are declared in `PermissionKey` and registered by `2026_10_22_000001_add_operational_permissions`; `config/operational-role-presets.php` supplies explicit permission drafts to the existing custom-role editor. Presets require application and normal saving; they do not create roles, assign users, add destinations, or enforce row scope. Built-in seeded grants exclude operational keys; the existing Super Admin Gate override is unchanged. Future technician policies must enforce own-assignment scope.
+
 Use this file for durable conventions confirmed from source or canonical project guidance. `$project-init` and `$feature-build` should preserve existing notes and amend only facts that have become stale.
 
 - `AGENTS.md` is the canonical engineering guide for this repository.

@@ -1,6 +1,42 @@
 import { expect, test } from '@playwright/test';
 import { e2eAccounts, login } from './support/auth';
 
+test('operational preset is explicit and keyboard-operable across themes and viewports', async ({
+    page,
+}) => {
+    await login(page, e2eAccounts.owner);
+
+    for (const colorScheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' });
+        await page.goto('/access/roles/create');
+        await page.getByRole('tab', { name: 'Permissions' }).click();
+        const preset = page.getByLabel('Operational preset');
+        const apply = page.getByRole('button', { name: 'Apply preset' });
+        await expect(apply).toBeDisabled();
+        await preset.selectOption('technician');
+        await expect(
+            page.locator('input[value="assets.view"]'),
+        ).not.toBeChecked();
+        await apply.focus();
+        await page.keyboard.press('Enter');
+        await expect(page.locator('input[value="assets.view"]')).toBeChecked();
+        await expect(
+            page.locator('input[value="work_orders.assign"]'),
+        ).not.toBeChecked();
+        await expect(
+            page.getByRole('heading', { name: 'Create custom role' }),
+        ).toBeVisible();
+        await expect(page.locator('html')).toHaveClass(
+            colorScheme === 'dark' ? /dark/ : /^(?!.*\bdark\b)/,
+        );
+        expect(
+            await page.evaluate(
+                () => document.documentElement.scrollWidth <= window.innerWidth,
+            ),
+        ).toBe(true);
+    }
+});
+
 test('role navigation checklist is keyboard-operable across themes and viewports', async ({
     page,
 }) => {
