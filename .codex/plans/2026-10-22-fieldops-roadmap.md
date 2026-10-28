@@ -1,6 +1,6 @@
 # FieldOps Roadmap — One Phase, One Worktree, One Chat, One PR
 
-Approved 2026-10-22. Status: Phase 1 merged; Phase 2 development and verification underway (updated 2026-10-28).
+Approved 2026-10-22. Status: Phase 1 merged; Phase 2 repository verification complete, PR #25 open (updated 2026-10-28).
 
 ## Delivery contract
 
