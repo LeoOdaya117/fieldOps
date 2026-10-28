@@ -7,6 +7,7 @@ return [
     'expanded_max_bytes' => (int) env('BACKUP_EXPANDED_MAX_BYTES', 5 * 1024 * 1024 * 1024),
     'process_timeout' => (int) env('BACKUP_PROCESS_TIMEOUT', 3600),
     'drain_timeout' => (int) env('BACKUP_DRAIN_TIMEOUT', 60),
+    'runner_heartbeat_ttl' => (int) env('BACKUP_RUNNER_HEARTBEAT_TTL', 15),
     'mysql_dump' => env('BACKUP_MYSQL_DUMP', 'mysqldump'),
     'mysql_client' => env('BACKUP_MYSQL_CLIENT', 'mysql'),
     'mariadb_dump' => env('BACKUP_MARIADB_DUMP', 'mariadb-dump'),

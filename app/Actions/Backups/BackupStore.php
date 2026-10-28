@@ -356,7 +356,7 @@ class BackupStore
     {
         $path = $this->root().'/runner-heartbeat.json';
 
-        return is_file($path) && (int) ($this->read($path)['time'] ?? 0) >= time() - 15;
+        return is_file($path) && (int) ($this->read($path)['time'] ?? 0) >= time() - max(15, (int) config('backups.runner_heartbeat_ttl', 15));
     }
 
     /** @return array{id: null, name: string, source: string} */
