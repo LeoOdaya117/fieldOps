@@ -190,6 +190,23 @@ class BackupCommandTest extends TestCase
         $this->artisan('backups:work', ['--once' => true])->assertSuccessful();
     }
 
+    public function test_cron_heartbeat_accepts_recent_runs_but_expires_when_cron_stops(): void
+    {
+        $store = app(BackupStore::class);
+        $this->assertFalse($store->runnerAvailable());
+        $store->heartbeat();
+        $this->assertTrue($store->runnerAvailable());
+        file_put_contents($store->root().'/runner-heartbeat.json', json_encode(['time' => time() - 60], JSON_THROW_ON_ERROR));
+        $this->assertFalse($store->runnerAvailable());
+        config(['backups.runner_heartbeat_ttl' => 120]);
+        $this->assertTrue($store->runnerAvailable());
+        file_put_contents($store->root().'/runner-heartbeat.json', json_encode(['time' => time() - 180], JSON_THROW_ON_ERROR));
+        $this->assertFalse($store->runnerAvailable());
+        config(['backups.runner_heartbeat_ttl' => -1]);
+        $store->heartbeat();
+        $this->assertTrue($store->runnerAvailable());
+    }
+
     public function test_confirmed_restore_checks_saved_package_and_invokes_the_runner(): void
     {
         $backup = $this->backup();

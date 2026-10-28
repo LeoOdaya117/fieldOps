@@ -822,6 +822,34 @@ class ExportTest extends TestCase
         $this->assertSame('export.failed', $failureNotification->data['event']);
     }
 
+    public function test_finite_database_worker_drains_exports_and_rechecks_revoked_access(): void
+    {
+        Storage::fake('local');
+        config(['queue.default' => 'database', 'queue.connections.database.retry_after' => 180]);
+        $owner = $this->actorWith(['users.view', 'users.export_csv']);
+        $revokedOwner = $this->actorWith(['users.view', 'users.export_csv']);
+        $ready = $this->artifact($owner, 'csv', []);
+        $revoked = $this->artifact($revokedOwner, 'csv', []);
+        GenerateExportArtifactJob::dispatch((string) $ready->getKey());
+        GenerateExportArtifactJob::dispatch((string) $revoked->getKey());
+        $this->assertDatabaseCount('jobs', 2);
+        $revokedOwner->revokePermissionTo('users.export_csv');
+
+        $this->artisan('queue:work', [
+            'connection' => 'database', '--stop-when-empty' => true,
+            '--max-time' => 40, '--timeout' => 60, '--memory' => 0, '--sleep' => 0,
+        ])->assertSuccessful();
+
+        $this->assertDatabaseCount('jobs', 0);
+        $this->assertDatabaseCount('failed_jobs', 0);
+        $this->assertSame('ready', $ready->fresh()->status);
+        Storage::disk('local')->assertExists($ready->fresh()->path);
+        $this->assertSame('failed', $revoked->fresh()->status);
+        $this->assertNull($revoked->fresh()->path);
+        $this->assertSame('export.ready', $owner->notifications()->firstOrFail()->data['event']);
+        $this->assertSame('export.failed', $revokedOwner->notifications()->firstOrFail()->data['event']);
+    }
+
     public function test_queue_writer_failure_marks_artifact_failed_and_sends_failure_notification(): void
     {
         Storage::fake('local');

@@ -1,6 +1,6 @@
 # FieldOps Roadmap — One Phase, One Worktree, One Chat, One PR
 
-Approved 2026-10-22. Status: implementation starting; no phases complete.
+Approved 2026-10-22. Status: Phase 1 merged; Phase 2 repository verification complete, PR #25 open (updated 2026-10-28).
 
 ## Delivery contract
 
@@ -54,5 +54,5 @@ Defer AI summaries, route optimization, billing, advanced analytics, push notifi
 
 ## Progress
 
-- Roadmap saved in coordinator checkout. Phase 1 not yet implemented.
-- Actual shared-hosting constraints and mobile repository remain unverified; synchronization, offline map compatibility and hosting process limits are primary risks.
+- Phase 1 merged as PR #23 at `5ad3578a821d347a470263423cf862eae86d9e8f`; Phase 2 starts from that fetched main in its dedicated branch/worktree.
+- Actual shared-hosting constraints and mobile repository remain unverified; synchronization, offline map compatibility and hosting process limits are primary risks. User deferred provider verification until deployment on 2026-10-28; Phase 2 development/PR delivery proceeds first. See `2026-10-22-shared-hosting-readiness.md` and `docs/shared-hosting.md` for observed checks and deferred deployment checklist.

@@ -91,7 +91,7 @@ class BackupController extends Controller
             'prerequisites' => [...$engine->prerequisites(), [
                 'label' => 'Independent backup runner',
                 'ready' => $store->runnerAvailable() || $store->busy(),
-                'message' => $store->runnerAvailable() || $store->busy() ? 'Available or processing an operation.' : 'Start the supervised backups:work process before queuing work.',
+                'message' => $store->runnerAvailable() || $store->busy() ? 'Recently available or processing an operation.' : 'Start backups:work or configure a verified backups:work --once cron before queuing work.',
             ]], 'busy' => $store->busy(),
             'databaseName' => DB::connection()->getDatabaseName(),
             'maxUploadBytes' => (int) config('backups.upload_max_bytes'),

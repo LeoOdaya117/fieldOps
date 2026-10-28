@@ -115,3 +115,9 @@ Append meaningful architectural or workflow decisions with their date, context, 
 - **Context:** Sidebar headings were fixed in the built-in navigation catalog, even after roles gained custom destinations and global ordering.
 - **Decision:** Store built-in label overrides in nullable `roles.navigation_group_overrides` and keep custom destination labels in `roles.custom_navigation_items`. Let role editors add labels and assign them to destinations. Render a heading only when a selected, accessible destination uses it.
 - **Rationale:** This makes sidebar sections customizable per role without a separate group registry or orphaned empty headings, and leaves route permissions independent from presentation labels.
+
+## 2026-10-28 — Reuse finite backup execution for cron
+
+- **Context:** Shared hosting may permit cron rather than a persistent supervised backup worker; the existing 15-second recent-run indicator is shorter than minute cron cadence.
+- **Decision:** Keep `backups:work --once` and existing filesystem locking/recovery. Make only the heartbeat TTL configurable, retaining the supervised default, and document provider verification and full-operation runtime requirements separately from liveness.
+- **Rationale:** A small compatibility setting supports finite invocations without a new runner, queue dependency, or weakening signatures, leases, safety snapshots or authentication epoch. Host suitability still requires deployment evidence; development/PR delivery proceeds first per user direction.
