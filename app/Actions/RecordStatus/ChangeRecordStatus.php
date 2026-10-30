@@ -7,6 +7,7 @@ use App\Actions\Rbac\RecordAccessAudit;
 use App\Actions\Security\InvalidateUserSessions;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
+use App\Models\Asset;
 use App\Models\BlockedIpAddress;
 use App\Models\Country;
 use App\Models\MediaAsset;
@@ -30,11 +31,11 @@ class ChangeRecordStatus
         private readonly AssertRoleCanBeRemoved $assertRoleCanBeRemoved,
     ) {}
 
-    /** @param class-string<User|UserInvitation|Role|Country|Timezone|BlockedIpAddress|OrganizationLocation|MediaAsset> $modelClass */
+    /** @param class-string<User|UserInvitation|Role|Country|Timezone|BlockedIpAddress|OrganizationLocation|MediaAsset|Asset> $modelClass */
     public function execute(string $modelClass, int|string $id, int $status, User $actor): void
     {
         DB::transaction(function () use ($modelClass, $id, $status, $actor): void {
-            /** @var User|UserInvitation|Role|Country|Timezone|BlockedIpAddress|OrganizationLocation|MediaAsset $record */
+            /** @var User|UserInvitation|Role|Country|Timezone|BlockedIpAddress|OrganizationLocation|MediaAsset|Asset $record */
             $record = $modelClass::query()->withoutGlobalScope('record_status')->lockForUpdate()->findOrFail($id);
 
             if ($record instanceof MediaAsset) {
@@ -135,6 +136,7 @@ class ChangeRecordStatus
             $record instanceof Timezone => 'timezone',
             $record instanceof OrganizationLocation => 'organization_location',
             $record instanceof MediaAsset => 'media.asset',
+            $record instanceof Asset => 'asset',
             default => 'record',
         };
     }

@@ -72,6 +72,18 @@ return [
             ],
         ],
         [
+            'label' => 'Operations',
+            'items' => [
+                [
+                    'key' => 'assets',
+                    'title' => 'Assets',
+                    'route' => 'assets.index',
+                    'permission' => 'assets.view',
+                    'iconKey' => 'mapPinned',
+                ],
+            ],
+        ],
+        [
             'label' => 'System',
             'items' => [
                 [

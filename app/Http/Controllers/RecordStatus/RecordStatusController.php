@@ -5,6 +5,7 @@ namespace App\Http\Controllers\RecordStatus;
 use App\Actions\RecordStatus\ChangeRecordStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RecordStatus\UpdateRecordStatusRequest;
+use App\Models\Asset;
 use App\Models\BlockedIpAddress;
 use App\Models\Country;
 use App\Models\MediaAsset;
@@ -79,5 +80,12 @@ class RecordStatusController extends Controller
         $change->execute(MediaAsset::class, $asset->getKey(), (int) $request->validated('record_status'), $request->user());
 
         return back()->with('success', 'Media asset status updated.');
+    }
+
+    public function asset(UpdateRecordStatusRequest $request, int $asset, ChangeRecordStatus $change): RedirectResponse
+    {
+        $change->execute(Asset::class, $asset, (int) $request->validated('record_status'), $request->user());
+
+        return back()->with('success', 'Asset record status updated.');
     }
 }

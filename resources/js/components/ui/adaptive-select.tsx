@@ -137,7 +137,7 @@ function AdaptiveSelect({
     return (
         <>
             {hiddenInputs}
-            {usesCheckboxes ? (
+            {usesCheckboxes && isMultiple ? (
                 <CheckboxOptions {...sharedProps} />
             ) : usesSearch || isMultiple ? (
                 <SearchableOptions

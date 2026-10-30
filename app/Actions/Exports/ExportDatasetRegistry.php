@@ -4,6 +4,7 @@ namespace App\Actions\Exports;
 
 use App\Actions\DataTables\BuildListingQuery;
 use App\Models\AccessAuditEvent;
+use App\Models\Asset;
 use App\Models\BlockedIpAddress;
 use App\Models\Country;
 use App\Models\MediaAsset;
@@ -212,7 +213,7 @@ class ExportDatasetRegistry
     }
 
     /** @param array<string, mixed> $filters
-     * @return Builder<User>|Builder<UserInvitation>|Builder<UserRegistration>|Builder<Role>|Builder<AccessAuditEvent>|Builder<BlockedIpAddress>|Builder<VisitLog>|Builder<MediaAsset>|Builder<Country>|Builder<Timezone>
+     * @return Builder<User>|Builder<UserInvitation>|Builder<UserRegistration>|Builder<Role>|Builder<AccessAuditEvent>|Builder<BlockedIpAddress>|Builder<VisitLog>|Builder<MediaAsset>|Builder<Country>|Builder<Timezone>|Builder<Asset>
      */
     public function query(string $dataset, User $user, array $filters): Builder
     {

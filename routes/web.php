@@ -5,6 +5,7 @@ use App\Http\Controllers\Access\BlockedIpAddressController;
 use App\Http\Controllers\Access\RoleController;
 use App\Http\Controllers\Access\UserController;
 use App\Http\Controllers\Access\VisitLogController;
+use App\Http\Controllers\Assets\AssetController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\Auth\SessionActivityController;
@@ -70,6 +71,16 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
     Route::delete('media-assets/{asset}', [MediaAssetController::class, 'destroy'])
         ->middleware('can:media_assets.delete')
         ->name('media-assets.destroy');
+
+    Route::prefix('assets')->name('assets.')->group(function (): void {
+        Route::get('/', [AssetController::class, 'index'])->middleware('can:assets.view')->name('index');
+        Route::patch('{asset}/record-status', [RecordStatusController::class, 'asset'])->middleware('can:assets.update_deleted')->name('record-status');
+        Route::get('create', [AssetController::class, 'create'])->middleware('can:assets.create')->name('create');
+        Route::post('/', [AssetController::class, 'store'])->middleware('can:assets.create')->name('store');
+        Route::get('{asset}/edit', [AssetController::class, 'edit'])->middleware('can:assets.update')->name('edit');
+        Route::patch('{asset}', [AssetController::class, 'update'])->middleware('can:assets.update')->name('update');
+        Route::get('{asset}', [AssetController::class, 'show'])->middleware('can:assets.view')->name('show');
+    });
 
     Route::inertia('dashboard', 'dashboard')->middleware('can:dashboard.view')->name('dashboard');
 
