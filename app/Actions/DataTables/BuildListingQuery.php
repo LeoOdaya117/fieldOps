@@ -3,6 +3,7 @@
 namespace App\Actions\DataTables;
 
 use App\Models\AccessAuditEvent;
+use App\Models\Asset;
 use App\Models\BlockedIpAddress;
 use App\Models\Country;
 use App\Models\MediaAsset;
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Builds the filtered Eloquent queries shared by table listings and exports.
  *
- * @phpstan-type ListingQueryBuilder Builder<User>|Builder<UserInvitation>|Builder<UserRegistration>|Builder<Role>|Builder<AccessAuditEvent>|Builder<BlockedIpAddress>|Builder<VisitLog>|Builder<MediaAsset>|Builder<Country>|Builder<Timezone>
+ * @phpstan-type ListingQueryBuilder Builder<User>|Builder<UserInvitation>|Builder<UserRegistration>|Builder<Role>|Builder<AccessAuditEvent>|Builder<BlockedIpAddress>|Builder<VisitLog>|Builder<MediaAsset>|Builder<Country>|Builder<Timezone>|Builder<Asset>
  */
 class BuildListingQuery
 {
@@ -39,6 +40,7 @@ class BuildListingQuery
             'files' => $this->files($user, $filters),
             'countries' => $this->countries($user, $filters),
             'timezones' => $this->timezones($user, $filters),
+            'assets' => $this->assets($user, $filters),
             default => throw new \InvalidArgumentException('Unsupported export dataset.'),
         };
     }
@@ -330,6 +332,31 @@ class BuildListingQuery
             ->when($sort === 'created_by', static fn ($query) => $query->orderBy(DB::table('users as created_actors')->select('created_actors.name')->whereColumn('created_actors.id', 'timezones.created_by'), $direction))
             ->when($sort === 'updated_by', static fn ($query) => $query->orderBy(DB::table('users as updated_actors')->select('updated_actors.name')->whereColumn('updated_actors.id', 'timezones.updated_by'), $direction))
             ->when($sort !== 'created_by' && $sort !== 'updated_by', static fn ($query) => $query->when(isset($sortColumns[$sort]), static fn ($query) => $query->orderBy($sortColumns[$sort], $direction), static fn ($query) => $query->orderBy('name')));
+    }
+
+    /** @param array<string, mixed> $filters
+     * @return Builder<Asset>
+     */
+    private function assets(User $user, array $filters): Builder
+    {
+        $canDeleted = $user->can('assets.view_deleted');
+        $status = $canDeleted && ($filters['record_status'] ?? 'active') === 'inactive' ? 'inactive' : 'active';
+        $condition = in_array($filters['condition'] ?? null, Asset::CONDITIONS, true) ? (string) $filters['condition'] : '';
+        $category = trim((string) ($filters['category'] ?? ''));
+        $search = trim((string) ($filters['search'] ?? ''));
+        $sort = (string) ($filters['sort'] ?? '');
+        $direction = $this->direction($filters['direction'] ?? null, 'asc');
+        $sortColumns = ['code' => 'code', 'name' => 'name', 'category' => 'category', 'condition' => 'condition', 'created_at' => 'created_at', 'updated_at' => 'updated_at', 'record_status' => 'record_status'];
+
+        return ($canDeleted ? Asset::withTrashed() : Asset::query())
+            ->where('record_status', $status === 'inactive' ? 0 : 1)
+            ->when($search !== '', static fn ($query) => $query->where(static fn ($query) => $query
+                ->where('code', 'like', '%'.$search.'%')
+                ->orWhere('name', 'like', '%'.$search.'%')
+                ->orWhere('category', 'like', '%'.$search.'%')))
+            ->when($category !== '', static fn ($query) => $query->where('category', $category))
+            ->when($condition !== '', static fn ($query) => $query->where('condition', $condition))
+            ->when(isset($sortColumns[$sort]), static fn ($query) => $query->orderBy($sortColumns[$sort], $direction), static fn ($query) => $query->orderBy('name'));
     }
 
     /** @param array<array-key, mixed> $allowed

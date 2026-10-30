@@ -72,6 +72,39 @@ describe('AdaptiveSelect', () => {
         ]);
     });
 
+    it('submits an inactive record status as one scalar form value', async () => {
+        const user = userEvent.setup();
+
+        render(
+            <form aria-label="Asset record status filters">
+                <AdaptiveSelect
+                    id="asset-record-status"
+                    name="record_status"
+                    aria-label="Record status"
+                    multiple={false}
+                    defaultValue="active"
+                    options={[
+                        { value: 'active', label: 'Active' },
+                        { value: 'inactive', label: 'Inactive' },
+                    ]}
+                />
+            </form>,
+        );
+
+        const form = screen.getByRole('form', {
+            name: 'Asset record status filters',
+        }) as HTMLFormElement;
+
+        expect(new FormData(form).getAll('record_status')).toEqual(['active']);
+        expect(new FormData(form).getAll('record_status[]')).toEqual([]);
+
+        await user.click(screen.getByRole('combobox', { name: 'Record status' }));
+        await user.click(screen.getByRole('option', { name: 'Inactive' }));
+
+        expect(new FormData(form).getAll('record_status')).toEqual(['inactive']);
+        expect(new FormData(form).getAll('record_status[]')).toEqual([]);
+    });
+
     it('uses a select for options between six and ten', () => {
         render(
             <AdaptiveSelect
