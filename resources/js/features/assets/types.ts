@@ -19,6 +19,38 @@ export type Asset = {
     updatedBy: AuditActor;
 };
 
+export type AssetEvidence = {
+    id: number;
+    name: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+    actorName: string | null;
+    contentUrl: string;
+    downloadUrl: string;
+    thumbnailUrl: string | null;
+    previewDataUrl: string | null;
+    removeUrl: string;
+};
+
+export type AssetHistoryEvent = {
+    id: number;
+    event: string;
+    occurredAt: string;
+    actorName: string | null;
+    changes: {
+        before: Record<string, string | number | boolean | null>;
+        after: Record<string, string | number | boolean | null>;
+    };
+};
+
+export type AssetActivityPage<T> = {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    links: { url: string | null; label: string; active: boolean }[];
+};
+
 export type AssetFilters = {
     search: string;
     category?: string;

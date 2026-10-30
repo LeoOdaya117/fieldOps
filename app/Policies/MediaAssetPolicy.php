@@ -18,6 +18,10 @@ class MediaAssetPolicy
 
     public function view(User $user, MediaAsset $asset): bool
     {
+        if ($asset->module === 'asset_evidence') {
+            return false;
+        }
+
         if (! $user->isActive()) {
             return false;
         }
@@ -47,6 +51,10 @@ class MediaAssetPolicy
 
     public function update(User $user, MediaAsset $asset): bool
     {
+        if ($asset->module === 'asset_evidence') {
+            return false;
+        }
+
         $permission = $asset->module === 'files' ? 'files.update' : 'media_assets.update';
 
         return $asset->module !== 'avatars'
@@ -58,6 +66,10 @@ class MediaAssetPolicy
 
     public function delete(User $user, MediaAsset $asset): bool
     {
+        if ($asset->module === 'asset_evidence') {
+            return false;
+        }
+
         return $asset->module !== 'avatars'
             && $user->can($asset->module === 'files' ? 'files.delete' : 'media_assets.delete')
             && $user->isActive()
@@ -67,6 +79,10 @@ class MediaAssetPolicy
 
     public function updateDeleted(User $user, MediaAsset $asset): bool
     {
+        if ($asset->module === 'asset_evidence') {
+            return false;
+        }
+
         return $asset->module !== 'avatars'
             && $user->isActive()
             && $this->ownsOrManages($user, $asset)

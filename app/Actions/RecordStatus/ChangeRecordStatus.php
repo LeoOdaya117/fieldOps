@@ -39,6 +39,10 @@ class ChangeRecordStatus
             $record = $modelClass::query()->withoutGlobalScope('record_status')->lockForUpdate()->findOrFail($id);
 
             if ($record instanceof MediaAsset) {
+                if ($record->module === 'asset_evidence') {
+                    throw new AuthorizationException;
+                }
+
                 if ($record->module === 'avatars'
                     || ($record->module !== 'files' && (int) $record->uploader_id !== (int) $actor->getKey())
                     || ($record->module === 'files' && (int) $record->uploader_id !== (int) $actor->getKey()
@@ -66,7 +70,7 @@ class ChangeRecordStatus
                 $actor,
                 $record,
                 $before,
-                ['record_status' => $status],
+                ['record_status' => $status, ...($record instanceof Asset ? ['_actor' => ['name' => (string) $actor->name, 'email' => (string) $actor->email]] : [])],
             );
         });
     }

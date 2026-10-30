@@ -20,9 +20,13 @@ class StoreMediaAsset
         private readonly EnforceFileQuota $fileQuota,
     ) {}
 
-    public function execute(UploadedFile $file, string $source, User $actor, string $module = 'gallery', ?string $tag = null): MediaAsset
+    public function execute(UploadedFile $file, string $source, User $actor, string $module = 'gallery', ?string $tag = null, ?int $assetId = null): MediaAsset
     {
         if (! in_array($module, (array) config('media-assets.allowed_modules'), true)) {
+            throw ValidationException::withMessages(['file' => 'This upload destination is not supported.']);
+        }
+
+        if (($module === 'asset_evidence') !== ($assetId !== null)) {
             throw ValidationException::withMessages(['file' => 'This upload destination is not supported.']);
         }
 
@@ -93,6 +97,7 @@ class StoreMediaAsset
                 $source,
                 $module,
                 $tag,
+                $assetId,
             ): MediaAsset {
                 User::query()->whereKey($actor->getKey())->lockForUpdate()->firstOrFail();
 
@@ -113,11 +118,12 @@ class StoreMediaAsset
                 $asset = MediaAsset::query()->create([
                     'uploader_id' => $actor->getKey(),
                     'module' => $module,
+                    'asset_id' => $assetId,
                     'tag' => $tag,
                     'disk' => $diskName,
                     'path' => $path,
                     'thumbnail_path' => $thumbnailPath,
-                    'original_name' => mb_substr(basename($file->getClientOriginalName()), 0, 255),
+                    'original_name' => $this->originalName($file),
                     'mime_type' => $mimeType,
                     'extension' => $extension,
                     'size_bytes' => strlen($normalized),
@@ -213,5 +219,13 @@ class StoreMediaAsset
         } finally {
             imagedestroy($thumbnail);
         }
+    }
+
+    private function originalName(UploadedFile $file): string
+    {
+        $name = basename($file->getClientOriginalName());
+        $name = preg_replace('/[\x00-\x1F\x7F]/', '', $name) ?: 'upload';
+
+        return mb_substr($name, 0, 255);
     }
 }

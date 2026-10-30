@@ -23,7 +23,7 @@ class ManageAsset
                     'created_by' => $actor->getKey(),
                     'updated_by' => $actor->getKey(),
                 ]);
-                $this->audit->record('asset.created', $actor, $asset, null, $this->snapshot($asset));
+                $this->audit->record('asset.created', $actor, $asset, null, [...$this->snapshot($asset), '_actor' => $this->actorSnapshot($actor)]);
 
                 return $asset;
             });
@@ -47,7 +47,7 @@ class ManageAsset
                 $after = $this->snapshot($asset);
 
                 if ($before !== $after) {
-                    $this->audit->record('asset.updated', $actor, $asset, $before, $after);
+                    $this->audit->record('asset.updated', $actor, $asset, $before, [...$after, '_actor' => $this->actorSnapshot($actor)]);
                 }
             });
         } catch (QueryException $exception) {
@@ -77,5 +77,11 @@ class ManageAsset
             'longitude' => $asset->longitude,
             'record_status' => (int) $asset->record_status,
         ];
+    }
+
+    /** @return array{name: string, email: string} */
+    private function actorSnapshot(User $actor): array
+    {
+        return ['name' => (string) $actor->name, 'email' => (string) $actor->email];
     }
 }

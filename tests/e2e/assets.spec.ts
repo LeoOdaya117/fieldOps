@@ -27,7 +27,9 @@ test('an administrator can create, edit, and review an asset across themes and v
     await page.goto('/assets');
     await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible();
     await page.getByRole('link', { name: 'Create asset' }).click();
-    await expect(page.getByRole('heading', { name: 'Create asset' })).toBeVisible();
+    await expect(
+        page.getByRole('heading', { name: 'Create asset' }),
+    ).toBeVisible();
 
     await page.getByLabel('Asset code').fill(code.toLowerCase());
     await page.getByLabel('Name', { exact: true }).fill(name);
@@ -56,19 +58,69 @@ test('an administrator can create, edit, and review an asset across themes and v
     await page.goto(`/assets?search=${encodeURIComponent(code)}`);
     row = table.getByRole('row').filter({ hasText: updatedName });
     await expect(row).toHaveCount(1);
-    await row.getByRole('button', { name: `Actions for ${updatedName}` }).click();
+    await row
+        .getByRole('button', { name: `Actions for ${updatedName}` })
+        .click();
     await page.getByRole('menuitem', { name: 'View' }).click();
     await expect(page).toHaveURL(/\/assets\/\d+$/);
     await expect(page.locator('[data-slot="details-view"]')).toHaveCount(1);
     await expect(
         page.getByRole('heading', { name: 'Asset definition' }),
     ).toBeVisible();
-    await expect(
-        page.getByRole('heading', { name: 'Location' }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Location' })).toBeVisible();
     await expect(page.getByText('12.879700')).toBeVisible();
     await expect(page.getByText('121.774000')).toBeVisible();
     await expect(page.getByText('Needs maintenance')).toBeVisible();
+
+    const evidenceName = `evidence-${testInfo.project.name}-${Date.now()}.csv`;
+    await page.getByLabel('Add evidence files').setInputFiles({
+        name: evidenceName,
+        mimeType: 'text/csv',
+        buffer: Buffer.from('item,result\npump,checked\n'),
+    });
+    await page.getByRole('button', { name: 'Upload' }).click();
+    const evidenceSection = page.getByRole('region', {
+        name: 'Evidence files',
+    });
+    const evidenceRow = evidenceSection
+        .getByRole('listitem')
+        .filter({ hasText: evidenceName });
+    await expect(evidenceRow).toBeVisible();
+    await expect(
+        page.getByText('Evidence Attached', { exact: true }),
+    ).toBeVisible();
+    await evidenceRow.getByRole('button', { name: 'Preview rows' }).click();
+    await expect(
+        page.getByRole('region', { name: 'First rows of evidence' }),
+    ).toContainText('pump');
+    await expect(
+        page.getByRole('region', { name: 'First rows of evidence' }),
+    ).toContainText('checked');
+
+    const downloadPromise = page.waitForEvent('download');
+    await evidenceRow.getByRole('link', { name: 'Download' }).click();
+    expect((await downloadPromise).suggestedFilename()).toBe(evidenceName);
+
+    await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
+    await page.evaluate(() =>
+        window.localStorage.setItem('appearance', 'dark'),
+    );
+    await page.reload();
+    await expect(page.locator('html')).toHaveClass(/dark/);
+    await expect(
+        evidenceSection.getByRole('listitem').filter({ hasText: evidenceName }),
+    ).toBeVisible();
+    await expect(
+        page.getByText('Evidence Attached', { exact: true }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: `Remove ${evidenceName}` }).click();
+    await expect(
+        page.getByText('Evidence Removed', { exact: true }),
+    ).toBeVisible();
+    await expect(
+        evidenceSection.getByRole('listitem').filter({ hasText: evidenceName }),
+    ).toHaveCount(0);
+
     expect(
         await page.evaluate(
             () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -78,9 +130,6 @@ test('an administrator can create, edit, and review an asset across themes and v
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
 
-    await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
-    await page.evaluate(() => window.localStorage.setItem('appearance', 'dark'));
-    await page.reload();
     await expect(page.locator('html')).toHaveClass(/dark/);
     await expect(
         page.getByRole('heading', { name: updatedName, level: 2 }),
