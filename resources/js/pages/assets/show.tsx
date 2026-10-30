@@ -3,8 +3,14 @@ import { ActionLink } from '@/components/action-link';
 import { DetailsPage } from '@/components/details-page';
 import { DetailsView } from '@/components/details-view';
 import { RecordStatusControl } from '@/components/ui/record-status-control';
+import { AssetEvidenceActivity } from '@/features/assets/components/asset-evidence-activity';
 import { conditionLabel, formatCoordinate } from '@/features/assets/types';
-import type { Asset } from '@/features/assets/types';
+import type {
+    Asset,
+    AssetActivityPage,
+    AssetEvidence,
+    AssetHistoryEvent,
+} from '@/features/assets/types';
 import { formatDateTime } from '@/lib/format-date';
 import { dashboard } from '@/routes';
 import { edit as editAsset, index as assetsIndex } from '@/routes/assets';
@@ -17,11 +23,19 @@ export default function AssetShowPage({
     asset,
     canUpdate = false,
     canUpdateDeleted = false,
+    evidence,
+    history,
+    canManageEvidence = false,
+    storeUrl = '',
 }: {
     asset: Asset;
     canUpdate?: boolean;
     canViewDeleted?: boolean;
     canUpdateDeleted?: boolean;
+    evidence: AssetActivityPage<AssetEvidence>;
+    history: AssetActivityPage<AssetHistoryEvent>;
+    canManageEvidence?: boolean;
+    storeUrl: string;
 }) {
     const hasCoordinates = asset.latitude !== null && asset.longitude !== null;
 
@@ -166,6 +180,20 @@ export default function AssetShowPage({
                                 cell: (record) => actorLabel(record.updatedBy),
                             },
                         ],
+                    },
+                    {
+                        key: 'evidence-history',
+                        title: 'Evidence and activity',
+                        description:
+                            'Review private evidence attached to this asset and its recorded history.',
+                        content: (
+                            <AssetEvidenceActivity
+                                evidence={evidence}
+                                history={history}
+                                canManageEvidence={canManageEvidence}
+                                storeUrl={storeUrl}
+                            />
+                        ),
                     },
                 ]}
             />

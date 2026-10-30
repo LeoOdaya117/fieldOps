@@ -17,10 +17,10 @@ class MediaAsset extends Model
     protected $fillable = [
         'uploader_id', 'disk', 'path', 'thumbnail_path', 'original_name', 'module', 'tag',
         'mime_type', 'extension', 'size_bytes', 'width', 'height', 'source',
-        'created_by', 'updated_by', 'record_status',
+        'created_by', 'updated_by', 'record_status', 'asset_id',
     ];
 
-    protected $hidden = ['id', 'disk', 'path', 'thumbnail_path', 'uploader_id', 'created_by', 'updated_by'];
+    protected $hidden = ['id', 'disk', 'path', 'thumbnail_path', 'uploader_id', 'created_by', 'updated_by', 'asset_id'];
 
     protected static function booted(): void
     {
@@ -29,8 +29,8 @@ class MediaAsset extends Model
             $asset->module ??= 'gallery';
         });
         static::updating(static function (self $asset): void {
-            if ($asset->isDirty('token') || $asset->isDirty('module')) {
-                throw new LogicException('File token and module are immutable.');
+            if ($asset->isDirty('token') || $asset->isDirty('module') || $asset->isDirty('asset_id')) {
+                throw new LogicException('File token, module, and asset scope are immutable.');
             }
         });
     }
@@ -54,6 +54,12 @@ class MediaAsset extends Model
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploader_id')->withTrashed();
+    }
+
+    /** @return BelongsTo<Asset, $this> */
+    public function asset(): BelongsTo
+    {
+        return $this->belongsTo(Asset::class);
     }
 
     /** @return HasMany<PlatformImageAssignment, $this> */

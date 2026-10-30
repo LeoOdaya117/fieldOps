@@ -6,7 +6,9 @@ use App\Actions\Assets\ManageAsset;
 use App\Actions\DataTables\BuildListingQuery;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Assets\SaveAssetRequest;
+use App\Models\AccessAuditEvent;
 use App\Models\Asset;
+use App\Models\MediaAsset;
 use App\Models\User;
 use App\Support\Pagination\PageSize;
 use Illuminate\Http\RedirectResponse;
@@ -80,9 +82,63 @@ class AssetController extends Controller
         $asset = ($canViewDeleted ? Asset::withTrashed() : Asset::query())->findOrFail($asset);
         $this->authorize('view', $asset);
         $asset->load(['createdBy:id,name,email', 'updatedBy:id,name,email']);
+        $evidence = $asset->evidence()
+            ->with('uploader:id,name')
+            ->latest('created_at')
+            ->orderByDesc('id')
+            ->paginate(10, ['id', 'asset_id', 'token', 'original_name', 'mime_type', 'extension', 'size_bytes', 'thumbnail_path', 'uploader_id', 'created_at'], 'evidence_page')
+            ->appends(request()->query());
+        $evidence->through(fn (MediaAsset $media): array => [
+            'id' => $media->id,
+            'name' => $media->original_name,
+            'mimeType' => $media->mime_type,
+            'sizeBytes' => (int) $media->size_bytes,
+            'createdAt' => $media->created_at?->toIso8601String(),
+            'actorName' => ($uploader = $media->getRelationValue('uploader')) instanceof User ? $uploader->name : 'Former user',
+            'contentUrl' => route('assets.evidence.content', [$asset->getKey(), $media->token]),
+            'downloadUrl' => route('assets.evidence.download', [$asset->getKey(), $media->token]),
+            'thumbnailUrl' => $media->thumbnail_path === null ? null : route('assets.evidence.thumbnail', [$asset->getKey(), $media->token]),
+            'previewDataUrl' => in_array($media->extension, ['csv', 'xls', 'xlsx'], true)
+                ? route('assets.evidence.preview-data', [$asset->getKey(), $media->token])
+                : null,
+            'removeUrl' => route('assets.evidence.destroy', [$asset->getKey(), $media->id]),
+        ]);
+        $history = AccessAuditEvent::query()
+            ->forSubject($asset)
+            ->with('actor:id,name,email')
+            ->latest('occurred_at')
+            ->orderByDesc('id')
+            ->paginate(20, ['id', 'actor_user_id', 'event', 'before', 'after', 'occurred_at'], 'history_page')
+            ->appends(request()->query());
+        $history->through(static function (AccessAuditEvent $event): array {
+            $before = $event->before ?? [];
+            $after = $event->after ?? [];
+            $actor = $after['_actor'] ?? [];
+            unset($before['_actor'], $before['media_asset_id'], $after['_actor'], $after['media_asset_id']);
+            $safeFields = ['code', 'name', 'category', 'condition', 'latitude', 'longitude', 'record_status', 'mime_type', 'size_bytes', 'removed'];
+            $before = array_intersect_key($before, array_flip($safeFields));
+            $after = array_intersect_key($after, array_flip($safeFields));
+            $eventActor = $event->getRelationValue('actor');
+            $actorName = $eventActor instanceof User ? $eventActor->name : 'Former user';
+            if (is_array($actor) && is_string($actor['name'] ?? null)) {
+                $actorName = $actor['name'];
+            }
+
+            return [
+                'id' => $event->id,
+                'event' => $event->event,
+                'occurredAt' => $event->occurred_at->toIso8601String(),
+                'actorName' => $actorName,
+                'changes' => ['before' => $before, 'after' => $after],
+            ];
+        });
 
         return Inertia::render('assets/show', [
             'asset' => $this->serialize($asset),
+            'evidence' => $evidence,
+            'history' => $history,
+            'canManageEvidence' => ! $asset->trashed() && request()->user()?->can('assets.update') === true,
+            'storeUrl' => route('assets.evidence.store', $asset->getKey()),
             'canUpdate' => ! $asset->trashed() && request()->user()?->can('update', $asset) === true,
             'canViewDeleted' => $canViewDeleted,
             'canUpdateDeleted' => request()->user()?->can('assets.update_deleted') === true,

@@ -4,7 +4,7 @@ return [
     'disk' => env('MEDIA_ASSET_DISK', 'local'),
     'max_file_size_kilobytes' => 100 * 1024,
     'gallery_max_file_size_kilobytes' => 5 * 1024,
-    'allowed_modules' => ['files', 'gallery', 'avatars'],
+    'allowed_modules' => ['files', 'gallery', 'avatars', 'asset_evidence'],
     'upload_modules' => ['files', 'gallery'],
     'allowed_mime_types' => [
         'image/jpeg', 'image/png', 'image/webp', 'application/pdf',
@@ -23,6 +23,8 @@ return [
     'per_user_max_bytes' => 250 * 1024 * 1024,
     'per_user_files_max_assets' => 200,
     'per_user_files_max_bytes' => 1024 * 1024 * 1024,
+    'asset_evidence_max_files' => 100,
+    'asset_evidence_max_bytes' => 1024 * 1024 * 1024,
     'page_size' => 24,
     'uploads_per_minute' => 12,
     'previews_per_minute' => 30,
