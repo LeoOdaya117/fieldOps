@@ -1,6 +1,6 @@
 # Phase 4 — Asset evidence and history
 
-Status: implementation and local verification complete; PR delivery in progress on `codex/asset-evidence-history`, based on `origin/main` at merged Phase 3 commit `ce7a560d0d1e27586262759f07bcba5f2d1b7144`. Approved roadmap: `2026-10-22-fieldops-roadmap.md`.
+Status: merged as PR #27 at `add1769563002a345946640cf8b6c8cdc8383824`. Approved roadmap: `2026-10-22-fieldops-roadmap.md`.
 
 ## Goal and bounded acceptance
 
@@ -47,3 +47,9 @@ Add private photo/file evidence and useful, auditable activity history to the Ph
 - Independent final code review and security review reported no actionable findings. QA confirmed earlier findings were addressed; the removed-byte quota assertion was added and passed in the full suite.
 - A browser run exposed and resolved the missing extension selection in the evidence listing. The final browser run used a freshly started server and passed all viewports.
 - PR URL/checks, merge commit, known limitations, and Phase 5 prerequisites will be appended after delivery. Do not start Phase 5 from this branch.
+
+## Delivery handoff
+
+- PR: https://github.com/LeoOdaya117/fieldOps/pull/27 — Asset evidence and history; merged into `main` at `add1769563002a345946640cf8b6c8cdc8383824`.
+- The merged PR records `composer ci:check`, Composer/npm audits, focused Playwright on mobile/tablet/desktop, and independent code/security review as passing with no actionable findings.
+- Phase 5 begins from this merged commit. Work orders should retain canonical Asset references and must not reuse `MediaAsset` as an operational asset.

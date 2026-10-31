@@ -1,6 +1,6 @@
 # Phase 3 — Asset directory
 
-Status: implementation verified on `codex/asset-directory`; based on GitHub `main` at `4f5faabb5a994ce3c93549f02b97f5e40dbc530a`. PR and merge handoff pending. Approved roadmap: `2026-10-22-fieldops-roadmap.md`.
+Status: merged as PR #26 at `ce7a560d0d1e27586262759f07bcba5f2d1b7144`. Approved roadmap: `2026-10-22-fieldops-roadmap.md`.
 
 ## Goal and bounded acceptance
 
@@ -45,4 +45,6 @@ Included:
 - Composer lockfile updated Symfony Mime from 7.4.16 to 7.4.22 after Composer audit identified an advisory; both dependency audits now pass.
 - Independent code review and final scoped review reported no actionable findings.
 - Known scope boundary: no hard delete, export, activity-history workspace, or private evidence was added. The existing operational dashboard sample data is unchanged.
-- PR URL, remote check results, merge commit, and Phase 4 prerequisites will be appended after observed delivery. Phase 4 should add private evidence and durable asset history while preserving this phase's stable asset IDs and reserved codes.
+- Phase 3 PR #26 merged: https://github.com/LeoOdaya117/fieldOps/pull/26 — Asset directory, `codex/asset-directory` into `main`, merge commit `ce7a560d0d1e27586262759f07bcba5f2d1b7144`.
+- The merged PR records 397 PHPUnit tests (393 passed, 4 skipped), 303 Vitest tests, all three Playwright viewport projects, production build, style/type/static checks, dependency audits, and independent code review as passing.
+- Phase 4 extended this directory with private evidence and durable asset history in PR #27. Phase 5 starts from the Phase 4 merge `add1769563002a345946640cf8b6c8cdc8383824`.

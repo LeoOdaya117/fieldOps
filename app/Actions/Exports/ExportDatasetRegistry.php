@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\UserInvitation;
 use App\Models\UserRegistration;
 use App\Models\VisitLog;
+use App\Models\WorkOrder;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -213,7 +214,7 @@ class ExportDatasetRegistry
     }
 
     /** @param array<string, mixed> $filters
-     * @return Builder<User>|Builder<UserInvitation>|Builder<UserRegistration>|Builder<Role>|Builder<AccessAuditEvent>|Builder<BlockedIpAddress>|Builder<VisitLog>|Builder<MediaAsset>|Builder<Country>|Builder<Timezone>|Builder<Asset>
+     * @return Builder<User>|Builder<UserInvitation>|Builder<UserRegistration>|Builder<Role>|Builder<AccessAuditEvent>|Builder<BlockedIpAddress>|Builder<VisitLog>|Builder<MediaAsset>|Builder<Country>|Builder<Timezone>|Builder<Asset>|Builder<WorkOrder>
      */
     public function query(string $dataset, User $user, array $filters): Builder
     {

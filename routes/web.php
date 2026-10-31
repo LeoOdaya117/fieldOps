@@ -19,6 +19,7 @@ use App\Http\Controllers\Notifications\NotificationController;
 use App\Http\Controllers\RecordStatus\RecordStatusController;
 use App\Http\Controllers\System\CountryController;
 use App\Http\Controllers\System\TimezoneController;
+use App\Http\Controllers\WorkOrders\WorkOrderController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
@@ -87,6 +88,17 @@ Route::middleware(['auth', 'verified', 'active'])->group(function () {
         Route::get('{asset}/edit', [AssetController::class, 'edit'])->middleware('can:assets.update')->name('edit');
         Route::patch('{asset}', [AssetController::class, 'update'])->middleware('can:assets.update')->name('update');
         Route::get('{asset}', [AssetController::class, 'show'])->middleware('can:assets.view')->name('show');
+    });
+
+    Route::prefix('work-orders')->name('work-orders.')->group(function (): void {
+        Route::get('/', [WorkOrderController::class, 'index'])->middleware('can:work_orders.view')->name('index');
+        Route::patch('{workOrder}/record-status', [RecordStatusController::class, 'workOrder'])->middleware('can:work_orders.update_deleted')->name('record-status');
+        Route::get('create', [WorkOrderController::class, 'create'])->middleware('can:work_orders.create')->name('create');
+        Route::post('/', [WorkOrderController::class, 'store'])->middleware('can:work_orders.create')->name('store');
+        Route::get('{workOrder}/edit', [WorkOrderController::class, 'edit'])->middleware('can:work_orders.update')->name('edit');
+        Route::patch('{workOrder}/cancel', [WorkOrderController::class, 'cancel'])->middleware('can:work_orders.update')->name('cancel');
+        Route::patch('{workOrder}', [WorkOrderController::class, 'update'])->middleware('can:work_orders.update')->name('update');
+        Route::get('{workOrder}', [WorkOrderController::class, 'show'])->middleware('can:work_orders.view')->name('show');
     });
 
     Route::inertia('dashboard', 'dashboard')->middleware('can:dashboard.view')->name('dashboard');

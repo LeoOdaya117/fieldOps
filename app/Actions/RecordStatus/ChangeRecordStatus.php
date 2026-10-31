@@ -16,6 +16,7 @@ use App\Models\Role;
 use App\Models\Timezone;
 use App\Models\User;
 use App\Models\UserInvitation;
+use App\Models\WorkOrder;
 use App\Support\SystemSettings;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
@@ -31,11 +32,11 @@ class ChangeRecordStatus
         private readonly AssertRoleCanBeRemoved $assertRoleCanBeRemoved,
     ) {}
 
-    /** @param class-string<User|UserInvitation|Role|Country|Timezone|BlockedIpAddress|OrganizationLocation|MediaAsset|Asset> $modelClass */
+    /** @param class-string<User|UserInvitation|Role|Country|Timezone|BlockedIpAddress|OrganizationLocation|MediaAsset|Asset|WorkOrder> $modelClass */
     public function execute(string $modelClass, int|string $id, int $status, User $actor): void
     {
         DB::transaction(function () use ($modelClass, $id, $status, $actor): void {
-            /** @var User|UserInvitation|Role|Country|Timezone|BlockedIpAddress|OrganizationLocation|MediaAsset|Asset $record */
+            /** @var User|UserInvitation|Role|Country|Timezone|BlockedIpAddress|OrganizationLocation|MediaAsset|Asset|WorkOrder $record */
             $record = $modelClass::query()->withoutGlobalScope('record_status')->lockForUpdate()->findOrFail($id);
 
             if ($record instanceof MediaAsset) {
@@ -59,18 +60,37 @@ class ChangeRecordStatus
             $this->assertCanDeactivate($record, $actor, $status);
 
             $before = ['record_status' => (int) $record->record_status];
-            $attributes = ['record_status' => $status, 'updated_by' => $actor->getKey()];
+            if ($record instanceof WorkOrder) {
+                $before['version'] = (int) $record->version;
+            }
+
+            $attributes = [
+                'record_status' => $status,
+                'updated_by' => $actor->getKey(),
+            ];
+            if ($record instanceof WorkOrder) {
+                $attributes['version'] = (int) $record->version + 1;
+            }
+
             if ($record instanceof User && $status === 0) {
                 $this->invalidateSessions->execute($record);
             }
 
             $record->forceFill($attributes)->saveQuietly();
+            $after = ['record_status' => $status];
+            if ($record instanceof WorkOrder) {
+                $after['version'] = (int) $record->version;
+            }
+            if ($record instanceof Asset || $record instanceof WorkOrder) {
+                $after['_actor'] = ['name' => (string) $actor->name, 'email' => (string) $actor->email];
+            }
+
             $this->audit->record(
                 $this->eventPrefix($record).'.'.($status === 1 ? 'activated' : 'deactivated'),
                 $actor,
                 $record,
                 $before,
-                ['record_status' => $status, ...($record instanceof Asset ? ['_actor' => ['name' => (string) $actor->name, 'email' => (string) $actor->email]] : [])],
+                $after,
             );
         });
     }
@@ -141,6 +161,7 @@ class ChangeRecordStatus
             $record instanceof OrganizationLocation => 'organization_location',
             $record instanceof MediaAsset => 'media.asset',
             $record instanceof Asset => 'asset',
+            $record instanceof WorkOrder => 'work_order',
             default => 'record',
         };
     }
