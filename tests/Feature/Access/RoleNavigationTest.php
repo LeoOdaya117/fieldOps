@@ -641,14 +641,14 @@ class RoleNavigationTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('access/role-create')
-                ->has('navigationItems', 13)
+                ->has('navigationItems', 14)
                 ->where('navigationItems.0.key', 'notifications')
                 ->where('navigationItems.0.group', 'Platform')
                 ->where('navigationItems.0.href', route('notifications.index', [], false))
                 ->where('navigationItems.7.key', 'assets')
                 ->where('navigationItems.7.group', 'Operations')
                 ->where('navigationItems.7.href', route('assets.index', [], false))
-                ->where('navigationItems.12.key', 'backups')
+                ->where('navigationItems.13.key', 'backups')
                 ->where('customNavigationItems', [])
                 ->has('customNavigationIconKeys')
                 ->has('routeOptions')
@@ -659,7 +659,7 @@ class RoleNavigationTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('access/role-edit')
                 ->where('role.navigationItems', ['files', 'users'])
-                ->has('navigationItems', 13)
+                ->has('navigationItems', 14)
                 ->has('routeOptions'));
     }
 

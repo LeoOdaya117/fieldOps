@@ -1,6 +1,6 @@
 # FieldOps Roadmap — One Phase, One Worktree, One Chat, One PR
 
-Approved 2026-10-22. Status: Phases 1–3 merged; Phase 4 Asset evidence and history underway (updated 2026-10-30).
+Approved 2026-10-22. Status: Phases 1–4 merged; Phase 5 Work-order management underway (updated 2026-10-30).
 
 ## Delivery contract
 
@@ -58,3 +58,4 @@ Defer AI summaries, route optimization, billing, advanced analytics, push notifi
 - Phase 3 asset directory implementation was verified before merge: 397 PHPUnit tests (393 passed, 4 skipped), 303 frontend unit tests, three Playwright viewport projects, build, static/style checks, and dependency audits passed. Its scope and Phase 4 prerequisites are recorded in `2026-10-29-asset-directory.md`.
 - Actual shared-hosting constraints and mobile repository remain unverified; synchronization, offline map compatibility and hosting process limits are primary risks. User deferred provider verification until deployment on 2026-10-28; Phase 2 development/PR delivery proceeds first. See `2026-10-22-shared-hosting-readiness.md` and `docs/shared-hosting.md` for observed checks and deferred deployment checklist.
 - Phase 4 implementation started on 2026-10-30 in the dedicated `codex/asset-evidence-history` worktree/branch from merged main. See `2026-10-30-asset-evidence-history.md` for the bounded scope, contracts, acceptance evidence and delivery handoff.
+- Phase 4 PR #27 merged as `add1769563002a345946640cf8b6c8cdc8383824`; its recorded local checks and reviews are in `2026-10-30-asset-evidence-history.md`. Phase 5 is underway on `codex/work-order-management` from that merged commit; see `2026-10-30-work-order-management.md`.

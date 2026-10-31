@@ -14,6 +14,7 @@ use App\Models\Role;
 use App\Models\Timezone;
 use App\Models\User;
 use App\Models\VisitLog;
+use App\Models\WorkOrder;
 use App\Policies\AccessAuditEventPolicy;
 use App\Policies\AssetPolicy;
 use App\Policies\BlockedIpAddressPolicy;
@@ -23,6 +24,7 @@ use App\Policies\RolePolicy;
 use App\Policies\TimezonePolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VisitLogPolicy;
+use App\Policies\WorkOrderPolicy;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -68,6 +70,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Timezone::class, TimezonePolicy::class);
         Gate::policy(VisitLog::class, VisitLogPolicy::class);
         Gate::policy(MediaAsset::class, MediaAssetPolicy::class);
+        Gate::policy(WorkOrder::class, WorkOrderPolicy::class);
 
         RateLimiter::for('media-uploads', static fn (Request $request): Limit => Limit::perMinute(
             (int) config('media-assets.uploads_per_minute', 12),

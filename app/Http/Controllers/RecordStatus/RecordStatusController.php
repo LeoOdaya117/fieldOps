@@ -14,6 +14,7 @@ use App\Models\Role;
 use App\Models\Timezone;
 use App\Models\User;
 use App\Models\UserInvitation;
+use App\Models\WorkOrder;
 use Illuminate\Http\RedirectResponse;
 
 class RecordStatusController extends Controller
@@ -87,5 +88,12 @@ class RecordStatusController extends Controller
         $change->execute(Asset::class, $asset, (int) $request->validated('record_status'), $request->user());
 
         return back()->with('success', 'Asset record status updated.');
+    }
+
+    public function workOrder(UpdateRecordStatusRequest $request, int $workOrder, ChangeRecordStatus $change): RedirectResponse
+    {
+        $change->execute(WorkOrder::class, $workOrder, (int) $request->validated('record_status'), $request->user());
+
+        return back()->with('success', 'Work-order record status updated.');
     }
 }

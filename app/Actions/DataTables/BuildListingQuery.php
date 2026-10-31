@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\UserInvitation;
 use App\Models\UserRegistration;
 use App\Models\VisitLog;
+use App\Models\WorkOrder;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Builds the filtered Eloquent queries shared by table listings and exports.
  *
- * @phpstan-type ListingQueryBuilder Builder<User>|Builder<UserInvitation>|Builder<UserRegistration>|Builder<Role>|Builder<AccessAuditEvent>|Builder<BlockedIpAddress>|Builder<VisitLog>|Builder<MediaAsset>|Builder<Country>|Builder<Timezone>|Builder<Asset>
+ * @phpstan-type ListingQueryBuilder Builder<User>|Builder<UserInvitation>|Builder<UserRegistration>|Builder<Role>|Builder<AccessAuditEvent>|Builder<BlockedIpAddress>|Builder<VisitLog>|Builder<MediaAsset>|Builder<Country>|Builder<Timezone>|Builder<Asset>|Builder<WorkOrder>
  */
 class BuildListingQuery
 {
@@ -41,6 +42,7 @@ class BuildListingQuery
             'countries' => $this->countries($user, $filters),
             'timezones' => $this->timezones($user, $filters),
             'assets' => $this->assets($user, $filters),
+            'work-orders' => $this->workOrders($user, $filters),
             default => throw new \InvalidArgumentException('Unsupported export dataset.'),
         };
     }
@@ -357,6 +359,34 @@ class BuildListingQuery
             ->when($category !== '', static fn ($query) => $query->where('category', $category))
             ->when($condition !== '', static fn ($query) => $query->where('condition', $condition))
             ->when(isset($sortColumns[$sort]), static fn ($query) => $query->orderBy($sortColumns[$sort], $direction), static fn ($query) => $query->orderBy('name'));
+    }
+
+    /** @param array<string, mixed> $filters
+     * @return Builder<WorkOrder>
+     */
+    private function workOrders(User $user, array $filters): Builder
+    {
+        $canDeleted = $user->can('work_orders.view_deleted');
+        $recordStatus = $canDeleted && ($filters['record_status'] ?? 'active') === 'inactive' ? 'inactive' : 'active';
+        $priority = in_array($filters['priority'] ?? null, WorkOrder::PRIORITIES, true) ? (string) $filters['priority'] : '';
+        $status = in_array($filters['status'] ?? null, WorkOrder::STATUSES, true) ? (string) $filters['status'] : '';
+        $search = trim((string) ($filters['search'] ?? ''));
+        $sort = (string) ($filters['sort'] ?? '');
+        $direction = $this->direction($filters['direction'] ?? null, 'asc');
+        $sortColumns = ['reference' => 'reference', 'title' => 'title', 'priority' => 'priority', 'due_date' => 'due_date', 'status' => 'status', 'created_at' => 'created_at', 'updated_at' => 'updated_at', 'record_status' => 'record_status'];
+
+        return ($canDeleted ? WorkOrder::withTrashed() : WorkOrder::query())
+            ->where('record_status', $recordStatus === 'inactive' ? 0 : 1)
+            ->when($search !== '', static fn ($query) => $query->where(static fn ($query) => $query
+                ->where('reference', 'like', '%'.$search.'%')
+                ->orWhere('title', 'like', '%'.$search.'%')
+                ->orWhere('instructions', 'like', '%'.$search.'%')
+                ->orWhere('location_label', 'like', '%'.$search.'%')
+                ->orWhere('asset_code_snapshot', 'like', '%'.$search.'%')
+                ->orWhere('asset_name_snapshot', 'like', '%'.$search.'%')))
+            ->when($priority !== '', static fn ($query) => $query->where('priority', $priority))
+            ->when($status !== '', static fn ($query) => $query->where('status', $status))
+            ->when(isset($sortColumns[$sort]), static fn ($query) => $query->orderBy($sortColumns[$sort], $direction), static fn ($query) => $query->orderBy('due_date'));
     }
 
     /** @param array<array-key, mixed> $allowed

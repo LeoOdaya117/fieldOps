@@ -81,6 +81,13 @@ return [
                     'permission' => 'assets.view',
                     'iconKey' => 'mapPinned',
                 ],
+                [
+                    'key' => 'work_orders',
+                    'title' => 'Work orders',
+                    'route' => 'work-orders.index',
+                    'permission' => 'work_orders.view',
+                    'iconKey' => 'clipboard',
+                ],
             ],
         ],
         [
